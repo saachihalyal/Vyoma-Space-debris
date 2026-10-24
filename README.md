@@ -141,6 +141,8 @@ For a backend running on a non-default port, set `VITE_API_BASE` before starting
 
 ## Run Locally
 
+From the repository root, run `.\scripts\start-dev.ps1` in PowerShell. It starts the backend with `backend\.venv` and Vite in two visible windows on ports 8001 and 5173, fails if either port is occupied, and verifies `/api/version` against the current commit before reporting ready. The footer compares frontend/backend commit IDs and warns when they differ or the backend cannot be reached. Run `.\scripts\stop-dev.ps1` to stop only the process trees recorded by that launcher.
+
 Open two PowerShell terminals.
 
 ### Backend

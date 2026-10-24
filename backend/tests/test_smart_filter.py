@@ -66,6 +66,18 @@ class PhysicsSmartFilterTests(unittest.TestCase):
             self.assertIn(self.event.id, csv_response.text)
             self.assertIn("safety_guard_retained", csv_response.text)
 
+    def test_physics_filter_api_ignores_process_local_screening_task(self) -> None:
+        class RuntimeTask:
+            def __deepcopy__(self, memo):
+                raise TypeError("runtime task cannot be copied")
+
+        job_id = "fedcba9876543210fedcba9876543210"
+        job = {"job_id": job_id, "status": "complete", "task": RuntimeTask(),
+               "result": {"data": [self.event.model_dump(mode="json")]}}
+        with patch.dict(_screening_jobs, {job_id: job}, clear=False):
+            response = TestClient(app).get(f"/api/conjunction-jobs/{job_id}/smart-filter")
+        self.assertEqual(response.status_code, 200, response.text)
+
     def test_saved_scenario_labels_and_grouped_metadata_match_trained_filter(self) -> None:
         metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
         self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v1.jsonl")

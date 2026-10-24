@@ -78,6 +78,7 @@ import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentat
 import { ManeuverAiSummary } from "./components/UI/ManeuverAiSummary.js";
 import { ManeuverScreeningContext } from "./components/UI/ManeuverScreeningContext.js";
 import { ManeuverUserUpload } from "./components/UI/ManeuverUserUpload.jsx";
+import { BuildVersionBadge } from "./components/UI/BuildVersionBadge.jsx";
 import { buildSmartFilterView } from "./utils/smartFilterView";
 import { catalogHoverDetails } from "./utils/catalogHover.js";
 import { captureGlobeEventSelection, downloadGlobeEventReport, resolveGlobeEventSelection } from "./utils/globeEventReport.js";
@@ -747,6 +748,7 @@ export default function App() {
             smart={platform.smart}
           /> : null}
         </main>
+        <BuildVersionBadge />
       </div>
     </div>
   );

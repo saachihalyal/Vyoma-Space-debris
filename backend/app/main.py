@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections import Counter
 import csv
 from datetime import datetime, timezone
+import os
+import subprocess
 from functools import partial
 import json
 import logging
@@ -76,6 +78,26 @@ app = FastAPI(
     description="Catalog ingestion, WGS-72 SGP4 trajectory screening, independent ESA-trained log10-risk ML estimates, and heuristic proxies.",
     version="1.3.0",
 )
+
+@app.get("/api/version")
+async def version() -> dict:
+    """Build identity used to detect stale frontend/backend development servers."""
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=Path(__file__).resolve().parents[2],
+            capture_output=True, text=True, timeout=2, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        commit = os.getenv("ORION_COMMIT", "unknown")
+    artifact_dir = Path(__file__).resolve().parent / "ai" / "artifacts"
+    versions = {}
+    for metadata_path in sorted(artifact_dir.glob("*.metadata.json")):
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            versions[metadata_path.name.removesuffix(".metadata.json")] = metadata.get("model_version", metadata.get("version", "unknown"))
+        except (OSError, ValueError):
+            versions[metadata_path.name.removesuffix(".metadata.json")] = "invalid-metadata"
+    return {"commit": commit, "build_time": os.getenv("ORION_BUILD_TIME", "development"), "model_artifact_versions": versions}
 
 app.add_middleware(
     CORSMiddleware,
@@ -955,7 +977,9 @@ def _screening_job_for_smart_filter(job_id: str) -> dict:
         job["archived"] = True
     if job.get("status") not in {"complete", "partial"} or not isinstance(job.get("result"), dict):
         raise HTTPException(status_code=409, detail="Smart Filter requires a completed or partial physical screening job.")
-    return copy.deepcopy(job)
+    # Runtime asyncio task handles are process-local and cannot be deep-copied.
+    # The smart-filter consumer only needs the terminal data snapshot.
+    return copy.deepcopy({key: value for key, value in job.items() if key != "task"})
 
 
 @app.get("/api/conjunction-jobs/{job_id}/smart-filter")
