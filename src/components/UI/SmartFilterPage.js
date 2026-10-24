@@ -2,6 +2,7 @@ import React from "react";
 import { AlertTriangle, ClipboardList, Cpu, DatabaseZap, Filter, ShieldCheck } from "lucide-react";
 import { SMART_FILTER_RULES, smartFilterObjectDecision, smartFilterObjectReasons, smartFilterRecordIdentity } from "../../utils/smartFilterView.js";
 import { hasUsableEventPrediction, predictedEventRiskEstimate, thresholdFlagAtMinus6 } from "../../utils/mlPrediction.js";
+import { getPhysicalSmartFilter, physicalSmartFilterCsvPath } from "../../api/ssaClient.js";
 
 const h = React.createElement;
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -16,7 +17,29 @@ function queueRiskClass(assessment) {
   return "review";
 }
 
-export function SmartFilterPage({ snapshot, smartSnapshot, platform = {}, selectEvent = () => {}, navigate = () => {} }) {
+export function SmartFilterPage({ snapshot, smartSnapshot, platform = {}, selectEvent = () => {}, navigate = () => {}, download = () => {}, physicalFilterResult = null }) {
+  const screeningJobId = platform.conjunctionStatus?.job_id || null;
+  const [physicalFilter, setPhysicalFilter] = React.useState(physicalFilterResult);
+  const [physicalFilterError, setPhysicalFilterError] = React.useState(null);
+  React.useEffect(() => {
+    if (physicalFilterResult) {
+      setPhysicalFilter(physicalFilterResult);
+      setPhysicalFilterError(null);
+      return undefined;
+    }
+    if (!screeningJobId) {
+      setPhysicalFilter(null);
+      setPhysicalFilterError(null);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setPhysicalFilter(null);
+    setPhysicalFilterError(null);
+    getPhysicalSmartFilter(screeningJobId, { signal: controller.signal }).then(setPhysicalFilter).catch((error) => {
+      if (error?.name !== "AbortError") setPhysicalFilterError(error?.message || "Smart Filter evaluation is unavailable.");
+    });
+    return () => controller.abort();
+  }, [screeningJobId, physicalFilterResult]);
   const smart = platform.smart && typeof platform.smart === "object" ? platform.smart : {};
   const raw = Array.isArray(snapshot?.objects) ? snapshot.objects.length : 0;
   const after = Array.isArray(smartSnapshot?.objects) ? smartSnapshot.objects.length : 0;
@@ -63,6 +86,7 @@ export function SmartFilterPage({ snapshot, smartSnapshot, platform = {}, select
       h("div", null, h("p", { className: "eyebrow" }, "Hybrid Physics + ML"), h("h1", null, "Smart Filter"),
         h("p", null, "Catalog screening proxies remain explicitly heuristic. The ESA historical-risk model is separate from physical Pc; its outputs are withheld because equivalence between historical CDM and live TLE feature semantics is unverified.")),
       h("div", { className: "page-action" }, h("button", { className: "primary-action", type: "button", onClick: () => navigate("collision") }, "Review Events"))),
+    physicalSmartFilterPanel({ physicalFilter, error: physicalFilterError, screeningJobId, download }),
     h("section", { className: "before-after-grid" },
       comparison("Before Filter", "Catalog snapshot · positions transformed from TEME at their propagation epoch", snapshot?.objects || []),
       h("div", { className: "reduction-column" }, h(Filter, { size: 28 }), h("strong", null, `${numberFormat.format(after)} / ${numberFormat.format(raw)}`), h("span", null, "objects selected by heuristic; validated workload reduction not measured")),
@@ -139,6 +163,42 @@ export function SmartFilterPage({ snapshot, smartSnapshot, platform = {}, select
     panel("Heuristic-Only Proxy Pairs · Relative Priority Bands", ClipboardList,
       proxyEvents.length ? h("div", { className: "event-list" }, proxyEvents.slice(0, 8).map((event) => proxyRow(event, selectEvent)))
         : h("p", { className: "muted" }, "No screening events are available.")));
+}
+
+function physicalSmartFilterPanel({ physicalFilter, error, screeningJobId, download }) {
+  const result = physicalFilter || {};
+  const metrics = result.model?.metrics?.test || {};
+  const evalCounts = result.evaluation || {};
+  const decisions = Array.isArray(result.decisions) ? result.decisions : [];
+  const modelAvailable = result.model?.status === "available";
+  return h("section", { className: "panel smart-filter-physics", "aria-label": "Physics supervised Smart Filter" },
+    h("div", { className: "panel-heading" }, h(ShieldCheck, { size: 17 }), h("h2", null, "Physics-Supervised Conjunction Filter"),
+      h("button", { className: "secondary-action", type: "button", disabled: !screeningJobId || !decisions.length,
+        onClick: () => screeningJobId && download(physicalSmartFilterCsvPath(screeningJobId), `${screeningJobId}-smart-filter.csv`) }, "Download Decisions CSV")),
+    error ? h("p", { className: "muted", role: "status" }, `Filter evaluation failed: ${error}`)
+      : !screeningJobId ? h("p", { className: "muted" }, "Start or restore a completed physical screening job to evaluate its events.")
+        : !physicalFilter ? h("p", { className: "muted", role: "status" }, "Calculating configured research-Pc scenarios for the current screening job…") : null,
+    physicalFilter ? h(React.Fragment, null,
+      h("div", { className: "readout-list" },
+        countRow("Events before filter", evalCounts.before_count ?? 0),
+        countRow("Events kept", evalCounts.kept_count ?? 0),
+        countRow("Events filtered", evalCounts.filtered_count ?? 0),
+        countRow("Retained by independent safety guard", evalCounts.safety_guard_retained_count ?? 0)),
+      h("p", { className: "muted" }, modelAvailable
+        ? `${result.model.model_name} v${result.model.model_version}. Significant means research Pc ≥ ${result.policy?.significant_pc_threshold}; test recall ${Number(metrics.recall_significant ?? 0).toFixed(3)}, precision ${Number(metrics.precision_significant ?? 0).toFixed(3)}, false negatives ${metrics.false_negative_significant_count ?? "unavailable"} across ${metrics.sample_count ?? "?"} scenarios from ${metrics.parent_event_count ?? "?"} held-out parent events. Confusion matrix [insignificant, significant]: ${JSON.stringify(metrics.confusion_matrix_rows_true_columns_predicted || [])}. Majority baseline accuracy ${Number(metrics.majority_class_baseline?.accuracy ?? 0).toFixed(3)}.`
+        : `Deterministic fallback is active: ${result.model?.reason_code || physicalFilter.status || "model unavailable"}. Fallback decisions use only complete physics scenarios and the configured guard.`),
+      modelAvailable ? h("p", { className: "muted" }, `Training data: ${result.model.dataset_scenario_count ?? "?"} generated scenarios from ${result.model.dataset_independent_parent_count ?? "?"} independent parent events; grouped parent-event splits — train ${result.model.split_counts?.train?.parent_event_count ?? "?"} parents / ${result.model.split_counts?.train?.scenario_count ?? "?"} scenarios, validation ${result.model.split_counts?.validation?.parent_event_count ?? "?"} / ${result.model.split_counts?.validation?.scenario_count ?? "?"}, test ${result.model.split_counts?.test?.parent_event_count ?? "?"} / ${result.model.split_counts?.test?.scenario_count ?? "?"}. Labels are generated by ORION research Pc, not observed collision outcomes.`) : null,
+      h("p", { className: "muted" }, `Safety guard: retain if miss distance ≤ ${result.policy?.safety_miss_distance_threshold_km ?? "?"} km, any of ${result.policy?.scenario_count ?? "?"} covariance/HBR scenarios reaches the significant Pc threshold, or a scenario/input is invalid or uncertain. Confidence is the maximum forest vote fraction across scenarios; it is not a calibrated probability. Test false negatives are training evaluation errors; online labels are not observed collision outcomes.`),
+      h("div", { className: "table-scroll" }, h("table", null,
+        h("thead", null, h("tr", null, h("th", null, "Conjunction"), h("th", null, "Miss km"), h("th", null, "Max scenario Pc"), h("th", null, "Decision"), h("th", null, "Model / confidence"), h("th", null, "Safety guard"), h("th", null, "Reason"))),
+        h("tbody", null, decisions.map((row) => h("tr", { key: row.event_id || JSON.stringify(row) },
+          h("td", null, `${(row.object_names || row.object_ids || [row.event_id]).join(" vs ")} · ${row.event_id || "ID unavailable"}`),
+          h("td", null, row.miss_distance_km == null ? "Unavailable" : Number(row.miss_distance_km).toFixed(3)),
+          h("td", null, row.maximum_scenario_pc_scientific || (row.maximum_scenario_log10_pc == null ? "Unavailable" : `10^${Number(row.maximum_scenario_log10_pc).toFixed(2)}`)),
+          h("td", null, row.decision === "filter" ? "Filtered" : "Kept"),
+          h("td", null, `${row.model_prediction || row.decision_source || row.model_status || "Unavailable"}${Number.isFinite(row.confidence) ? ` · ${Number(row.confidence).toFixed(3)} vote fraction` : ""}`),
+          h("td", null, row.safety_guard_retained ? `Retained · ${(row.safety_guard_reasons || []).join(", ")}` : "No trigger"),
+          h("td", null, row.reason || row.reason_code || "Unspecified"))))))) : null);
 }
 
 function comparison(title, label, objects, accent = false) {

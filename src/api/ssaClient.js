@@ -343,6 +343,26 @@ export async function getSmartFilter({ signal } = {}) {
   return getStructured("/api/smart-filter", { signal }, { data: null });
 }
 
+export async function getPhysicalSmartFilter(screeningJobId, { signal } = {}) {
+  if (typeof screeningJobId !== "string" || !/^[a-fA-F0-9]{32}$/.test(screeningJobId.trim())) {
+    return { status: "unavailable", reason_code: "COMPLETED_SCREENING_JOB_REQUIRED", decisions: [], evaluation: null };
+  }
+  const response = await fetch(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter`, { signal });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(responseErrorMessage(payload, `Smart Filter evaluation returned HTTP ${response.status}`));
+  if (payload?.result_type !== "physics_smart_filter" || !Array.isArray(payload?.decisions) || !payload?.evaluation) {
+    throw new Error("Smart Filter returned an incompatible physical-event result.");
+  }
+  return payload;
+}
+
+export function physicalSmartFilterCsvPath(screeningJobId) {
+  if (typeof screeningJobId !== "string" || !/^[a-fA-F0-9]{32}$/.test(screeningJobId.trim())) {
+    throw new Error("A completed screening job ID is required to export Smart Filter decisions.");
+  }
+  return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter.csv`;
+}
+
 export async function getManeuver(event, { signal, screeningJobId, leadSeconds = 300, burnMagnitudes = [0.01, 0.05], maxDeltaVMs = null, initialMassKg = null, specificImpulseS = null } = {}) {
   if (!event?.id) throw new Error("A selected Stage 2A event ID is required for maneuver assessment.");
   if (event.result_kind !== "physics_assessment") throw new Error("Maneuver assessment requires a trajectory-derived physics event.");

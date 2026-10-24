@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+import csv
 from datetime import datetime, timezone
 from functools import partial
 import json
@@ -11,6 +12,7 @@ import time
 import asyncio
 import copy
 import hashlib
+import io
 import threading
 import uuid
 from typing import Literal
@@ -25,6 +27,7 @@ from starlette.concurrency import run_in_threadpool
 from app.ai.inference import model_status
 from app.ai.anomaly import model_status as orbital_anomaly_model_status
 from app.ai.collision_models import assess_collision_ai, collision_model_status
+from app.ai.smart_filter import evaluate_physical_smart_filter, filter_policy, smart_filter_model_status
 from app.models import (
     CatalogSnapshot,
     CdmImportRequest,
@@ -94,6 +97,8 @@ _screening_cache: dict[str, tuple[float, tuple]] = {}
 _screening_jobs: dict[str, dict] = {}
 _assessment_results: dict[str, dict] = {}
 _assessment_results_lock = threading.Lock()
+_smart_filter_results: dict[str, dict] = {}
+_smart_filter_results_lock = threading.Lock()
 SCREENING_EXPORT_ARCHIVE_DIR = Path(__file__).resolve().parent.parent / "exports"
 NASA_CARA_PC_REFERENCE_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "nasa_cara_pc_reference.cdm"
 NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/master/DataFiles/PcTestCaseCDMs/000020580_conj_000002017_20230613_001923_20230608_063715.cdm"
@@ -372,6 +377,7 @@ async def health() -> dict:
         "ml_model": ml_status,
         "orbital_anomaly_model": orbital_anomaly_model_status(),
         "collision_models": collision_model_status(),
+        "smart_filter_model": smart_filter_model_status(),
         "database_status": "in_memory_tle_cache; no persistent database configured",
         "gpu_status": "not_used",
         "dataset_loaded": bool(snapshot.objects),
@@ -445,6 +451,7 @@ async def system_health() -> dict:
             "ml_model": ml_status,
             "orbital_anomaly_model": orbital_anomaly_model_status(),
             "collision_models": collision_model_status(),
+            "smart_filter_model": smart_filter_model_status(),
             "gpu_status": "not_used",
             "database_status": "no_persistent_database_configured",
             "version": app.version,
@@ -936,6 +943,87 @@ async def restore_archived_screening_job(job_id: str) -> dict:
         restored["archived"] = True
         _screening_jobs[job_id] = restored
     return copy.deepcopy(restored)
+
+
+def _screening_job_for_smart_filter(job_id: str) -> dict:
+    job = _screening_jobs.get(job_id)
+    if job is None:
+        archived = _load_archived_screening_job(job_id)
+        job = copy.deepcopy(archived)
+        _backfill_archived_research_pc(job["result"])
+        job["restored_from_archive"] = True
+        job["archived"] = True
+    if job.get("status") not in {"complete", "partial"} or not isinstance(job.get("result"), dict):
+        raise HTTPException(status_code=409, detail="Smart Filter requires a completed or partial physical screening job.")
+    return copy.deepcopy(job)
+
+
+@app.get("/api/conjunction-jobs/{job_id}/smart-filter")
+async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
+    policy = filter_policy()
+    cache_key = f"{job_id}|{policy['significant_pc_threshold']}|{policy['safety_miss_distance_threshold_km']}"
+    with _smart_filter_results_lock:
+        cached = _smart_filter_results.get(cache_key)
+    if cached is not None:
+        return copy.deepcopy(cached)
+    job = _screening_job_for_smart_filter(job_id)
+    records = job["result"].get("data") or []
+    events: list[ConjunctionAssessmentEvent] = []
+    unparsed: list[dict] = []
+    for record in records:
+        try:
+            events.append(ConjunctionAssessmentEvent.model_validate(record))
+        except ValidationError:
+            unparsed.append({
+                "event_id": record.get("id") if isinstance(record, dict) else None,
+                "object_ids": [], "object_names": [], "tca_utc": None, "miss_distance_km": None,
+                "relative_speed_km_s": None, "decision": "retain",
+                "reason": "SAFETY_GUARD_INVALID_OR_UNCERTAIN_RECORD",
+                "reason_code": "SAFETY_GUARD_INVALID_OR_UNCERTAIN_RECORD",
+                "decision_source": "safety_guard",
+                "model_status": "unavailable", "model_prediction": None, "confidence": None,
+                "confidence_definition": policy["confidence_definition"], "safety_guard_retained": True,
+                "safety_guard_reasons": ["SAFETY_GUARD_INVALID_OR_UNCERTAIN_RECORD"],
+                "scenario_count_calculated": 0, "scenario_count_required": policy["scenario_count"],
+                "maximum_scenario_log10_pc": None, "maximum_scenario_pc_scientific": None,
+                "scenario_errors": {}, "model_name": None, "model_version": None,
+            })
+    result = await run_in_threadpool(evaluate_physical_smart_filter, events)
+    if unparsed:
+        result["decisions"].extend(unparsed)
+        result["evaluation"]["before_count"] += len(unparsed)
+        result["evaluation"]["kept_count"] += len(unparsed)
+        result["evaluation"]["safety_guard_retained_count"] += len(unparsed)
+    payload = {
+        **result,
+        "screening_job_id": job_id,
+        "screening_job_archived": bool(job.get("archived") or job.get("restored_from_archive")),
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    with _smart_filter_results_lock:
+        _smart_filter_results[cache_key] = copy.deepcopy(payload)
+    return payload
+
+
+@app.get("/api/conjunction-jobs/{job_id}/smart-filter.csv")
+async def export_screening_job_smart_filter_csv(job_id: str) -> Response:
+    result = await evaluate_screening_job_smart_filter(job_id)
+    stream = io.StringIO(newline="")
+    columns = [
+        "event_id", "object_ids", "object_names", "tca_utc", "miss_distance_km",
+        "relative_speed_km_s", "decision", "reason", "model_status", "model_prediction",
+        "decision_source", "confidence", "safety_guard_retained", "safety_guard_reasons",
+        "scenario_count_calculated", "scenario_count_required", "maximum_scenario_pc_scientific",
+    ]
+    writer = csv.DictWriter(stream, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    for row in result["decisions"]:
+        writer.writerow({**row, "object_ids": "|".join(row.get("object_ids") or []),
+                         "object_names": "|".join(row.get("object_names") or []),
+                         "safety_guard_reasons": "|".join(row.get("safety_guard_reasons") or [])})
+    content = stream.getvalue()
+    return Response(content=content, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{job_id}-smart-filter.csv"'})
 
 
 @app.get("/api/conjunction-jobs/{job_id}")

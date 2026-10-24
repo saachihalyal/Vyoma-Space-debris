@@ -702,7 +702,7 @@ export default function App() {
             />
           ) : null}
           {activePage === "smart" ? (
-            <SmartFilterPage snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} selectEvent={selectEvent} navigate={navigate} />
+            <SmartFilterPage snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} selectEvent={selectEvent} navigate={navigate} download={handleDownload} />
           ) : null}
           {activePage === "collision" ? (
             <CollisionPage

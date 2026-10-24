@@ -38,13 +38,43 @@ const physicalEvent = {
   },
 };
 
-function renderSmart(platform) {
+function renderSmart(platform, physicalFilterResult = null) {
   return renderToStaticMarkup(React.createElement(SmartFilterPage, {
     snapshot: baseSnapshot,
     smartSnapshot: baseSnapshot,
     platform,
+    physicalFilterResult,
   }));
 }
+
+test("Smart Filter shows physics-classifier metrics, event counts, safety guard, and decision reasons", () => {
+  const markup = renderSmart({
+    conjunctionStatus: { job_id: "0123456789abcdef0123456789abcdef" },
+    conjunctions: [], screeningProxies: [], smart: {},
+  }, {
+    result_type: "physics_smart_filter", status: "available",
+    model: { status: "available", model_name: "ORION Physics-Supervised Smart Filter Classifier", model_version: "1.0.0", dataset_scenario_count: 804, dataset_independent_parent_count: 67,
+      split_counts: { train: { parent_event_count: 46, scenario_count: 552 }, validation: { parent_event_count: 10, scenario_count: 120 }, test: { parent_event_count: 11, scenario_count: 132 } }, metrics: { test: {
+      recall_significant: 0.959, precision_significant: 1, false_negative_significant_count: 5,
+      sample_count: 132, parent_event_count: 11, confusion_matrix_rows_true_columns_predicted: [[10, 0], [5, 117]],
+      majority_class_baseline: { accuracy: 0.924 },
+    } } },
+    policy: { significant_pc_threshold: 1e-4, safety_miss_distance_threshold_km: 1, scenario_count: 12 },
+    evaluation: { before_count: 2, kept_count: 1, filtered_count: 1, safety_guard_retained_count: 1 },
+    decisions: [{ event_id: "A-B", object_ids: ["A", "B"], object_names: ["Alpha", "Beta"], miss_distance_km: 0.5,
+      maximum_scenario_pc_scientific: "1.2e-4", decision: "retain", model_status: "available", model_prediction: "significant",
+      confidence: 0.91, safety_guard_retained: true, safety_guard_reasons: ["SAFETY_GUARD_MISS_DISTANCE"],
+      reason: "SAFETY_GUARD_MISS_DISTANCE" }],
+  });
+  assert.match(markup, /Physics-Supervised Conjunction Filter/);
+  assert.match(markup, /Events before filter<strong>2/);
+  assert.match(markup, /Events kept<strong>1/);
+  assert.match(markup, /Events filtered<strong>1/);
+  assert.match(markup, /false negatives 5/);
+  assert.match(markup, /804 generated scenarios from 67 independent parent events/);
+  assert.match(markup, /SAFETY_GUARD_MISS_DISTANCE/);
+  assert.match(markup, /Download Decisions CSV/);
+});
 
 test("Smart Filter renders unavailable ML status without a blank page", () => {
   const markup = renderSmart({
