@@ -405,13 +405,6 @@ export async function importEventCdm({ screeningJobId, eventId, cdmXml, sourceLa
   );
 }
 
-export async function retrieveEventCdmFromSpaceTrack({ screeningJobId, eventId, assumeIndependentCovariances }) {
-  return postEventInput(
-    `/api/conjunction-jobs/${encodeURIComponent(screeningJobId)}/events/${encodeURIComponent(eventId)}/cdm/space-track`,
-    { assume_independent_covariances: assumeIndependentCovariances },
-  );
-}
-
 export async function calculateReferenceCdmPc({ cdmText, sourceLabel, assumeIndependentCovariances }) {
   return postEventInput("/api/collision-probability/cdm", {
     cdm_xml: cdmText,

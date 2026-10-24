@@ -91,7 +91,6 @@ Backend verification completed with 27 passing tests and Python compile checks. 
 
 - [CelesTrak SGP4 software tutorial](https://www.celestrak.org/software/tutorials/sgp4.php) — SGP4 input use and implementation guidance.
 - [CelesTrak TEME coordinate FAQ](https://www.celestrak.org/columns/v04n05/) — SGP4/SDP4 Cartesian output frame.
-- [Vallado et al., Revisiting Spacetrack Report #3](https://www.celestrak.org/publications/aiaa/2006-6753/AIAA-2006-6753.pdf) — SGP4 theory, implementation, coordinate conventions, and reference cases.
 - [python-sgp4 documentation](https://github.com/brandon-rhodes/python-sgp4) — SatrecArray batch propagation, km and km/s outputs, Julian-date handling, and error codes.
 - [CCSDS Conjunction Data Message Blue Book](https://ccsds.org/Pubs/508x0b1e2c2.pdf) — standardized close-approach state, frame, and provenance-related data exchange; ORION does not claim to produce a CDM.
 - [NASA Spacecraft Conjunction Assessment and Collision Avoidance Best Practices Handbook](https://www.nasa.gov/wp-content/uploads/2023/07/oce-51.pdf) — separation between screening, risk assessment, and mitigation.

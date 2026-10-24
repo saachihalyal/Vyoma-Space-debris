@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { referenceAssessmentMatchesIndependence } from "../src/utils/cdmAssessmentState.js";
-import { importEventCdm, retrieveEventCdmFromSpaceTrack } from "../src/api/ssaClient.js";
+import { importEventCdm } from "../src/api/ssaClient.js";
 import { calculateNasaCaraReferenceCase } from "../src/api/ssaClient.js";
 
 test("Collision Analysis exposes separate CCSDS and TraCSS CDM assessment with explicit provenance limits", () => {
@@ -94,49 +94,10 @@ test("event-bound CDM validation surfaces structured reason codes", async () => 
   }
 });
 
-test("Space-Track event retrieval calls the event-bound route with an explicit independence choice", async () => {
-  const originalFetch = globalThis.fetch;
-  let call;
-  globalThis.fetch = async (url, options) => {
-    call = { url: String(url), options };
-    return new Response(JSON.stringify({ success: true, retrieval: { cdm_id: "12" } }), { status: 200 });
-  };
-  try {
-    const response = await retrieveEventCdmFromSpaceTrack({
-      screeningJobId: "job A", eventId: "event/A", assumeIndependentCovariances: true,
-    });
-    assert.match(call.url, /\/api\/conjunction-jobs\/job%20A\/events\/event%2FA\/cdm\/space-track$/);
-    assert.deepEqual(JSON.parse(call.options.body), { assume_independent_covariances: true });
-    assert.equal(response.retrieval.cdm_id, "12");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("selected-event Space-Track action is visible outside collapsed diagnostics and reports request status", () => {
+test("external CDM retrieval is disconnected from the UI and API client", () => {
   const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-  const actionIndex = source.indexOf("Retrieve Space-Track CDM");
-  const detailsIndex = source.indexOf('className="advanced-selected-details"');
-  assert.ok(actionIndex >= 0, "the selected-event action is present");
-  assert.ok(actionIndex < detailsIndex, "the action is outside the collapsed diagnostic section");
-  assert.match(source, /onClick=\{retrieveSpaceTrackCdm\}/);
-  assert.match(source, /role="status" aria-live="polite">\{spaceTrackMessage\}/);
-  assert.match(source, /validated against both selected catalog IDs and the event TCA/);
-  assert.match(source, /Space-Track CDM retrieval failed/);
-});
-
-test("Space-Track retrieval surfaces structured backend validation errors", async () => {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({
-    detail: { reason_code: "CDM_TCA_MISMATCH", message: "The selected event TCA differs." },
-  }), { status: 422 });
-  try {
-    await assert.rejects(
-      retrieveEventCdmFromSpaceTrack({ screeningJobId: "job-A", eventId: "event-A", assumeIndependentCovariances: false }),
-      /CDM_TCA_MISMATCH: The selected event TCA differs\./,
-    );
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  const api = readFileSync(new URL("../src/api/ssaClient.js", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /Space-Track|spaceTrack|onRetrieveSpaceTrack/);
+  assert.doesNotMatch(api, /Space-Track|spaceTrack|space-track/);
 });
 

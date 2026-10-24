@@ -17,8 +17,7 @@ test("Collision Analysis distinguishes missing source Pc from an unrun scenario"
   assert.match(markup, /Next action/);
   assert.match(markup, /Import a CDM for this object pair and exact TCA/);
   assert.match(markup, /CelesTrak GP\/OMM provides orbital elements/);
-  assert.match(markup, /Space-Track retrieval is available when backend credentials and account permissions are configured/);
-  assert.match(markup, /exact TCA, frame, covariance, and HBR validate for this event/);
+  assert.match(markup, /Upload a conjunction message for event-specific states, covariance, and HBR/);
   assert.doesNotMatch(markup, /0\.00000e\+0/);
 });
 

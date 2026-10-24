@@ -9,6 +9,7 @@ from app.services.collision_probability import (
     CovarianceInput,
     HardBodyRadiusInput,
     calculate_foster_2d,
+    small_hbr_pc_approximation,
 )
 from app.services.probability_classification import classify_probability_pc
 
@@ -23,6 +24,47 @@ UNITS_6D = {
 
 
 class Foster2DReferenceTests(unittest.TestCase):
+    def test_small_hbr_approximation_matches_full_integral_in_its_local_regime(self) -> None:
+        sigma = 1.2
+        radius = 1e-3
+        args = assessment_args(miss_km=0.4, sigma_km=sigma, hbr_km=radius)
+        full = calculate_foster_2d(**args)
+        approximate = small_hbr_pc_approximation(
+            np.asarray([0.4, 0.0]), np.diag([sigma**2, sigma**2]), radius,
+        )
+        self.assertEqual(full.status, "available")
+        self.assertAlmostEqual(approximate, full.pc, delta=full.pc * 1e-6)
+
+    def test_seeded_monte_carlo_cross_checks_centered_isotropic_foster_case(self) -> None:
+        sigma = 2.0
+        hbr = 1.0
+        result = calculate_foster_2d(**assessment_args(miss_km=0.0, sigma_km=sigma, hbr_km=hbr))
+        samples = np.random.default_rng(4107).normal(0.0, sigma, size=(300_000, 2))
+        observed = float(np.mean(np.sum(samples * samples, axis=1) <= hbr * hbr))
+        standard_error = math.sqrt(result.pc * (1.0 - result.pc) / len(samples))
+        self.assertEqual(result.status, "available")
+        self.assertLessEqual(abs(observed - result.pc), 5.0 * standard_error + 1.0 / len(samples))
+
+    def test_seeded_monte_carlo_cross_checks_offcenter_foster_case(self) -> None:
+        sigma = 0.75
+        hbr = 0.4
+        result = calculate_foster_2d(**assessment_args(miss_km=1.2, sigma_km=sigma, hbr_km=hbr))
+        samples = np.random.default_rng(4113).multivariate_normal(
+            [1.2, 0.0], np.eye(2) * sigma**2, size=300_000,
+        )
+        observed = float(np.mean(np.sum(samples * samples, axis=1) <= hbr * hbr))
+        standard_error = math.sqrt(result.pc * (1.0 - result.pc) / len(samples))
+        self.assertEqual(result.status, "available")
+        self.assertLessEqual(abs(observed - result.pc), 5.0 * standard_error + 1.0 / len(samples))
+
+    def test_research_pc_is_monotonic_as_mean_moves_toward_collision_center(self) -> None:
+        probabilities = [
+            calculate_foster_2d(**assessment_args(miss_km=miss, sigma_km=1.0, hbr_km=0.25)).pc
+            for miss in (0.0, 0.25, 0.5, 1.0, 2.0)
+        ]
+        self.assertTrue(all(value is not None for value in probabilities))
+        self.assertTrue(all(near >= far for near, far in zip(probabilities, probabilities[1:])))
+
     def test_nasa_reference_classification_threshold_boundaries_are_strict(self) -> None:
         self.assertEqual(classify_probability_pc(1e-7)["category"], "AT_OR_BELOW_NASA_ATTENTION_REFERENCE")
         self.assertEqual(classify_probability_pc(1.0000001e-7)["category"], "ABOVE_NASA_ATTENTION_BELOW_MITIGATION_REFERENCE")

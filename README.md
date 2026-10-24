@@ -120,7 +120,6 @@ Main services:
 - `POST /api/conjunction-jobs` and `GET /api/conjunction-jobs/{job_id}` for job-bound trajectory screening
 - `POST /api/conjunctions/{event_id}/maneuver?screening_job_id={job_id}` for an exploratory assessment of the event stored in that job
 - `POST /api/conjunction-jobs/{job_id}/events/{event_id}/cdm` and `POST /api/conjunction-jobs/{job_id}/events/{event_id}/scenario-pc` for event-bound Pc inputs
-- `POST /api/conjunction-jobs/{job_id}/events/{event_id}/cdm/space-track` for a throttled Space-Track public-summary lookup followed by authorized full-CDM retrieval and event validation
 - `GET /api/conjunction-jobs/{job_id}/events/{event_id}/assessment.pdf` and `GET /api/conjunction-jobs/{job_id}/events/{event_id}/report.pdf` for job-bound reports
 - `GET /api/screening-proxies`
 - `GET /api/smart-filter`
@@ -131,12 +130,6 @@ Main services:
 - `GET /api/reports/screening-proxies.csv`
 - `GET /api/reports/{event_id}.pdf`
 - `POST /api/collision-probability/cdm` evaluates a user-supplied CCSDS XML/KVN CDM as a standalone reference assessment.
-
-### Space-Track CDM retrieval
-
-Set `SPACE_TRACK_IDENTITY` and `SPACE_TRACK_PASSWORD` in the backend process environment to enable the event-level **Search Space-Track for this event** action. The service authenticates with those credentials, queries a narrow TCA window in `cdm_public`, matches both catalog IDs and TCA, and requests the selected full CDM from `expandedspacedata`. The full response must pass the existing CDM parser and exact event ID/TCA/frame checks before the screening event is updated. The route accepts the independent-covariance assumption explicitly; without it, no Foster Pc is emitted.
-
-Retrieval is subject to persisted per-event and global rate limits. Credentials are read only from environment variables and are not stored in the throttle state. Account permissions may allow summary access while denying full CDMs; these outcomes are reported separately. No live Space-Track request is required for the mocked tests.
 
 ### Standalone CDM reference demonstration
 

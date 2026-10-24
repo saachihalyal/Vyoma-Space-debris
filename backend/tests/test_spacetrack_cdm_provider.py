@@ -12,7 +12,6 @@ import httpx
 
 from app.services.spacetrack_cdm_provider import (
     EVENT_REQUEST_COOLDOWN_SECONDS,
-    SpaceTrackCdmOutcome,
     SpaceTrackCdmProvider,
 )
 from tests.test_cdm_ingestion import cdm_xml, physical_event
@@ -163,53 +162,12 @@ class SpaceTrackProviderTests(unittest.TestCase):
         self.assertEqual(result.reason_code, "SPACETRACK_GLOBAL_COOLDOWN")
         self.assertEqual(self.calls, [])
 
-    def test_full_response_is_parsed_and_event_bound_before_persistence(self) -> None:
+    def test_retrieval_is_not_mounted_in_the_application_api(self) -> None:
         from fastapi.testclient import TestClient
         from app import main
-        event = physical_event()
-        job_id = "space-track-cdm-test-job"
-        job = {"job_id": job_id, "status": "complete", "result": {"data": [event.model_dump(mode="json")]}}
-        outcome = SpaceTrackCdmOutcome(
-            status="retrieved", cdm_id="9876", cdm_text=cdm_xml(source_pc=2e-6),
-            retrieved_at_utc="2025-01-01T00:02:00+00:00", candidate_tca_utc="2025-01-01T00:00:00Z",
-        )
-        with patch.dict(main._screening_jobs, {job_id: job}), \
-             patch.object(main.spacetrack_cdm_provider, "retrieve_for_event", return_value=outcome), \
-             TestClient(main.app) as client:
-            response = client.post(
-                f"/api/conjunction-jobs/{job_id}/events/{event.id}/cdm/space-track",
-                json={"assume_independent_covariances": True},
-            )
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["retrieval"]["cdm_id"], "9876")
-        pc = response.json()["data"]["collision_probability"]
-        self.assertEqual(pc["status"], "available")
-        self.assertIsNotNone(pc["pc"])
-        self.assertEqual(pc["source_reported_pc"], 2e-6)
-        self.assertEqual(job["result"]["data"][0]["collision_probability"]["status"], "available")
-
-    def test_full_response_id_or_tca_mismatch_never_updates_event(self) -> None:
-        from fastapi.testclient import TestClient
-        from app import main
-        for xml, reason in ((cdm_xml(object_a="wrong"), "CDM_OBJECT_ID_MISMATCH"),
-                            (cdm_xml(tca="2025-01-01T00:00:01Z"), "CDM_TCA_MISMATCH"),
-                            ("<cdm>", "CDM_XML_MALFORMED")):
-            with self.subTest(reason=reason):
-                event = physical_event()
-                job_id = f"space-track-cdm-invalid-{reason}"
-                job = {"job_id": job_id, "status": "complete", "result": {"data": [event.model_dump(mode="json")]}}
-                before = job["result"]["data"][0]
-                outcome = SpaceTrackCdmOutcome(status="retrieved", cdm_id="9876", cdm_text=xml, retrieved_at_utc="2025-01-01T00:02:00Z")
-                with patch.dict(main._screening_jobs, {job_id: job}), \
-                     patch.object(main.spacetrack_cdm_provider, "retrieve_for_event", return_value=outcome), \
-                     TestClient(main.app) as client:
-                    response = client.post(
-                        f"/api/conjunction-jobs/{job_id}/events/{event.id}/cdm/space-track",
-                        json={"assume_independent_covariances": True},
-                    )
-                self.assertEqual(response.status_code, 422)
-                self.assertEqual(response.json()["detail"]["reason_code"], reason)
-                self.assertEqual(job["result"]["data"][0], before)
+        paths = {route.path for route in main.app.routes}
+        self.assertNotIn("/api/conjunction-jobs/{job_id}/events/{event_id}/cdm/space-track", paths)
+        self.assertFalse(hasattr(main, "spacetrack_cdm_provider"))
 
 
 if __name__ == "__main__":

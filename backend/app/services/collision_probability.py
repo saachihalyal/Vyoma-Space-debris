@@ -75,6 +75,36 @@ class HardBodyRadiusInput:
     is_synthetic: bool = False
 
 
+def small_hbr_pc_approximation(mean_km: Any, covariance_km2: Any, hbr_km: float) -> float:
+    """Return the local-density small-disc approximation to Foster Pc.
+
+    This independent approximation evaluates ``pi * HBR^2`` times the
+    bivariate Gaussian density at the encounter-plane origin. It is useful
+    only when the density changes little across the collision disc; it is not
+    a substitute for the full integral outside that small-HBR regime.
+    """
+    mean = np.asarray(mean_km, dtype=float)
+    covariance = np.asarray(covariance_km2, dtype=float)
+    radius = float(hbr_km)
+    if mean.shape != (2,) or covariance.shape != (2, 2):
+        raise ValueError("mean must be length 2 and covariance must be 2x2")
+    if not np.isfinite(mean).all() or not np.isfinite(covariance).all() or not math.isfinite(radius) or radius <= 0:
+        raise ValueError("mean, covariance, and positive HBR must be finite")
+    if not np.allclose(covariance, covariance.T, rtol=MATRIX_SYMMETRY_REL_TOLERANCE, atol=MATRIX_SYMMETRY_ABS_TOLERANCE):
+        raise ValueError("encounter-plane covariance must be symmetric")
+    covariance = (covariance + covariance.T) * 0.5
+    sign, log_determinant = np.linalg.slogdet(covariance)
+    if sign <= 0 or not math.isfinite(float(log_determinant)):
+        raise ValueError("encounter-plane covariance must be positive definite")
+    try:
+        mahalanobis = float(mean @ np.linalg.solve(covariance, mean))
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("encounter-plane covariance must be positive definite") from exc
+    log_probability = math.log(math.pi) + 2.0 * math.log(radius) - math.log(2.0 * math.pi) \
+        - 0.5 * float(log_determinant) - 0.5 * mahalanobis
+    return math.exp(log_probability) if log_probability > math.log(float.fromhex("0x0.0000000000001p-1022")) else 0.0
+
+
 def calculate_foster_2d(
     *,
     event_id: str,

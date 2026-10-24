@@ -45,7 +45,6 @@ import {
   getConjunctions,
   resumeConjunctionJob,
   importEventCdm,
-  retrieveEventCdmFromSpaceTrack,
   calculateScenarioPc,
   getForecast,
   getManeuver,
@@ -588,13 +587,6 @@ export default function App() {
     return payload;
   }
 
-  async function handleRetrieveEventCdmFromSpaceTrack({ eventId, assumeIndependentCovariances }) {
-    const jobId = platform.conjunctionStatus?.job_id;
-    const payload = await retrieveEventCdmFromSpaceTrack({ screeningJobId: jobId, eventId, assumeIndependentCovariances });
-    acceptUpdatedEvent(payload.data, payload.job_id);
-    return payload;
-  }
-
   async function handleScenarioPc(input) {
     const jobId = platform.conjunctionStatus?.job_id;
     const payload = await calculateScenarioPc({ screeningJobId: jobId, ...input });
@@ -726,7 +718,6 @@ export default function App() {
               csvScreeningJobId={screeningJobSelection.jobId}
               csvJobArchived={screeningJobSelection.isArchived}
               onImportCdm={handleImportEventCdm}
-              onRetrieveSpaceTrackCdm={handleRetrieveEventCdmFromSpaceTrack}
               onScenarioPc={handleScenarioPc}
               onUseReferenceEvent={handleUseReferenceEvent}
               onStartScreening={startScreening}
@@ -1132,7 +1123,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   </section>;
 }
 
-export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onImportCdm = async () => {}, onRetrieveSpaceTrackCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe }) {
+export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [eventSort, setEventSort] = useState("tca_soonest");
@@ -1154,8 +1145,6 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const [scenarioAssumeIndependent, setScenarioAssumeIndependent] = useState(false);
   const [pcInputBusy, setPcInputBusy] = useState(false);
   const [pcInputMessage, setPcInputMessage] = useState("");
-  const [spaceTrackBusy, setSpaceTrackBusy] = useState(false);
-  const [spaceTrackMessage, setSpaceTrackMessage] = useState("");
   useEffect(() => {
     setCdmXml("");
     setCdmSourceLabel("");
@@ -1164,7 +1153,6 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
     setScenarioHbr("");
     setScenarioAssumptionsText("");
     setPcInputMessage("");
-    setSpaceTrackMessage("");
   }, [event?.id]);
   const filteredEvents = filterCollisionEvents(events, {
     physicalOnly, pairFilter, statusFilter, priorityFilter, quantityFilter,
@@ -1172,33 +1160,6 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   });
   const availableEvents = searchAndSortCollisionEvents(filteredEvents, eventSearch, eventSort);
   const anomalyRankById = rankOrbitalAnomalyEvents(events || []);
-  async function retrieveSpaceTrackCdm() {
-    if (!screeningJobId) {
-      setSpaceTrackMessage("A completed screening job ID is required.");
-      return;
-    }
-    if (event?.result_kind !== "physics_assessment" || event?.physics_result?.status !== "valid") {
-      setSpaceTrackMessage("Space-Track lookup is available only for a valid selected physical event.");
-      return;
-    }
-    setSpaceTrackBusy(true);
-    setSpaceTrackMessage(`Searching Space-Track for ${event.primary.id} and ${event.secondary.id} at TCA ${event.physics_result.tca?.value || "unavailable"}...`);
-    try {
-      const result = await onRetrieveSpaceTrackCdm({
-        eventId: event.id,
-        assumeIndependentCovariances: cdmAssumeIndependent,
-      });
-      const pc = result.data?.collision_probability;
-      const pcDetails = pc?.status === "available"
-        ? ` Foster Pc calculated: ${pc.pc}.`
-        : ` Foster Pc remains unavailable${pc?.reason_codes?.length ? ` (${pc.reason_codes.join(", ")})` : ""}.`;
-      setSpaceTrackMessage(`CDM ${result.retrieval?.cdm_id || "retrieved"} validated against both selected catalog IDs and the event TCA.${pcDetails}`);
-    } catch (error) {
-      setSpaceTrackMessage(error?.message || "Space-Track CDM retrieval failed.");
-    } finally {
-      setSpaceTrackBusy(false);
-    }
-  }
   if (!event) {
     const emptyStateStatus = screeningStatusForEmptyResults(eventStatus, attemptStatus);
     const unavailable = emptyStateStatus?.api_status === "unavailable" || emptyStateStatus?.api_status === "error";
@@ -1312,17 +1273,6 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
         </div>
          {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <details className="selected-research-assumptions"><summary>Research estimate assumptions and provenance</summary><p>{(event.automatic_research_pc_assessment.assumptions || []).join(" ")}</p><p>{event.automatic_research_pc_assessment.provenance?.source || "ESA population prior"} · model {event.automatic_research_pc_assessment.provenance?.prior_model_version || "unknown"}.</p></details> : null}
       </section>
-      {physical && physics.status === "valid" ? <Panel title="Event-specific Space-Track CDM" icon={DatabaseZap}>
-        <div className="readout-list">
-          <span>Selected event<strong>{event.primary.id} ↔ {event.secondary.id} · TCA {physics.tca?.value || "unavailable"}</strong></span>
-          <span>Lookup rule<strong>Both catalog IDs and event TCA must validate before the CDM is attached to this event.</strong></span>
-          <label className="filter-checkbox"><input type="checkbox" checked={cdmAssumeIndependent} onChange={(e) => setCdmAssumeIndependent(e.target.checked)} /> Explicitly assume independent object covariance for Foster Pc</label>
-          <button className="secondary-action" type="button" onClick={retrieveSpaceTrackCdm} disabled={spaceTrackBusy || !screeningJobId}>
-            {spaceTrackBusy ? "Retrieving Space-Track CDM..." : "Retrieve Space-Track CDM"}
-          </button>
-          {spaceTrackMessage ? <p className="muted" role="status" aria-live="polite">{spaceTrackMessage}</p> : null}
-        </div>
-      </Panel> : null}
       <section className="collision-layout">
         <Panel title="Screened Events" icon={Radar}>
           <details className="collision-filter-details"><summary>Search and filter events</summary><div className="collision-filters">
@@ -1395,7 +1345,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
           </Panel> : null}
           {physical && physics.status === "valid" ? <Panel title="Covariance, HBR and Pc Inputs" icon={Target}>
             <CollisionPcSummary sourceResult={pcResult} scenarioResult={event.scenario_collision_probability} />
-            <p className="muted">Geometry above comes from the Stage 2A trajectory screen. A CDM can add a separate Foster Pc only when its object IDs and exact UTC TCA match this event and it supplies validated, same-epoch covariance and HBR. CelesTrak GP/OMM contains no covariance or HBR. Space-Track retrieval requires configured account credentials and CDM permissions.</p>
+            <p className="muted">Geometry above comes from the CelesTrak GP/OMM trajectory screen. Upload a conjunction message or calculate a research Pc using the documented uncertainty assumptions when event-specific covariance and HBR are absent.</p>
             <div className="split-grid">
               <form className="readout-list" onSubmit={async (submitEvent) => {
                 submitEvent.preventDefault();

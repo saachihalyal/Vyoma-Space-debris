@@ -32,12 +32,10 @@ from app.models import (
     ReferenceManeuverRequest,
     Provenance,
     ScenarioPcRequest,
-    SpaceTrackCdmRequest,
     SnapshotStats,
     SourceSummary,
 )
 from app.services.cdm_ingestion import parse_cdm_input
-from app.services.spacetrack_cdm_provider import SpaceTrackCdmProvider
 from app.services.conjunction import build_screening_proxies, build_smart_filter, optimize_maneuver
 from app.services.event_pc_inputs import apply_cdm_inputs, apply_scenario_inputs, evaluate_cdm_reference
 from app.services.automatic_research_pc import assess_automatic_research_pc
@@ -99,7 +97,6 @@ NASA_CARA_PC_REFERENCE_PATH = Path(__file__).resolve().parent.parent / "tests" /
 NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/master/DataFiles/PcTestCaseCDMs/000020580_conj_000002017_20230613_001923_20230608_063715.cdm"
 
 tle_provider = TleProvider(retry_state_path=CELESTRAK_CACHE_PATH)
-spacetrack_cdm_provider = SpaceTrackCdmProvider()
 
 
 async def build_snapshot(
@@ -1135,67 +1132,6 @@ async def import_event_cdm(job_id: str, event_id: str, request: CdmImportRequest
             "object_hbr_inputs_km": {
                 item.object_designator: item.object_hbr_km for item in cdm.inputs
             },
-        },
-    }
-
-
-@app.post("/api/conjunction-jobs/{job_id}/events/{event_id}/cdm/space-track")
-async def retrieve_event_cdm_from_space_track(job_id: str, event_id: str, request: SpaceTrackCdmRequest) -> dict:
-    """Retrieve, validate, and bind a Space-Track CDM to one selected event."""
-    job, index, event = _completed_job_event(job_id, event_id)
-    outcome = await run_in_threadpool(spacetrack_cdm_provider.retrieve_for_event, event)
-    if outcome.status != "retrieved" or not outcome.cdm_text:
-        status_code = 503
-        if outcome.status in {"authentication_failed", "authorization_required"}:
-            status_code = 502
-        elif outcome.status in {"rate_limited", "timeout"}:
-            status_code = 429 if outcome.status == "rate_limited" else 504
-        raise HTTPException(status_code=status_code, detail={
-            "reason_code": outcome.reason_code or "SPACETRACK_CDM_UNAVAILABLE",
-            "message": outcome.message,
-            "retrieval_status": outcome.status,
-            "upstream_status": outcome.upstream_status,
-        })
-    try:
-        cdm = parse_cdm_input(
-            outcome.cdm_text,
-            source_label=f"Space-Track CDM {outcome.cdm_id or 'retrieved'}",
-            retrieved_at_utc=outcome.retrieved_at_utc,
-        )
-        updated = apply_cdm_inputs(
-            event, cdm,
-            assume_independent_covariances=request.assume_independent_covariances,
-        )
-    except ValueError as exc:
-        reason_code = str(exc) if str(exc) else "SPACETRACK_CDM_INVALID"
-        raise HTTPException(status_code=422, detail={
-            "reason_code": reason_code,
-            "message": "The retrieved full CDM did not validate against this event; no event data was changed.",
-            "cdm_id": outcome.cdm_id,
-        }) from exc
-    stored = updated.model_dump(mode="json")
-    job["result"]["data"][index] = stored
-    return {
-        "success": True,
-        "result_kind": "physics_assessment",
-        "job_id": job_id,
-        "data": stored,
-        "retrieval": {
-            "source": "Space-Track",
-            "cdm_id": outcome.cdm_id,
-            "retrieved_at_utc": outcome.retrieved_at_utc,
-            "summary_tca_utc": outcome.candidate_tca_utc,
-            "upstream_status": outcome.upstream_status,
-        },
-        "input_provenance": {
-            "source_type": "authenticated_remote",
-            "source_format": cdm.source_format,
-            "input_sha256": cdm.input_sha256,
-            "originator": cdm.originator,
-            "created_utc": cdm.created_utc,
-            "retrieved_utc": cdm.retrieved_utc,
-            "source_authenticated": True,
-            "object_hbr_inputs_km": {item.object_designator: item.object_hbr_km for item in cdm.inputs},
         },
     }
 

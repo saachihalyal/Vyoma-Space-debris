@@ -30,7 +30,7 @@ export function CollisionPcSummary({ sourceResult, scenarioResult }) {
       : null,
     h("h4", null, "Input quality and limits"),
     h("span", null, "Live orbit source", h("strong", null, "CelesTrak GP/OMM provides orbital elements and state estimates; this feed does not supply event covariance or HBR.")),
-    h("span", null, "Event CDM lookup", h("strong", null, "Space-Track retrieval is available when backend credentials and account permissions are configured. Public notifications have limited fields. A CDM is attached only after both catalog IDs, exact TCA, frame, covariance, and HBR validate for this event.")),
+    h("span", null, "Event-specific covariance input", h("strong", null, "Upload a conjunction message for event-specific states, covariance, and HBR. When those inputs are absent, the separate research Pc estimate uses documented assumptions.")),
     sourceResult?.status === "available"
       ? h("span", null, "Assessment scope", h("strong", null, importedCdm ? "CDM state and uncertainty inputs matched this event's object IDs and exact TCA; source authenticity remains unverified." : "See covariance and HBR provenance above; a numeric Pc is not an ML risk estimate."))
       : null);
