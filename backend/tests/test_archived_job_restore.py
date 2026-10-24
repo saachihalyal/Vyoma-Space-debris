@@ -169,8 +169,8 @@ class ArchivedJobRestoreTests(unittest.TestCase):
             self.assertEqual(event["secondary"]["id"], "33776")
             self.assertEqual(event["physics_result"]["tca"]["value"], "2026-10-14T06:22:15.243382+00:00")
             self.assertEqual(assessment["status"], "prior_based_research_estimate")
-            self.assertEqual(assessment["estimated_pc_scientific"], "1.55352e-167")
-            self.assertEqual(assessment["percentage_scientific"], "1.55352e-165")
+            self.assertEqual(assessment["estimated_pc_scientific"], "< 1e-30")
+            self.assertEqual(assessment["percentage_scientific"], "< 1e-28")
             self.assertEqual(assessment["sensitivity_status"], "available")
             self.assertEqual(assessment["risk_assessment"]["risk_score_pc_channel"], "research_pc")
             self.assertEqual(assessment["risk_assessment"]["physics_risk_class"], "Low")
@@ -184,6 +184,37 @@ class ArchivedJobRestoreTests(unittest.TestCase):
             self.assertIsInstance(event["ai_risk_assessment"]["final_priority_rank"], int)
 
         self.assertEqual(json_path.read_bytes(), original_json)
+
+    def test_restore_recomputes_research_pc_even_when_foster_has_a_current_risk_record(self) -> None:
+        # A Foster risk assessment belongs to a different Pc channel and must
+        # not suppress the archived event's research-Pc backfill.
+        from tests.test_automatic_research_pc import _real_screened_event
+        from app.services.probability_classification import classify_orion_physics_pc
+
+        event = _real_screened_event()
+        record = main.event_dicts([event])[0]
+        record.pop("automatic_research_pc_assessment", None)
+        record["collision_probability"]["risk_assessment"] = classify_orion_physics_pc(
+            1e-4, "event_specific_foster_pc",
+        )
+        old_foster_risk = record["collision_probability"]["risk_assessment"].copy()
+        old_foster_risk["risk_score_policy_version"] = "orion-physics-pc-risk-v1"
+        record["collision_probability"]["risk_assessment"] = old_foster_risk
+
+        archive = archived_job()
+        archive["result"]["data"] = [record]
+        archive["result"]["screening"]["close_approach_count"] = 1
+        archive["result"]["screening"]["invalid_assessment_count"] = 0
+        self.json_path.write_text(json.dumps(archive), encoding="utf-8")
+        original_json = self.json_path.read_bytes()
+
+        response = self.client.post(f"/api/conjunction-jobs/{JOB_ID}/restore")
+        self.assertEqual(response.status_code, 200)
+        restored_event = response.json()["result"]["data"][0]
+        self.assertEqual(restored_event["automatic_research_pc_assessment"]["status"], "prior_based_research_estimate")
+        self.assertEqual(restored_event["automatic_research_pc_assessment"]["method_version"], "1.2.0")
+        self.assertEqual(restored_event["collision_probability"]["risk_assessment"]["risk_score"], 80.0)
+        self.assertEqual(self.json_path.read_bytes(), original_json)
 
     def test_missing_archive_returns_404_without_registry_changes(self) -> None:
         missing_id = "11111111111111111111111111111111"
