@@ -18,7 +18,7 @@ import uuid
 from typing import Literal
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import ValidationError
@@ -1477,6 +1477,7 @@ async def maneuver(
     screening_job_id: str,
     lead_seconds: float = Query(300, ge=60, le=1800),
     burn_magnitudes_m_s: str = Query("0.01,0.05"),
+    rtn_direction: Literal["all", "radial_plus", "radial_minus", "along_track_plus", "along_track_minus", "cross_track_plus", "cross_track_minus"] = Query("all"),
     max_delta_v_m_s: float | None = Query(None, gt=0, le=0.1),
     initial_mass_kg: float | None = Query(None, gt=0),
     specific_impulse_s: float | None = Query(None, gt=0, le=2000),
@@ -1535,6 +1536,7 @@ async def maneuver(
         max_delta_v_m_s=max_delta_v_m_s,
         initial_mass_kg=initial_mass_kg,
         specific_impulse_s=specific_impulse_s,
+        rtn_direction=rtn_direction,
     )
     if not isinstance(maneuver_result, dict) or maneuver_result.get("event_id") != event_id:
         discard_previous_assessment()
@@ -1574,6 +1576,80 @@ async def maneuver(
         data=maneuver_result,
         message="Returns an exploratory two-body candidate sweep when event states pass validation; never uses ESA event-risk inference for maneuvers.",
     )
+
+
+@app.post("/api/maneuver/user-upload", response_model=ManeuverAssessmentResponse, response_model_exclude_unset=True)
+async def maneuver_user_upload(
+    request: Request,
+    lead_seconds: float = Query(300, ge=60, le=1800),
+    burn_magnitude_m_s: float = Query(0.01, gt=0, le=0.1),
+    rtn_direction: Literal["all", "radial_plus", "radial_minus", "along_track_plus", "along_track_minus", "cross_track_plus", "cross_track_minus"] = Query("all"),
+    initial_mass_kg: float | None = Query(None, gt=0),
+    specific_impulse_s: float | None = Query(None, gt=0, le=2000),
+) -> ManeuverAssessmentResponse:
+    """Run the research maneuver workflow from a validated event JSON or CSV wrapper.
+
+    CSV format: one row with a single `event_json` column containing the canonical
+    ConjunctionAssessmentEvent JSON. This keeps nested state vectors unambiguous.
+    """
+    if (initial_mass_kg is None) != (specific_impulse_s is None):
+        raise HTTPException(status_code=422, detail={"reason_code": "MASS_AND_ISP_MUST_BE_PAIRED", "message": "Supply both spacecraft mass and specific impulse, or leave both blank to use configured defaults."})
+    raw = await request.body()
+    if len(raw) > 2_000_000:
+        raise HTTPException(status_code=413, detail={"reason_code": "UPLOAD_TOO_LARGE", "message": "Maneuver event upload is limited to 2 MB."})
+    content_type = request.headers.get("content-type", "").lower()
+    try:
+        if "json" in content_type:
+            payload = json.loads(raw)
+        elif "csv" in content_type or raw[:256].decode("utf-8-sig", errors="ignore").lstrip().startswith("event_json"):
+            rows = list(csv.DictReader(io.StringIO(raw.decode("utf-8-sig"))))
+            if len(rows) != 1 or not rows[0].get("event_json"):
+                raise ValueError("CSV must contain exactly one row with an event_json column.")
+            payload = json.loads(rows[0]["event_json"])
+        else:
+            raise HTTPException(status_code=415, detail={"reason_code": "UNSUPPORTED_UPLOAD_FORMAT", "message": "Upload a JSON event or a CSV with one event_json column."})
+        event = ConjunctionAssessmentEvent.model_validate(payload)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail={"reason_code": "INVALID_MANEUVER_UPLOAD", "message": "The uploaded event does not match the required ORION event schema."}) from exc
+    if event.provenance.source_type != "user_supplied" or event.provenance.is_synthetic:
+        raise HTTPException(status_code=422, detail={"reason_code": "UPLOAD_PROVENANCE_REQUIRED", "message": "Uploaded events must identify user_supplied provenance and must not be synthetic."})
+    physics = event.physics_result
+    tca = physics.tca.value if physics.tca else None
+    states = (physics.primary_state_at_tca, physics.secondary_state_at_tca)
+    try:
+        tca_epoch = datetime.fromisoformat(str(tca).replace("Z", "+00:00")).astimezone(timezone.utc)
+        state_epochs_match = all(
+            datetime.fromisoformat(str(state.get("epoch")).replace("Z", "+00:00")).astimezone(timezone.utc) == tca_epoch
+            for state in states if isinstance(state, dict)
+        )
+    except (TypeError, ValueError):
+        state_epochs_match = False
+    if (physics.status != "valid" or physics.tca_status != "valid" or not tca
+            or not physics.state_information
+            or physics.state_information.get("source_frame") != "TEME"
+            or physics.state_information.get("position_units") != "km"
+            or physics.state_information.get("velocity_units") != "km/s"
+            or not state_epochs_match
+            or any(not isinstance(state, dict) or not state.get("epoch") or state.get("frame") != "TEME"
+                   or state.get("object_id") not in {None, summary.id}
+                   or state.get("position_km") is None or state.get("velocity_km_s") is None
+                   for state, summary in zip(states, (event.primary, event.secondary)))
+            or not event.primary.provenance.element_epoch or not event.secondary.provenance.element_epoch):
+        raise HTTPException(status_code=422, detail={"reason_code": "MANDATORY_STATE_OR_EPOCH_MISSING", "message": "Both finite TEME position/velocity states in km and km/s, matching TCA epochs, and each object's TLE element epoch are required."})
+    _require_usable_physical_event(event)
+    job_id = f"user-upload-{uuid.uuid4().hex}"
+    event.screening_job_id = job_id
+    job = {"status": "complete", "result": {"data": [event.model_dump(mode="json")]}, "user_supplied": True}
+    _screening_jobs[job_id] = job
+    maneuver_result = optimize_maneuver(event, lead_seconds=lead_seconds, burn_magnitudes_m_s=(burn_magnitude_m_s,), initial_mass_kg=initial_mass_kg, specific_impulse_s=specific_impulse_s, rtn_direction=rtn_direction)
+    if maneuver_result.get("event_id") != event.id:
+        _screening_jobs.pop(job_id, None)
+        raise HTTPException(status_code=409, detail={"reason_code": "MANEUVER_RESULT_IDENTITY_MISMATCH", "message": "The calculated maneuver result does not match the uploaded event."})
+    maneuver_result.update({"screening_job_id": job_id, "screening_job_status": "complete", "user_supplied_input": True})
+    job.setdefault("maneuver_results", {})[event.id] = maneuver_result
+    return ManeuverAssessmentResponse(success=True, timestamp=datetime.now(timezone.utc).isoformat(), screening_job_id=job_id, data=maneuver_result, message="Research maneuver assessment calculated from the validated user-supplied state event.")
 
 
 @app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/assessment.pdf")

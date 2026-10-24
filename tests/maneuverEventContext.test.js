@@ -36,5 +36,5 @@ test("selected event context renders identity, state provenance, and distinct ri
   assert.doesNotMatch(markup, /5\.00000e-1/);
   assert.match(markup, /Research Pc estimate/);
   assert.match(markup, /AI queue priority/);
-  assert.match(markup, /not propagated/);
+  assert.match(markup, /rather than dynamically propagated/);
 });

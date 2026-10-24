@@ -363,14 +363,14 @@ export function physicalSmartFilterCsvPath(screeningJobId) {
   return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter.csv`;
 }
 
-export async function getManeuver(event, { signal, screeningJobId, leadSeconds = 300, burnMagnitudes = [0.01, 0.05], maxDeltaVMs = null, initialMassKg = null, specificImpulseS = null } = {}) {
+export async function getManeuver(event, { signal, screeningJobId, leadSeconds = 300, burnMagnitudes = [0.01, 0.05], maxDeltaVMs = null, rtnDirection = "all", initialMassKg = null, specificImpulseS = null } = {}) {
   if (!event?.id) throw new Error("A selected Stage 2A event ID is required for maneuver assessment.");
   if (event.result_kind !== "physics_assessment") throw new Error("Maneuver assessment requires a trajectory-derived physics event.");
   if (!screeningJobId) throw new Error("The completed screening job ID is unavailable; refresh Collision Analysis and select its event again.");
   if (event.screening_job_id && event.screening_job_id !== screeningJobId) {
     throw new Error("The selected event belongs to a different screening job; select the event from the current Collision Analysis job.");
   }
-  const query = new URLSearchParams({ screening_job_id: screeningJobId, lead_seconds: String(leadSeconds), burn_magnitudes_m_s: burnMagnitudes.join(",") });
+  const query = new URLSearchParams({ screening_job_id: screeningJobId, lead_seconds: String(leadSeconds), burn_magnitudes_m_s: burnMagnitudes.join(","), rtn_direction: rtnDirection });
   if (maxDeltaVMs != null) query.set("max_delta_v_m_s", String(maxDeltaVMs));
   if (initialMassKg != null || specificImpulseS != null) {
     if (initialMassKg == null || specificImpulseS == null) throw new Error("Initial mass and specific impulse must both be supplied for a fuel estimate.");
@@ -416,6 +416,26 @@ export async function getManeuver(event, { signal, screeningJobId, leadSeconds =
     signal.addEventListener("abort", abort, { once: true });
     request.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
   });
+}
+
+export async function uploadManeuverEvent(file, { leadSeconds = 300, burnMagnitudeMs = 0.01, rtnDirection = "all", initialMassKg = null, specificImpulseS = null } = {}) {
+  if (!file || !/\.(json|csv)$/i.test(file.name || "")) throw new Error("Choose a JSON or CSV maneuver event file.");
+  if ((initialMassKg == null) !== (specificImpulseS == null)) throw new Error("Initial mass and specific impulse must both be supplied, or both left blank.");
+  const type = /\.csv$/i.test(file.name) ? "text/csv" : "application/json";
+  const query = new URLSearchParams({ lead_seconds: String(leadSeconds), burn_magnitude_m_s: String(burnMagnitudeMs), rtn_direction: rtnDirection });
+  if (initialMassKg != null) { query.set("initial_mass_kg", String(initialMassKg)); query.set("specific_impulse_s", String(specificImpulseS)); }
+  const response = await fetch(`${API_BASE}/api/maneuver/user-upload?${query}`, {
+    method: "POST", headers: { "Content-Type": type }, body: file,
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = payload?.detail;
+    const error = new Error(responseErrorMessage(payload, `Maneuver upload returned HTTP ${response.status}`));
+    error.reasonCode = typeof detail === "object" ? detail?.reason_code : null;
+    throw error;
+  }
+  if (!payload?.data?.event_id || !payload?.screening_job_id) throw new Error("Maneuver upload response is missing its event or job identity.");
+  return payload;
 }
 
 export async function importEventCdm({ screeningJobId, eventId, cdmXml, sourceLabel, assumeIndependentCovariances }) {

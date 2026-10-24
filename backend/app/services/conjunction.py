@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -13,12 +15,15 @@ from app.models import (
     ObjectSummary,
     PhysicsResult,
     Provenance,
+    ReviewPriority,
     RiskCell,
+    ScientificField,
     ScreeningProxyEvent,
     SpaceObject,
 )
 from app.services.risk import derived_provenance
 from app.services.object_classification import pair_type_for
+from app.services.automatic_research_pc import assess_automatic_research_pc
 
 
 SCREENING_METHOD = "same-shell catalog-pair heuristic screening proxy"
@@ -224,6 +229,8 @@ def optimize_maneuver(
     max_delta_v_m_s: float | None = None,
     initial_mass_kg: float | None = None,
     specific_impulse_s: float | None = None,
+    refine_candidates: bool = True,
+    rtn_direction: str = "all",
 ) -> dict[str, Any]:
     """Bounded exploratory two-body search and local delta-v refinement; not flight dynamics software."""
     event_id = event.id if isinstance(event, (ScreeningProxyEvent, ConjunctionAssessmentEvent)) else str(event.get("id", ""))
@@ -252,14 +259,14 @@ def optimize_maneuver(
         "probability_before": None,
         "probability_after": None,
         "probability_status": "unavailable",
-        "probability_reason_code": "EVENT_MATCHED_COVARIANCE_AND_HBR_REQUIRED",
-        "probability_reason": "Event-matched covariance and hard-body radius are unavailable; Pc before and after the maneuver cannot be calculated.",
+        "probability_reason_code": "REAL_TLE_PRIOR_INPUTS_AND_VALID_CANDIDATE_TCA_REQUIRED",
+        "probability_reason": "Comparable before/after research Pc requires valid candidate states and TLE epochs for the ESA-prior covariance/HBR estimator.",
         "miss_distance_before_m": None,
         "miss_distance_after_m": None,
         "trajectory": None,
         "limitations": [
-            "Covariance and hard-body radius are not supplied to this simulation; collision probability and Pc change are unavailable.",
-            "Spacecraft mass and propulsion characteristics are not supplied; fuel consumption is unavailable.",
+            "Before/after research Pc uses the same ESA-prior covariance/HBR method assigned at each calculated TCA; covariance is not propagated from TLE epoch or with burn-execution error.",
+            "When mass or specific impulse is omitted, fuel uses configurable default spacecraft assumptions and is labeled as an estimate.",
             "No operational recommendation or risk reduction is calculated.",
         ],
         "assessment_reason_codes": [],
@@ -291,7 +298,7 @@ def optimize_maneuver(
         "surrogate_rank": {
             "event_id": event_id, "status": "unavailable", "model_name": MANEUVER_RANKER_NAME,
             "model_version": MANEUVER_RANKER_VERSION, "is_simulator_surrogate": True,
-            "synthetic_training_labels": True, "ranking_used": False,
+            "synthetic_training_labels": False, "physics_generated_training_labels": True, "ranking_used": False,
             "reason_code": "MANEUVER_MODEL_NOT_EVALUATED", "candidate_scores": {},
         },
     })
@@ -405,6 +412,23 @@ def optimize_maneuver(
         and math.isfinite(initial_mass_kg) and math.isfinite(specific_impulse_s)
         and initial_mass_kg > 0 and 0 < specific_impulse_s <= 2000
     )
+    if (initial_mass_kg is None) != (specific_impulse_s is None):
+        base["reason_code"] = "MASS_AND_SPECIFIC_IMPULSE_MUST_BE_PAIRED"
+        base["reason"] = "Supply both spacecraft mass and specific impulse, or omit both to use documented defaults."
+        return base
+    fuel_parameters_defaulted = initial_mass_kg is None
+    if fuel_parameters_defaulted:
+        try:
+            initial_mass_kg = float(os.getenv("ORION_DEFAULT_SPACECRAFT_MASS_KG", "500"))
+            specific_impulse_s = float(os.getenv("ORION_DEFAULT_SPECIFIC_IMPULSE_S", "220"))
+        except (TypeError, ValueError, OverflowError):
+            initial_mass_kg, specific_impulse_s = 500.0, 220.0
+    fuel_parameters_valid = (
+        isinstance(initial_mass_kg, (int, float)) and not isinstance(initial_mass_kg, bool)
+        and isinstance(specific_impulse_s, (int, float)) and not isinstance(specific_impulse_s, bool)
+        and math.isfinite(initial_mass_kg) and math.isfinite(specific_impulse_s)
+        and initial_mass_kg > 0 and 0 < specific_impulse_s <= 2000
+    )
     valid_lead = (
         isinstance(lead_seconds, (int, float))
         and not isinstance(lead_seconds, bool)
@@ -432,7 +456,11 @@ def optimize_maneuver(
         secondary_tca_fine = _rk4(s_burn[0], s_burn[1], lead_seconds, step / 2, mu)
         secondary_convergence = math.dist(secondary_tca_coarse[0], secondary_tca_fine[0])
         radial = _unit(p_burn[0]); normal = _unit(_cross(p_burn[0], p_burn[1])); along = _unit(_cross(normal, radial))
-        directions = [("radial +", radial), ("radial -", _scale(radial, -1)), ("along-track +", along), ("along-track -", _scale(along, -1)), ("cross-track +", normal), ("cross-track -", _scale(normal, -1))]
+        all_directions = [("radial +", radial), ("radial -", _scale(radial, -1)), ("along-track +", along), ("along-track -", _scale(along, -1)), ("cross-track +", normal), ("cross-track -", _scale(normal, -1))]
+        direction_codes = {"radial_plus": "radial +", "radial_minus": "radial -", "along_track_plus": "along-track +", "along_track_minus": "along-track -", "cross_track_plus": "cross-track +", "cross_track_minus": "cross-track -"}
+        if rtn_direction != "all" and rtn_direction not in direction_codes:
+            raise ValueError("MANEUVER_RTN_DIRECTION_INVALID")
+        directions = all_directions if rtn_direction == "all" else [item for item in all_directions if item[0] == direction_codes[rtn_direction]]
         candidates = [{"delta_v_m_s": 0.0, "direction": "zero-burn baseline", "burn_state": p_burn, "rtn_direction": (0.0, 0.0, 0.0)}]
         for magnitude in burn_magnitudes_m_s:
             for name, direction in directions:
@@ -450,10 +478,10 @@ def optimize_maneuver(
             maneuver_ml = {
                 "status": "unavailable", "reason_code": "MANEUVER_MODEL_INFERENCE_FAILED",
                 "model_name": MANEUVER_RANKER_NAME, "model_version": MANEUVER_RANKER_VERSION,
-                "score_name": "predicted two-body simulated closest-approach miss distance",
-                "score_units": "km", "is_simulator_surrogate": True,
-                "synthetic_training_labels": True, "ranking_used": False, "candidate_scores": {},
-                "score_semantics": "No surrogate score is available; physical candidate evaluation remains separate.",
+                "score_name": "predicted log10 research-Pc reduction vs zero-burn baseline",
+                "score_units": "log10 ratio; positive predicts reduction", "is_simulator_surrogate": True,
+                "synthetic_training_labels": False, "physics_generated_training_labels": True, "ranking_used": False, "candidate_scores": {},
+                "score_semantics": "No surrogate score is available; deterministic physics-confirmed candidate ranking remains active.",
             }
 
         # Start at the burn epoch and search through the original TCA plus a
@@ -494,7 +522,10 @@ def optimize_maneuver(
             inertial_delta_v_km_s = tuple(candidate["burn_state"][1][axis] - p_burn[1][axis] for axis in range(3))
             inertial_delta_v_m_s = tuple(value * 1000.0 for value in inertial_delta_v_km_s)
             rtn_delta_v_m_s = tuple(sum(inertial_delta_v_m_s[axis] * basis[axis] for axis in range(3)) for basis in (radial, along, normal))
-            return {"delta_v_m_s": candidate["delta_v_m_s"], "direction": candidate["direction"], "delta_v_rtn_m_s": list(rtn_delta_v_m_s), "delta_v_inertial_teme_km_s": list(inertial_delta_v_km_s), "delta_v_units": "m/s", "inertial_delta_v_units": "km/s", "direction_frame": "RTN at maneuver epoch; inertial vector expressed in TEME", "maneuver_epoch_utc": burn_epoch.isoformat(), "lead_time_seconds": lead_seconds, "predicted_miss_distance_km": closest["distance_km"], "closest_approach_utc": (tca_datetime.astimezone(timezone.utc) + timedelta(seconds=tca_offset)).isoformat(), "closest_approach_offset_from_original_tca_seconds": tca_offset, "relative_velocity_km_s": list(relative_velocity), "relative_speed_km_s": math.sqrt(sum(value * value for value in relative_velocity)), "change_from_zero_burn_km": None, "change_from_zero_burn_baseline_percent": None, "objective_status": "search_boundary_minimum" if is_search_boundary else "refined_local_minimum_within_bounded_search", "search_interval_start_utc": burn_epoch.isoformat(), "search_interval_end_utc": (burn_epoch + timedelta(seconds=search_end_elapsed)).isoformat(), "search_interval_seconds_from_burn": [0.0, search_end_elapsed], "search_sample_step_seconds": step, "search_sample_count": len(elapsed_samples), "refinement_evaluations": closest["refinement_evaluations"], "integration_state_convergence_km": convergence}
+            closest_tca = (tca_datetime.astimezone(timezone.utc) + timedelta(seconds=tca_offset)).isoformat()
+            sanity_displacement = 3.0 * (candidate["delta_v_m_s"] / 1000.0) * lead_seconds
+            along_track_direction = "positive" if "along-track +" == candidate["direction"] else ("negative" if "along-track -" == candidate["direction"] else None)
+            return {"delta_v_m_s": candidate["delta_v_m_s"], "direction": candidate["direction"], "delta_v_rtn_m_s": list(rtn_delta_v_m_s), "delta_v_inertial_teme_km_s": list(inertial_delta_v_km_s), "delta_v_units": "m/s", "inertial_delta_v_units": "km/s", "direction_frame": "RTN at maneuver epoch; inertial vector expressed in TEME", "maneuver_epoch_utc": burn_epoch.isoformat(), "lead_time_seconds": lead_seconds, "predicted_miss_distance_km": closest["distance_km"], "closest_approach_utc": closest_tca, "closest_approach_offset_from_original_tca_seconds": tca_offset, "relative_velocity_km_s": list(relative_velocity), "relative_speed_km_s": math.sqrt(sum(value * value for value in relative_velocity)), "primary_state_at_closest_approach": {"position_km": list(refined_primary[0]), "velocity_km_s": list(refined_primary[1]), "epoch": closest_tca}, "secondary_state_at_closest_approach": {"position_km": list(refined_secondary[0]), "velocity_km_s": list(refined_secondary[1]), "epoch": closest_tca}, "along_track_sanity_check": {"status": "approximation_only" if along_track_direction else "not_applicable", "estimated_displacement_m": (3.0 * candidate["delta_v_m_s"] * lead_seconds) if along_track_direction == "positive" else (-3.0 * candidate["delta_v_m_s"] * lead_seconds if along_track_direction == "negative" else None), "relation": "delta_s ~= 3 * delta_v * delta_t", "assumptions": "near-circular orbit and short lead time; first-order sanity estimate only, not used for candidate Pc or ranking"}, "change_from_zero_burn_km": None, "change_from_zero_burn_baseline_percent": None, "objective_status": "search_boundary_minimum" if is_search_boundary else "refined_local_minimum_within_bounded_search", "search_interval_start_utc": burn_epoch.isoformat(), "search_interval_end_utc": (burn_epoch + timedelta(seconds=search_end_elapsed)).isoformat(), "search_interval_seconds_from_burn": [0.0, search_end_elapsed], "search_sample_step_seconds": step, "search_sample_count": len(elapsed_samples), "refinement_evaluations": closest["refinement_evaluations"], "integration_state_convergence_km": convergence}
 
         result_rows = [evaluate_candidate(candidate) for candidate in candidates]
         baseline_miss = result_rows[0]["predicted_miss_distance_km"]
@@ -502,12 +533,19 @@ def optimize_maneuver(
             row["change_from_zero_burn_km"] = row["predicted_miss_distance_km"] - baseline_miss
             row["change_from_zero_burn_baseline_percent"] = (100.0 * row["change_from_zero_burn_km"] / baseline_miss) if baseline_miss > 0 else None
             row["source_sgp4_miss_distance_km"] = reference_miss_distance
+        pc_results = [_maneuver_research_pc(event, row) for row in result_rows]
+        baseline_pc = pc_results[0]
+        for row, pc_result in zip(result_rows, pc_results):
+            row["research_pc_after"] = pc_result
+            row["research_pc_reduction_log10"] = _pc_log10_reduction(baseline_pc, pc_result)
+            row["absolute_research_pc_reduction_scientific"] = _pc_absolute_reduction(baseline_pc, pc_result)
+            row["percentage_research_pc_reduction"] = _pc_percentage_reduction(baseline_pc, pc_result)
 
         # Refine the best coarse magnitude independently on each signed RTN axis.
         # Each objective call repropagates the modified Cartesian state and repeats
         # the bounded closest-approach search; no modified TLE is constructed.
         refinements = []
-        for direction_name, direction_vector in directions:
+        for direction_name, direction_vector in (directions if refine_candidates else ()):
             directional = [row for row in result_rows if row["direction"] == direction_name and row["objective_status"] != "search_boundary_minimum"]
             if not directional:
                 continue
@@ -542,12 +580,26 @@ def optimize_maneuver(
             row["change_from_zero_burn_km"] = row["predicted_miss_distance_km"] - baseline_miss
             row["change_from_zero_burn_baseline_percent"] = (100.0 * row["change_from_zero_burn_km"] / baseline_miss) if baseline_miss > 0 else None
             row["source_sgp4_miss_distance_km"] = reference_miss_distance
-            row["fuel"] = _maneuver_fuel_estimate(row["delta_v_m_s"], initial_mass_kg, specific_impulse_s) if fuel_parameters_valid else {"status": "unavailable", "reason_code": "MASS_AND_PROPULSION_MODEL_REQUIRED"}
+            row["fuel"] = (_maneuver_fuel_estimate(row["delta_v_m_s"], initial_mass_kg, specific_impulse_s)
+                           if fuel_parameters_valid else {"status": "unavailable", "reason_code": "INVALID_MASS_OR_SPECIFIC_IMPULSE"})
+            if row["fuel"].get("status") == "estimated":
+                row["fuel"]["assumption_status"] = "estimated_from_default_assumptions" if fuel_parameters_defaulted else "user_supplied_spacecraft_parameters"
         best_candidate = max(
             (row for row in result_rows[1:] if row["change_from_zero_burn_km"] > 0 and row["objective_status"] != "search_boundary_minimum"),
             key=lambda row: row["predicted_miss_distance_km"],
             default=None,
         )
+        pc_ranked = [row for row in result_rows[1:] if isinstance(row.get("research_pc_reduction_log10"), (int, float))]
+        best_pc_candidate = max(pc_ranked, key=lambda row: row["research_pc_reduction_log10"], default=None)
+        pc_comparison_available = baseline_pc.get("status") == "available" and best_pc_candidate is not None
+        if maneuver_ml.get("ranking_used") and not pc_comparison_available:
+            maneuver_ml.update({
+                "status": "fallback_physics_ranking", "ranking_used": False,
+                "reason_code": "LIVE_RESEARCH_PC_CONFIRMATION_UNAVAILABLE",
+                "score_semantics": "The trained score could not be confirmed against live physics research Pc; deterministic geometry/physics ordering is used.",
+            })
+        best_geometry_candidate = best_candidate
+        best_candidate = best_pc_candidate or best_geometry_candidate
         for row in result_rows:
             row.pop("rtn_direction", None)
         candidate_scores = maneuver_ml.get("candidate_scores", {})
@@ -560,7 +612,7 @@ def optimize_maneuver(
                     normalized = float(value) if not isinstance(value, bool) else math.nan
                 except (TypeError, ValueError, OverflowError):
                     normalized = math.nan
-                if not math.isfinite(normalized) or normalized < 0:
+                if not math.isfinite(normalized):
                     candidate_scores = None
                     break
                 normalized_scores[str(key)] = normalized
@@ -569,37 +621,38 @@ def optimize_maneuver(
             maneuver_ml.update({"status": "unavailable", "reason_code": "MANEUVER_MODEL_OUTPUT_INVALID", "candidate_scores": {}})
         else:
             candidate_scores = normalized_scores
+        candidate_ranks = maneuver_ml.get("candidate_ranks", {})
+        if not isinstance(candidate_ranks, dict):
+            candidate_ranks = {}
+        physics_order = sorted(
+            (index for index, row in enumerate(result_rows) if index > 0 and row["objective_status"] != "search_boundary_minimum"),
+            key=lambda index: (result_rows[index].get("research_pc_after", {}).get("log10_pc", math.inf), -result_rows[index]["predicted_miss_distance_km"], index),
+        )
+        physics_ranks = {index: rank for rank, index in enumerate(physics_order, 1)}
         for index, row in enumerate(result_rows):
             score = candidate_scores.get(str(index))
-            score_value = score
-            if (row["delta_v_m_s"] > 0 and score_value is not None
-                    and row["objective_status"] == "refined_local_minimum_within_bounded_search"
-                    and math.isfinite(score_value) and score_value >= 0):
-                row["maneuver_ml_predicted_miss_distance_km"] = score_value
-                row["maneuver_ml_rank"] = None
-                row["maneuver_ml_status"] = "research_only_score"
-            else:
-                row["maneuver_ml_predicted_miss_distance_km"] = None
-                row["maneuver_ml_rank"] = None
-                row["maneuver_ml_status"] = "excluded_boundary" if row["objective_status"] == "search_boundary_minimum" else "not_scored"
-        if maneuver_ml.get("status") == "research_only":
-            scored = {
-                str(index): row["maneuver_ml_predicted_miss_distance_km"]
-                for index, row in enumerate(result_rows)
-                if row["maneuver_ml_predicted_miss_distance_km"] is not None
-            }
-            maneuver_ml["candidate_scores"] = scored
-            maneuver_ml["scored_candidate_count"] = len(scored)
-            if not scored:
-                maneuver_ml.update({"status": "unavailable", "reason_code": "NO_PHYSICS_ELIGIBLE_CANDIDATES", "candidate_scores": {}})
+            model_rank = candidate_ranks.get(str(index)) if maneuver_ml.get("ranking_used") else None
+            row["maneuver_ml_predicted_log10_pc_reduction"] = score if isinstance(score, (int, float)) and math.isfinite(score) else None
+            row["maneuver_ml_rank"] = model_rank if isinstance(model_rank, int) and not isinstance(model_rank, bool) else None
+            row["physics_research_pc_rank"] = physics_ranks.get(index)
+            row["maneuver_ml_status"] = "research_only_rank_confirmed_by_physics" if row["maneuver_ml_rank"] is not None and row.get("research_pc_after", {}).get("status") == "available" else ("physics_fallback_rank" if row["physics_research_pc_rank"] is not None else "not_ranked")
+        maneuver_ml["candidate_scores"] = {
+            str(index): row["maneuver_ml_predicted_log10_pc_reduction"]
+            for index, row in enumerate(result_rows)
+            if row["maneuver_ml_predicted_log10_pc_reduction"] is not None
+        }
+        maneuver_ml["scored_candidate_count"] = len(maneuver_ml["candidate_scores"])
+        if not maneuver_ml.get("candidate_scores") and maneuver_ml.get("status") == "research_only":
+            maneuver_ml.update({"status": "fallback_physics_ranking", "ranking_used": False, "reason_code": "NO_MODEL_SCORED_CANDIDATES"})
         base["ml_result"] = maneuver_ml
         surrogate_rank = {
             **maneuver_ml,
             "event_id": event_id,
             "is_simulator_surrogate": True,
-            "synthetic_training_labels": True,
-            "ranking_used": False,
-            "ordering_reason": "The model did not outperform the minimum-delta-v baseline in held-out synthetic tests; scores are diagnostic only.",
+            "synthetic_training_labels": False,
+            "physics_generated_training_labels": True,
+            "ranking_used": bool(maneuver_ml.get("ranking_used")),
+            "ordering_reason": maneuver_ml.get("score_semantics") or "Deterministic physics-confirmed candidate ordering is used when the surrogate is unavailable.",
         }
         base["surrogate_rank"] = surrogate_rank
         baseline_tca_offset = result_rows[0]["closest_approach_offset_from_original_tca_seconds"]
@@ -670,36 +723,15 @@ def optimize_maneuver(
         "candidates": result_rows[1:],
         "limitations": "Two-body simulator candidates; no J2, drag, third-body, covariance, execution error, attitude, or propulsion constraints.",
     }
-    event_pc = event.collision_probability if isinstance(event, ConjunctionAssessmentEvent) else None
-    event_pc_is_bound = bool(
-        event_pc is not None
-        and event_pc.status == "available"
-        and event_pc.event_id == event_id
-        and event_pc.object_1_id == event.primary.id
-        and event_pc.object_2_id == event.secondary.id
-        and event_pc.tca_utc == physics.tca.value
-        and isinstance(event_pc.pc, (int, float))
-        and not isinstance(event_pc.pc, bool)
-        and math.isfinite(event_pc.pc)
-        and 0 <= event_pc.pc <= 1
-    )
-    probability_before = ({
-        "status": "available", "pc": event_pc.pc, "event_id": event_id,
-        "method": event_pc.method, "method_version": event_pc.method_version,
-        "tca_utc": event_pc.tca_utc,
-        "provenance": event_pc.provenance.model_dump(mode="json"),
-        "assumptions": event_pc.assumptions,
-        "meaning": "Event-specific Foster Pc at the original Stage 2A TCA.",
-    } if event_pc_is_bound else {
+    probability_before = {**baseline_pc, "event_id": event_id, "comparison_role": "zero_burn_two_body_baseline"}
+    probability_after = ({
+        **best_pc_candidate["research_pc_after"], "event_id": event_id,
+        "comparison_role": "best_research_pc_reduction_candidate",
+    } if best_pc_candidate else {
         "status": "unavailable", "pc": None, "event_id": event_id,
-        "reason_code": "EVENT_MATCHED_COVARIANCE_AND_HBR_REQUIRED",
-        "meaning": "No validated event-bound Foster Pc is available for the original event.",
+        "reason_code": baseline_pc.get("reason_code") or "NO_VALID_RESEARCH_PC_CANDIDATE",
+        "meaning": "No candidate with a valid interior closest approach and comparable research Pc was available.",
     })
-    probability_after = {
-        "status": "unavailable", "pc": None, "event_id": event_id,
-        "reason_code": "POST_MANEUVER_COVARIANCE_PROPAGATION_UNAVAILABLE",
-        "meaning": "The impulse changes the candidate TCA and relative state. This simulation does not propagate a full event-bound state covariance to that candidate TCA.",
-    }
     return {
         **base,
         "status": "available_with_warning" if baseline_warning else "available",
@@ -723,12 +755,16 @@ def optimize_maneuver(
             "max_delta_v_m_s": max_delta_v_m_s if max_delta_v_m_s is not None else max(burn_magnitudes_m_s),
             "coarse_magnitudes_m_s": list(burn_magnitudes_m_s),
             "directions": [name for name, _ in directions],
+            "rtn_direction_selection": rtn_direction,
             "refinement_method": "bounded golden-section maximization of miss distance on each signed RTN axis around the best coarse magnitude",
             "refinement_evaluations_per_axis_max": 6,
             "optimality_claim": "best valid candidate found in this bounded axis-aligned search; not globally optimal",
         },
-        "best_candidate_status": "improved_geometry_found" if best_candidate else "no_candidate_improved_separation_within_search_bounds",
+        "best_candidate_status": ("best_research_pc_reduction_candidate_selected" if best_pc_candidate else ("improved_geometry_found" if best_candidate else "no_candidate_improved_separation_within_search_bounds")),
         "best_candidate": best_candidate,
+        "best_geometry_candidate": best_geometry_candidate,
+        "best_candidate_basis": "minimum prior-based research Pc among physics-evaluated candidates" if best_pc_candidate else "maximum simulated miss distance; research Pc unavailable",
+        "best_pc_reduction_candidate": best_pc_candidate,
         "fuel": best_candidate["fuel"] if best_candidate else {"status": "unavailable", "reason_code": "NO_IMPROVING_CANDIDATE"},
         "fuel_cost_kg": (best_candidate["fuel"].get("propellant_consumption_kg") if best_candidate and best_candidate["fuel"].get("status") == "estimated" else None),
         "fuel_status": (best_candidate["fuel"].get("status") if best_candidate else "unavailable"),
@@ -738,22 +774,101 @@ def optimize_maneuver(
         "zero_burn_baseline": zero_burn_baseline,
         "physics_candidates": physics_candidates,
         "surrogate_rank": surrogate_rank,
-        "candidate_interpretation": "Candidate miss-distance changes are relative to the zero-burn two-body simulation. Each candidate closest approach is a two-body simulation. Positive change means increased separation in this simulated geometry only; it does not demonstrate lower Pc, operational safety, or a maneuver recommendation.",
+        "candidate_interpretation": "Candidate geometry changes are relative to the zero-burn two-body simulation. Research Pc before and after uses the same ESA-prior covariance/HBR method assigned at each calculated TCA. Covariance is not propagated from the TLE epoch and burn-execution error is not modeled. Neither output is an operational maneuver recommendation.",
         "candidates": result_rows,
         "ml_result": maneuver_ml,
         "baseline_reference_comparison": baseline_comparison,
-        "comparison_result": {"status": "not_applicable", "reason_code": "DETERMINISTIC_GEOMETRY_ONLY_NO_P_COVARIANCE_OR_HBR"},
+        "comparison_result": {"status": "available" if pc_comparison_available else "unavailable", "reason_code": None if pc_comparison_available else (baseline_pc.get("reason_code") or "RESEARCH_PC_COMPARISON_UNAVAILABLE"), "risk_reduction_pct": best_pc_candidate.get("percentage_research_pc_reduction") if pc_comparison_available else None},
         "assumptions": ["Bounded interval begins at burn epoch and ends 1800 s after original event TCA; no claim is made about minima outside it", "At most 721 coarse samples and 32 local-minimum refinements per trajectory; closest-approach golden-section refinement stops at 0.01 s", "TCA TEME Cartesian states are treated as inertial over the configured short propagation interval", "burn applied to primary only at TCA minus configured lead in the burn-epoch RTN frame", f"coarse magnitudes in m/s: {', '.join(f'{value:g}' for value in burn_magnitudes_m_s)}; candidate axis refinement is bounded by these samples", "no J2, drag, third-body, covariance, execution error, attitude, or propulsion constraints", "miss distance is simulated two-body geometry; no collision probability reduction or operational recommendation is inferred", "baseline comparison is a diagnostic against the stored SGP4 event, not independent validation", "fuel uses the ideal Tsiolkovsky equation only when user-supplied initial mass and specific impulse are both valid; it does not establish feasibility or remaining fuel"],
-        "risk_reduction_pct": None,
+        "risk_reduction_pct": best_pc_candidate.get("percentage_research_pc_reduction") if pc_comparison_available else None,
+        "probability_status": "available" if pc_comparison_available else "unavailable",
+        "probability_reason_code": None if pc_comparison_available else (baseline_pc.get("reason_code") or "NO_VALID_RESEARCH_PC_CANDIDATE"),
+        "probability_reason": None if pc_comparison_available else "Comparable prior-based research Pc was unavailable for the zero-burn baseline or all candidates.",
         "probability_before": probability_before,
         "probability_after": probability_after,
         "probability_comparison": {
-            "status": "not_comparable",
-            "reason_code": "POST_MANEUVER_COVARIANCE_PROPAGATION_UNAVAILABLE",
-            "risk_reduction_pct": None,
-            "interpretation": "No Pc or risk reduction is reported because a consistent post-maneuver probability has not been calculated.",
+            "status": "available" if pc_comparison_available else "unavailable",
+            "reason_code": None if pc_comparison_available else (baseline_pc.get("reason_code") or "RESEARCH_PC_COMPARISON_UNAVAILABLE"),
+            "risk_reduction_pct": best_pc_candidate.get("percentage_research_pc_reduction") if pc_comparison_available else None,
+            "interpretation": "Comparison uses one consistent prior-based research Pc policy for the zero-burn and best evaluated candidate. It is an assumption-based estimate, not an observed or operationally validated Pc change.",
         },
     }
+
+
+def _maneuver_research_pc(event: ConjunctionAssessmentEvent, candidate: dict[str, Any]) -> dict[str, Any]:
+    """Evaluate comparable prior-based research Pc at the candidate's own TCA."""
+    if candidate.get("objective_status") == "search_boundary_minimum":
+        return {"status": "unavailable", "pc": None, "reason_code": "CLOSEST_APPROACH_AT_SEARCH_BOUNDARY"}
+    try:
+        tca = candidate["closest_approach_utc"]
+        p = candidate["primary_state_at_closest_approach"]
+        s = candidate["secondary_state_at_closest_approach"]
+        primary_state = {"object_id": event.primary.id, "epoch": tca, "frame": "TEME", "position_km": p["position_km"], "velocity_km_s": p["velocity_km_s"]}
+        secondary_state = {"object_id": event.secondary.id, "epoch": tca, "frame": "TEME", "position_km": s["position_km"], "velocity_km_s": s["velocity_km_s"]}
+        relative_position = [secondary_state["position_km"][i] - primary_state["position_km"][i] for i in range(3)]
+        relative_velocity = [secondary_state["velocity_km_s"][i] - primary_state["velocity_km_s"][i] for i in range(3)]
+        relative_speed = math.sqrt(sum(value * value for value in relative_velocity))
+        physics = event.physics_result.model_copy(deep=True, update={
+            "status": "valid", "tca_status": "valid",
+            "tca": ScientificField(status="available", value=tca, units="UTC"),
+            "miss_distance": ScientificField(status="available", value=candidate["predicted_miss_distance_km"], units="km"),
+            "relative_position_at_tca": ScientificField(status="available", value=relative_position, units="km"),
+            "relative_velocity_at_tca": ScientificField(status="available", value=relative_velocity, units="km/s"),
+            "relative_speed_at_tca": ScientificField(status="available", value=relative_speed, units="km/s"),
+            "primary_state_at_tca": primary_state, "secondary_state_at_tca": secondary_state,
+            "object_primary_id": event.primary.id, "object_secondary_id": event.secondary.id,
+        })
+        research = assess_automatic_research_pc(
+            physics, None, event.review_priority or ReviewPriority(), event.primary, event.secondary,
+        )
+        scientific = research.estimated_pc_scientific
+        if research.status != "prior_based_research_estimate" or not isinstance(scientific, str):
+            return {"status": "unavailable", "pc": None, "reason_code": (research.reason_codes or ["RESEARCH_PC_NOT_ESTIMABLE"])[0], "tca_utc": tca}
+        try:
+            log10_pc = float(Decimal(scientific).log10())
+        except (InvalidOperation, ValueError, OverflowError):
+            return {"status": "unavailable", "pc": None, "reason_code": "RESEARCH_PC_OUTPUT_INVALID", "tca_utc": tca}
+        return {
+            "status": "available", "pc": research.estimated_pc, "pc_scientific": scientific,
+            "log10_pc": log10_pc, "tca_utc": tca,
+            "miss_distance_km": candidate["predicted_miss_distance_km"],
+            "method": research.method_name, "method_version": research.method_version,
+            "covariance_method": research.covariance_method, "hbr_method": research.hbr_method,
+            "hbr_km": research.hbr_km, "provenance": research.provenance,
+            "assumptions": research.assumptions,
+            "covariance_assignment": "ESA population-prior covariance re-assigned consistently at each candidate TCA; no covariance propagation from TLE epoch or burn-execution covariance",
+        }
+    except (KeyError, TypeError, ValueError, OverflowError, AttributeError) as exc:
+        return {"status": "unavailable", "pc": None, "reason_code": f"RESEARCH_PC_CANDIDATE_INVALID_{type(exc).__name__}"}
+
+
+def _pc_log10_reduction(before: dict[str, Any], after: dict[str, Any]) -> float | None:
+    if before.get("status") != "available" or after.get("status") != "available":
+        return None
+    return float(before["log10_pc"] - after["log10_pc"])
+
+
+def _pc_absolute_reduction(before: dict[str, Any], after: dict[str, Any]) -> str | None:
+    if before.get("status") != "available" or after.get("status") != "available":
+        return None
+    try:
+        value = Decimal(before["pc_scientific"]) - Decimal(after["pc_scientific"])
+        return f"{value:.6E}"
+    except (InvalidOperation, ValueError, OverflowError):
+        return None
+
+
+def _pc_percentage_reduction(before: dict[str, Any], after: dict[str, Any]) -> float | None:
+    if before.get("status") != "available" or after.get("status") != "available":
+        return None
+    try:
+        before_pc, after_pc = Decimal(before["pc_scientific"]), Decimal(after["pc_scientific"])
+        if before_pc <= 0:
+            return None
+        result = float(Decimal(100) * (Decimal(1) - after_pc / before_pc))
+        return result if math.isfinite(result) else None
+    except (InvalidOperation, ValueError, OverflowError, ZeroDivisionError):
+        return None
 
 
 def _maneuver_event_context(event: ConjunctionAssessmentEvent) -> dict[str, Any]:
@@ -807,16 +922,16 @@ def _maneuver_event_context(event: ConjunctionAssessmentEvent) -> dict[str, Any]
             "model_version": ai.model_version, "meaning": ai.target_definition,
         } if ai is not None else {"status": "unavailable"}),
         "uncertainty_provenance": {
-            "covariance_status": pc.covariance_status if pc is not None else physics.covariance.status,
+            "covariance_status": "available_prior_based" if research is not None and research.status == "prior_based_research_estimate" else (pc.covariance_status if pc is not None else physics.covariance.status),
             "covariance_sources": [item.model_dump(mode="json") for item in pc.covariance_sources] if pc is not None else [],
-            "hbr_km": pc.hbr_km if pc is not None else None,
-            "hbr_source": pc.hbr_source if pc is not None else "unavailable",
-            "hbr_provenance": pc.hbr_provenance if pc is not None else None,
-            "post_burn_covariance_propagation": "not_implemented",
+            "hbr_km": pc.hbr_km if pc is not None else (research.hbr_km if research is not None else None),
+            "hbr_source": pc.hbr_source if pc is not None else ("ESA_prior_assumed" if research is not None and research.status == "prior_based_research_estimate" else "unavailable"),
+            "hbr_provenance": pc.hbr_provenance if pc is not None else (research.provenance if research is not None else None),
+            "post_burn_covariance_propagation": "not_dynamically_propagated; the same ESA-prior covariance/HBR method is assigned at each calculated candidate TCA",
         },
         "data_quality_limitations": [
-            "Candidate trajectories are geometry-only two-body RK4 simulations; they do not establish Pc reduction.",
-            "The stored event covariance is not propagated through the impulse to each candidate TCA.",
+            "Candidate trajectories are Earth two-body RK4 simulations; they omit J2, drag, third-body effects, controls, and burn execution error.",
+            "Research Pc uses the same ESA-prior covariance/HBR policy assigned at each TCA; uncertainty is not dynamically propagated from TLE epoch.",
             "Source-reported Pc, event-specific Foster Pc, prior-based research Pc, and AI queue index remain separate evidence.",
             "This is a simulated candidate search, not an executed or operationally validated maneuver.",
         ],

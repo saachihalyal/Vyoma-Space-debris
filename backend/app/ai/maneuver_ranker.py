@@ -1,8 +1,4 @@
-"""Offline-trained surrogate ranking for the existing maneuver simulator.
-
-The target is the existing simulator's candidate closest-approach miss distance,
-not collision probability, safety, or a real maneuver outcome.
-"""
+"""Offline-trained grouped surrogate for research-Pc change in burn scenarios."""
 
 from __future__ import annotations
 
@@ -17,9 +13,9 @@ from typing import Any
 import numpy as np
 
 
-MODEL_NAME = "ORION simulated two-body maneuver miss-distance ranker"
+MODEL_NAME = "ORION physics-supervised maneuver research-Pc reduction ranker"
 MODEL_VERSION = "1.0.0"
-FEATURE_SCHEMA_VERSION = "1.0.0"
+FEATURE_SCHEMA_VERSION = "2.0.0"
 FEATURES = (
     "primary_x_tca_km", "primary_y_tca_km", "primary_z_tca_km",
     "primary_vx_tca_km_s", "primary_vy_tca_km_s", "primary_vz_tca_km_s",
@@ -35,8 +31,8 @@ DIRECTION_INDEX = {
     "along-track -": 3, "cross-track +": 4, "cross-track -": 5,
 }
 ARTIFACT_DIR = Path(__file__).resolve().parent / "artifacts"
-ARTIFACT_PATH = ARTIFACT_DIR / "maneuver_miss_ranker.joblib"
-METADATA_PATH = ARTIFACT_DIR / "maneuver_miss_ranker.metadata.json"
+ARTIFACT_PATH = ARTIFACT_DIR / "maneuver_pc_reduction_ranker.joblib"
+METADATA_PATH = ARTIFACT_DIR / "maneuver_pc_reduction_ranker.metadata.json"
 
 
 def feature_vector(event: Any, candidate: dict[str, Any], lead_seconds: float) -> list[float]:
@@ -87,8 +83,8 @@ def feature_vector(event: Any, candidate: dict[str, Any], lead_seconds: float) -
 
 
 def score_candidates(event: Any, candidates: list[dict[str, Any]], lead_seconds: float) -> dict[str, Any]:
-    """Return predicted simulator miss distance for each nonzero candidate."""
-    provenance = {"source_event_id": getattr(event, "id", None), "target": "existing two-body simulator candidate miss distance", "target_units": "km"}
+    """Return predicted log10 research-Pc reduction, ranked high to low."""
+    provenance = {"source_event_id": getattr(event, "id", None), "target": "log10(Pc_zero_burn / Pc_candidate)", "target_units": "log10 ratio", "label_source": "ORION ESA-prior Foster research Pc at candidate TCA"}
     model, metadata, failure = _load_model()
     if failure:
         return _unavailable(failure, provenance)
@@ -103,33 +99,39 @@ def score_candidates(event: Any, candidates: list[dict[str, Any]], lead_seconds:
         if not inputs:
             return _unavailable("NO_NONZERO_CANDIDATES", provenance, metadata)
         predictions = np.asarray(model["estimator"].predict(np.asarray(inputs, dtype=float)), dtype=float)
-        if predictions.shape != (len(indexes),) or not np.isfinite(predictions).all() or (predictions < 0).any():
+        if predictions.shape != (len(indexes),) or not np.isfinite(predictions).all():
             return _unavailable("MANEUVER_MODEL_OUTPUT_INVALID", provenance, metadata)
         test_metrics = metadata.get("test_metrics") or {}
         baseline_metrics = metadata.get("baseline", {}).get("test_metrics") or {}
+        ranking_metrics = metadata.get("test_metrics") or {}
+        baseline_metrics = metadata.get("baseline", {}).get("test_metrics") or {}
+        ranking_used = bool(ranking_metrics.get("mean_regret_log10_pc_reduction") is not None and baseline_metrics.get("mean_regret_log10_pc_reduction") is not None and ranking_metrics["mean_regret_log10_pc_reduction"] < baseline_metrics["mean_regret_log10_pc_reduction"])
+        ranks = np.argsort(np.argsort(-predictions)) + 1
         return {
-            "status": "research_only",
+            "status": "research_only" if ranking_used else "fallback_physics_ranking",
             "is_simulator_surrogate": True,
-            "synthetic_training_labels": True,
-            "ranking_used": False,
-            "reason_code": "HELD_OUT_RANKING_NOT_USEFUL_VS_BASELINE",
+            "synthetic_training_labels": False,
+            "physics_generated_training_labels": True,
+            "ranking_used": ranking_used,
+            "reason_code": "HELD_OUT_RANKING_OUTPERFORMS_BASELINE" if ranking_used else "HELD_OUT_RANKING_NOT_USEFUL_VS_BASELINE",
             "model_name": metadata["model_name"],
             "model_version": metadata["model_version"],
-            "score_name": "predicted two-body simulated closest-approach miss distance",
-            "score_units": "km",
-            "score_semantics": "Diagnostic estimate of the training simulator's miss-distance output only. It is not used to rank candidates because held-out selection performance did not outperform the minimum-delta-v baseline; it is not a collision probability, safety assessment, or verified improvement.",
+            "score_name": "predicted log10 research-Pc reduction vs zero-burn baseline",
+            "score_units": "log10 ratio; positive predicts reduction",
+            "score_semantics": "Research surrogate for candidate ordering only; all candidates are recalculated using the two-body geometry and the same research-Pc covariance/HBR policy. It is not a measured Pc or operational safety score.",
             "feature_schema_version": metadata["feature_schema_version"],
             "artifact_sha256": metadata["artifact_sha256"],
             "provenance": provenance,
             "candidate_scores": {str(indexes[i]): float(predictions[i]) for i in range(len(indexes))},
+            "candidate_ranks": {str(indexes[i]): int(ranks[i]) for i in range(len(indexes))},
             "evaluation_summary": {
-                "held_out_scenario_count": test_metrics.get("scenario_count"),
+                "held_out_scenario_count": test_metrics.get("parent_event_count"),
                 "held_out_candidate_count": test_metrics.get("candidate_count"),
-                "mean_within_scenario_spearman": test_metrics.get("mean_within_scenario_spearman"),
-                "top1_agreement_with_simulator_best": test_metrics.get("top1_agreement_with_simulator_best"),
-                "model_mean_regret_km": test_metrics.get("mean_selected_simulator_miss_regret_vs_best_km"),
-                "minimum_delta_v_baseline_mean_regret_km": baseline_metrics.get("mean_selected_simulator_miss_regret_vs_best_km"),
-                "source": "held-out synthetic scenarios; labels generated by the same two-body simulator",
+                "mean_within_scenario_spearman": test_metrics.get("mean_within_parent_spearman"),
+                "top1_agreement_with_physics_best": test_metrics.get("top1_agreement_with_physics_best"),
+                "model_mean_regret_log10_pc_reduction": test_metrics.get("mean_regret_log10_pc_reduction"),
+                "baseline_mean_regret_log10_pc_reduction": baseline_metrics.get("mean_regret_log10_pc_reduction"),
+                "source": "held-out real CelesTrak parent conjunctions; labels generated by ORION research Pc and two-body maneuver scenarios",
             },
             "limitations": metadata["limitations"],
         }
@@ -143,14 +145,15 @@ def _unavailable(reason: str, provenance: dict[str, Any], metadata: dict[str, An
     return {
         "status": "unavailable",
         "is_simulator_surrogate": True,
-        "synthetic_training_labels": True,
+        "synthetic_training_labels": False,
+        "physics_generated_training_labels": True,
         "ranking_used": False,
         "reason_code": reason,
         "model_name": (metadata or {}).get("model_name", MODEL_NAME),
         "model_version": (metadata or {}).get("model_version"),
-        "score_name": "predicted two-body simulated closest-approach miss distance",
-        "score_units": "km",
-        "score_semantics": "No model score is available; physics candidate evaluation remains separate.",
+        "score_name": "predicted log10 research-Pc reduction vs zero-burn baseline",
+        "score_units": "log10 ratio; positive predicts reduction",
+        "score_semantics": "No model score is available; deterministic physics ranking remains active.",
         "provenance": provenance,
         "candidate_scores": {},
     }

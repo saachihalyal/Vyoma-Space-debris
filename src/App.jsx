@@ -77,6 +77,7 @@ import { CollisionAnalysisSummary } from "./components/UI/CollisionAnalysisSumma
 import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentation } from "./utils/collisionPcPresentation.js";
 import { ManeuverAiSummary } from "./components/UI/ManeuverAiSummary.js";
 import { ManeuverScreeningContext } from "./components/UI/ManeuverScreeningContext.js";
+import { ManeuverUserUpload } from "./components/UI/ManeuverUserUpload.jsx";
 import { buildSmartFilterView } from "./utils/smartFilterView";
 import { catalogHoverDetails } from "./utils/catalogHover.js";
 import { captureGlobeEventSelection, downloadGlobeEventReport, resolveGlobeEventSelection } from "./utils/globeEventReport.js";
@@ -490,6 +491,7 @@ export default function App() {
           screeningJobId: maneuverScreeningJobId,
           leadSeconds: maneuverRequest.leadSeconds,
           maxDeltaVMs: maneuverRequest.maxDeltaVMs,
+          rtnDirection: maneuverRequest.rtnDirection,
           initialMassKg: maneuverRequest.initialMassKg,
           specificImpulseS: maneuverRequest.specificImpulseS,
         });
@@ -1471,6 +1473,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
 export function ManeuverPage({ event, events = [], screeningJobId, screeningStatus, screeningAttempt, onSelectEvent = () => {}, onRunManeuver = () => {}, maneuver, download, referenceEvent = null, onClearReferenceEvent = () => {} }) {
   const [leadSeconds, setLeadSeconds] = useState("300");
   const [maxDeltaVMs, setMaxDeltaVMs] = useState("0.1");
+  const [rtnDirection, setRtnDirection] = useState("all");
   const [initialMassKg, setInitialMassKg] = useState("");
   const [specificImpulseS, setSpecificImpulseS] = useState("");
   const [configurationError, setConfigurationError] = useState("");
@@ -1483,7 +1486,10 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
       reason: "Configure the bounded search and select Run Maneuver Search.",
     }
     : {};
-  const physicsCandidates = m.physics_candidates?.candidates || (m.candidates || []).slice(1);
+  const physicsCandidates = (m.physics_candidates?.candidates || (m.candidates || []).slice(1)).slice().sort((left, right) => (left.physics_research_pc_rank ?? 9999) - (right.physics_research_pc_rank ?? 9999));
+  const maneuverCandidateRows = m.ml_result?.ranking_used
+    ? physicsCandidates.slice().sort((left, right) => (left.maneuver_ml_rank ?? 9999) - (right.maneuver_ml_rank ?? 9999))
+    : physicsCandidates;
   const bestCandidate = m.best_candidate || null;
   const baseline = m.zero_burn_baseline || {};
   const maneuverBusy = m.status === "running";
@@ -1497,6 +1503,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
     onRunManeuver({
       leadSeconds: Number(leadSeconds),
       maxDeltaVMs: Number(maxDeltaVMs),
+      rtnDirection,
       initialMassKg: initialMassKg === "" ? null : Number(initialMassKg),
       specificImpulseS: specificImpulseS === "" ? null : Number(specificImpulseS),
     });
@@ -1510,6 +1517,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
         action={selectedEvent?.physics_result?.status === "valid" && screeningJobId ? <button className="primary-action" type="button" onClick={() => download(`/api/conjunction-jobs/${encodeURIComponent(screeningJobId)}/events/${encodeURIComponent(selectedEvent.id)}/assessment.pdf`, `${selectedEvent.id}-maneuver-assessment.pdf`)}>Download Assessment Report</button> : <button className="primary-action" type="button" disabled title="A validated physical event and its screening job are required.">Download Assessment Report</button>}
       />
       <ManeuverScreeningContext screeningJobId={screeningJobId} screeningStatus={screeningStatus} screeningAttempt={screeningAttempt} />
+      <ManeuverUserUpload />
       {referenceEvent ? <ReferenceManeuverAssessment referenceEvent={referenceEvent} download={download} onClear={onClearReferenceEvent} /> : null}
       <Panel title="Accepted Stage 2A Event" icon={Rocket}>
         {selectableEvents.length ? <label className="maneuver-event-select">
@@ -1539,11 +1547,13 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
         <form className="maneuver-search-form" onSubmit={submitManeuverSearch}>
           <label>Burn lead before baseline TCA (s)<input type="number" min="60" max="1800" step="1" required value={leadSeconds} onChange={(e) => setLeadSeconds(e.target.value)} /></label>
           <label>Maximum Δv (m/s)<input type="number" min="0.0001" max="0.1" step="any" required value={maxDeltaVMs} onChange={(e) => setMaxDeltaVMs(e.target.value)} /></label>
+          <label>RTN direction to assess<select value={rtnDirection} onChange={(e) => setRtnDirection(e.target.value)}><option value="all">All six signed axes</option><option value="radial_plus">Radial +</option><option value="radial_minus">Radial −</option><option value="along_track_plus">Along-track +</option><option value="along_track_minus">Along-track −</option><option value="cross_track_plus">Cross-track +</option><option value="cross_track_minus">Cross-track −</option></select></label>
           <label>Initial mass (kg), optional<input type="number" min="0.0001" step="any" value={initialMassKg} onChange={(e) => setInitialMassKg(e.target.value)} /></label>
           <label>Specific impulse (s), optional<input type="number" min="0.0001" max="2000" step="any" value={specificImpulseS} onChange={(e) => setSpecificImpulseS(e.target.value)} /></label>
           <button className="primary-action" type="submit" disabled={!screeningJobId || maneuverBusy}>{maneuverBusy ? "Searching…" : "Run Maneuver Search"}</button>
         </form>
         {configurationError ? <p role="alert" className="muted">{configurationError}</p> : null}
+        <p className="muted">Leave both fuel fields empty to use configurable defaults (500 kg and 220 s), clearly labeled as estimated assumptions. Supply both values to use spacecraft-specific inputs.</p>
         <p className="muted">The search applies impulses to the primary object's Cartesian state in its burn-epoch RTN frame. It samples six signed RTN axes, refines promising magnitudes, and searches encounter geometry from burn epoch through 30 minutes after baseline TCA.</p>
       </Panel> : null}
       <section className="maneuver-results-summary" aria-label="Maneuver assessment summary">
@@ -1554,20 +1564,22 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
             <span>Baseline relative velocity<strong>{baseline.candidate?.relative_velocity_km_s ? `${baseline.candidate.relative_velocity_km_s.map((v) => Number(v).toFixed(6)).join(", ")} km/s` : "Available after search"}</strong></span>
           </div>
         </Panel>
-        <Panel title="Best bounded candidate" icon={ShieldCheck}>
+        <Panel title="Best Physics-Evaluated Candidate" icon={ShieldCheck}>
           {!m.best_candidate_status && !maneuverBusy ? <p className="muted">Run a search to compare candidates with the zero-burn baseline.</p> : null}
           {maneuverBusy ? <p role="status" className="muted">Propagating and comparing candidates…</p> : null}
           {m.best_candidate_status === "no_candidate_improved_separation_within_search_bounds" ? <p className="maneuver-no-improvement">No tested candidate improved miss distance within these search bounds.</p> : null}
           {bestCandidate ? <div className="maneuver-summary-grid">
             <span>Selected burn<strong>{bestCandidate.delta_v_m_s.toFixed(5)} m/s · {bestCandidate.direction} RTN</strong></span>
+            <span>RTN Δv components<strong>{bestCandidate.delta_v_rtn_m_s?.map((value) => Number(value).toFixed(6)).join(", ") || "Unavailable"} m/s (R, T, N)</strong></span>
             <span>Candidate miss distance<strong>{bestCandidate.predicted_miss_distance_km.toFixed(6)} km</strong></span>
             <span>Change vs baseline<strong>{bestCandidate.change_from_zero_burn_km > 0 ? "+" : ""}{bestCandidate.change_from_zero_burn_km.toFixed(6)} km · {bestCandidate.change_from_zero_burn_baseline_percent == null ? "unavailable" : `${bestCandidate.change_from_zero_burn_baseline_percent.toFixed(3)}%`}</strong></span>
             <span>Candidate TCA<strong>{bestCandidate.closest_approach_utc}</strong></span>
             <span>Candidate relative velocity<strong>{bestCandidate.relative_velocity_km_s.map((v) => Number(v).toFixed(6)).join(", ")} km/s</strong></span>
-            <span>Fuel estimate<strong>{m.fuel?.status === "estimated" ? `${m.fuel.propellant_consumption_kg.toPrecision(5)} kg · ideal rocket equation` : `Unavailable · ${m.fuel?.reason_code || "mass and specific impulse not supplied"}`}</strong></span>
-            <span>Pc after maneuver<strong>Unavailable · {m.probability_after?.reason_code || "post-maneuver covariance propagation is not implemented"}</strong></span>
+            <span>Pc after maneuver<strong>{m.probability_after?.status === "available" ? `${m.probability_after.pc_scientific} · research Pc at candidate TCA` : `Unavailable · ${m.probability_after?.reason_code || "comparable research Pc unavailable"}`}</strong></span>
+            <span>Pc reduction<strong>{m.probability_comparison?.status === "available" && Number.isFinite(m.risk_reduction_pct) ? `${m.risk_reduction_pct.toPrecision(5)}% · ${bestCandidate.absolute_research_pc_reduction_scientific || "absolute difference unavailable"}` : `Unavailable · ${m.probability_comparison?.reason_code || "comparable Pc unavailable"}`}</strong></span>
+            <span>Fuel estimate<strong>{m.fuel?.status === "estimated" ? `${m.fuel.propellant_consumption_kg.toPrecision(5)} kg · ${m.fuel.assumption_status === "estimated_from_default_assumptions" ? `estimated from defaults (${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s)` : `user inputs (${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s)`}` : `Unavailable · ${m.fuel?.reason_code || "fuel inputs invalid"}`}</strong></span>
           </div> : null}
-          {bestCandidate ? <p className="muted">Positive miss-distance change indicates greater separation in this simulated geometry only. It does not establish a Pc reduction or safety.</p> : null}
+          {bestCandidate ? <p className="muted">Selection basis: {m.best_candidate_basis || "physics-confirmed research Pc ordering"}. Research Pc uses the same ESA-prior covariance/HBR method assigned at each TCA; uncertainty is not dynamically propagated from the TLE epoch, and this is not an operational recommendation.</p> : null}
         </Panel>
       </section>
       <ManeuverBaselineComparison comparison={m.baseline_reference_comparison} stage2aReference={m.stage2a_reference} stage2aPhysics={selectedEvent.physics_result} zeroBurnBaseline={m.zero_burn_baseline} candidates={physicsCandidates} probabilityBefore={m.probability_before} probabilityAfter={m.probability_after} probabilityComparison={m.probability_comparison} />
@@ -1583,7 +1595,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
             <span>Event key <strong>{selectedEvent.id}</strong></span>
             <span>Screening job key <strong>{m.screening_job_id || screeningJobId || "Unavailable"}</strong></span>
             <span>Physics candidate evaluation <strong>{m.physics_candidate_status || "not_evaluated"}</strong></span>
-            <span>Collision-probability comparison <strong>Not applicable; maneuver simulation does not calculate post-maneuver Pc</strong></span>
+            <span>Collision-probability comparison <strong>{m.probability_comparison?.status || "not evaluated"} · {m.probability_comparison?.interpretation || m.probability_comparison?.reason_code || "Run a physics maneuver comparison."}</strong></span>
             <span>Method <strong>{m.method || "Unavailable"}</strong></span>
             {m.candidate_interpretation ? <span>Candidate interpretation <strong>{m.candidate_interpretation}</strong></span> : null}
             {m.assumptions?.map((item, index) => <span key={index}>Assumption / limitation <strong>{item}</strong></span>)}
@@ -1591,12 +1603,12 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
           </div>
         </Panel>
       </section>
-      <Panel title="Optional Synthetic Simulator Surrogate" icon={ShieldCheck}>
+      <Panel title="Maneuver Research-Pc Ranker" icon={ShieldCheck}>
         <ManeuverAiSummary result={m.surrogate_rank || m.ml_result} />
       </Panel>
       {physicsCandidates.length ? <Panel title="Physics Candidates · Two-Body RK4" icon={Target}>
         <p className="muted">This is a bounded axis-aligned local search, not a global optimum. Every candidate uses numerical two-body RK4 propagation and a refined closest-approach search. Synthetic surrogate scores do not affect selection.</p>
-        <div className="table-scroll"><table><thead><tr><th>Δv (m/s)</th><th>Direction / frame</th><th>Candidate TCA</th><th>Miss distance (km)</th><th>Change (km / %)</th><th>Relative velocity (km/s)</th><th>Fuel estimate (kg)</th><th>Pc after burn</th><th>Search result</th></tr></thead><tbody>{physicsCandidates.map((candidate, index) => <tr key={`${candidate.delta_v_m_s}-${candidate.direction}-${index}`}><td>{Number.isFinite(candidate.delta_v_m_s) ? candidate.delta_v_m_s.toFixed(5) : "Unavailable"}</td><td>{candidate.direction || "Unavailable"} · RTN</td><td>{candidate.closest_approach_utc || "Unavailable"}</td><td>{Number.isFinite(candidate.predicted_miss_distance_km) ? candidate.predicted_miss_distance_km.toFixed(6) : "Unavailable"}</td><td>{Number.isFinite(candidate.change_from_zero_burn_km) ? `${candidate.change_from_zero_burn_km > 0 ? "+" : ""}${candidate.change_from_zero_burn_km.toFixed(6)} / ${candidate.change_from_zero_burn_baseline_percent?.toFixed(3) ?? "unavailable"}%` : "Unavailable"}</td><td>{candidate.relative_velocity_km_s?.map((v) => Number(v).toFixed(6)).join(", ") || "Unavailable"}</td><td>{candidate.fuel?.status === "estimated" ? candidate.fuel.propellant_consumption_kg.toPrecision(5) : "Unavailable · parameters not supplied"}</td><td>Unavailable · covariance propagation not implemented</td><td>{candidate.objective_status || "Unavailable"}</td></tr>)}</tbody></table></div>
+        <div className="table-scroll"><table><thead><tr><th>Physics rank</th><th>AI rank</th><th>Δv (m/s)</th><th>Direction / frame</th><th>Candidate TCA</th><th>Miss distance (km)</th><th>Change (km / %)</th><th>Relative velocity (km/s)</th><th>Fuel (kg)</th><th>Pc after burn</th><th>Pc reduction</th></tr></thead><tbody>{maneuverCandidateRows.map((candidate, index) => <tr key={`${candidate.delta_v_m_s}-${candidate.direction}-${index}`}><td>{candidate.physics_research_pc_rank ?? "Unavailable"}</td><td>{candidate.maneuver_ml_rank ?? "Physics fallback"}{Number.isFinite(candidate.maneuver_ml_predicted_log10_pc_reduction) ? ` · ${candidate.maneuver_ml_predicted_log10_pc_reduction.toFixed(3)} log10` : ""}</td><td>{Number.isFinite(candidate.delta_v_m_s) ? candidate.delta_v_m_s.toFixed(5) : "Unavailable"}</td><td>{candidate.direction || "Unavailable"} · RTN</td><td>{candidate.closest_approach_utc || "Unavailable"}</td><td>{Number.isFinite(candidate.predicted_miss_distance_km) ? candidate.predicted_miss_distance_km.toFixed(6) : "Unavailable"}</td><td>{Number.isFinite(candidate.change_from_zero_burn_km) ? `${candidate.change_from_zero_burn_km > 0 ? "+" : ""}${candidate.change_from_zero_burn_km.toFixed(6)} / ${candidate.change_from_zero_burn_baseline_percent?.toFixed(3) ?? "unavailable"}%` : "Unavailable"}</td><td>{candidate.relative_velocity_km_s?.map((v) => Number(v).toFixed(6)).join(", ") || "Unavailable"}</td><td>{candidate.fuel?.status === "estimated" ? `${candidate.fuel.propellant_consumption_kg.toPrecision(5)}${candidate.fuel.assumption_status === "estimated_from_default_assumptions" ? "*" : ""}` : "Unavailable"}</td><td>{candidate.research_pc_after?.pc_scientific || `Unavailable · ${candidate.research_pc_after?.reason_code || "not calculated"}`}</td><td>{Number.isFinite(candidate.percentage_research_pc_reduction) ? `${candidate.percentage_research_pc_reduction.toPrecision(5)}%` : `Unavailable · ${candidate.research_pc_after?.reason_code || "no baseline"}`}</td></tr>)}</tbody></table></div>
       </Panel> : null}
       </details>
       </>}

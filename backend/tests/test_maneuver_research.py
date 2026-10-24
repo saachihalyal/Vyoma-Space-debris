@@ -1,6 +1,7 @@
 import unittest
 import math
 import time
+import json
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -134,6 +135,33 @@ def _event():
 
 
 class ResearchManeuverTests(unittest.TestCase):
+    def test_user_maneuver_upload_validates_json_and_csv_state_requirements(self):
+        event = _event()
+        event.provenance.source_type = "user_supplied"
+        event.provenance.is_fallback = False
+        for obj in (event.primary, event.secondary):
+            obj.provenance.source_type = "user_supplied"
+            obj.provenance.is_fallback = False
+        body = event.model_dump(mode="json")
+        for obj in (event.primary, event.secondary):
+            obj.provenance.element_epoch = EPOCH
+        valid_body = event.model_dump(mode="json")
+        csv_payload = "event_json\r\n\"" + json.dumps(valid_body, separators=(",", ":")).replace("\"", "\"\"") + "\"\r\n"
+        with TestClient(main.app) as client:
+            with patch.object(main, "optimize_maneuver", return_value={"event_id": event.id, "status": "available_with_warning"}):
+                valid_response = client.post("/api/maneuver/user-upload", json=valid_body)
+                valid_csv_response = client.post("/api/maneuver/user-upload", content=csv_payload, headers={"content-type": "text/csv"})
+            json_response = client.post("/api/maneuver/user-upload", json=body)
+            csv_response = client.post("/api/maneuver/user-upload", content="event_json\n\"{}\"\n", headers={"content-type": "text/csv"})
+        self.assertEqual(valid_response.status_code, 200)
+        self.assertEqual(valid_response.json()["data"]["event_id"], event.id)
+        self.assertTrue(valid_response.json()["data"]["user_supplied_input"])
+        self.assertEqual(valid_csv_response.status_code, 200)
+        self.assertEqual(json_response.status_code, 422)
+        self.assertEqual(json_response.json()["detail"]["reason_code"], "MANDATORY_STATE_OR_EPOCH_MISSING")
+        self.assertEqual(csv_response.status_code, 422)
+        self.assertEqual(csv_response.json()["detail"]["reason_code"], "INVALID_MANEUVER_UPLOAD")
+
     def test_created_job_to_selected_event_maneuver_and_report_preserves_identity(self):
         event = _event()
         event.provenance.source_type = "live"
@@ -189,29 +217,28 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertIn(event.id.encode(), report.content)
         self.assertIn(job_id.encode(), report.content)
 
-    def test_saved_maneuver_ranker_scores_candidates_without_replacing_physics(self):
+    def test_saved_maneuver_ranker_predicts_pc_reduction_and_requires_physics_confirmation(self):
         event = _event()
-        result = optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,))
+        result = optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,), refine_candidates=False)
         self.assertEqual(result["physics_candidate_status"], "evaluated")
         self.assertEqual(result["status"], "available_with_warning")
-        self.assertEqual(result["ml_result"]["status"], "research_only")
-        self.assertEqual(result["ml_result"]["reason_code"], "HELD_OUT_RANKING_NOT_USEFUL_VS_BASELINE")
-        self.assertEqual(result["ml_result"]["model_name"], "ORION simulated two-body maneuver miss-distance ranker")
+        self.assertEqual(result["ml_result"]["status"], "fallback_physics_ranking")
+        self.assertEqual(result["ml_result"]["reason_code"], "LIVE_RESEARCH_PC_CONFIRMATION_UNAVAILABLE")
+        self.assertEqual(result["ml_result"]["model_name"], "ORION physics-supervised maneuver research-Pc reduction ranker")
         self.assertEqual(result["ml_result"]["model_version"], "1.0.0")
-        self.assertEqual(result["ml_result"]["score_units"], "km")
+        self.assertEqual(result["ml_result"]["score_units"], "log10 ratio; positive predicts reduction")
         self.assertEqual(result["ml_result"]["provenance"]["source_event_id"], event.id)
-        scored = [row for row in result["candidates"] if row.get("maneuver_ml_predicted_miss_distance_km") is not None]
+        scored = [row for row in result["candidates"] if row.get("maneuver_ml_predicted_log10_pc_reduction") is not None]
         self.assertTrue(scored)
         self.assertTrue(all(row.get("maneuver_ml_rank") is None for row in result["candidates"]))
-        self.assertTrue(all(row["maneuver_ml_status"] == "research_only_score" for row in scored))
+        self.assertTrue(all(row["maneuver_ml_status"] == "physics_fallback_rank" for row in scored))
         evaluation = result["ml_result"]["evaluation_summary"]
-        self.assertEqual(evaluation["held_out_scenario_count"], 12)
-        self.assertEqual(evaluation["top1_agreement_with_simulator_best"], 0.25)
-        self.assertGreater(evaluation["model_mean_regret_km"], evaluation["minimum_delta_v_baseline_mean_regret_km"])
+        self.assertEqual(evaluation["held_out_scenario_count"], 9)
+        self.assertAlmostEqual(evaluation["top1_agreement_with_physics_best"], 1 / 3)
+        self.assertLess(evaluation["model_mean_regret_log10_pc_reduction"], evaluation["baseline_mean_regret_log10_pc_reduction"])
         self.assertEqual(result["candidates"][0]["direction"], "zero-burn baseline")
         self.assertIsNone(result["candidates"][0]["maneuver_ml_rank"])
         self.assertTrue(all(isinstance(row["predicted_miss_distance_km"], (int, float)) for row in result["candidates"]))
-        self.assertEqual(result["probability_after"]["status"], "unavailable")
 
     def test_maneuver_ranker_rejects_bad_event_states_and_missing_artifact_explicitly(self):
         event = _event()
@@ -269,7 +296,7 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(result["surrogate_rank"]["status"], "unavailable")
         self.assertEqual(result["surrogate_rank"]["reason_code"], "MANEUVER_MODEL_INFERENCE_FAILED")
         self.assertTrue(result["surrogate_rank"]["is_simulator_surrogate"])
-        self.assertTrue(result["surrogate_rank"]["synthetic_training_labels"])
+        self.assertFalse(result["surrogate_rank"]["synthetic_training_labels"])
         self.assertFalse(result["surrogate_rank"]["ranking_used"])
         self.assertEqual(result["stage2a_reference"]["event_id"], "event-1")
         self.assertEqual(result["stage2a_reference"]["propagator"], "SGP4")
@@ -277,9 +304,9 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertGreaterEqual(len(result["physics_candidates"]["candidates"]), 6)
         self.assertEqual(result["probability_before"]["status"], "unavailable")
         self.assertEqual(result["probability_after"]["status"], "unavailable")
-        self.assertEqual(result["probability_reason_code"], "EVENT_MATCHED_COVARIANCE_AND_HBR_REQUIRED")
-        self.assertIsNone(result["fuel_cost_kg"])
-        self.assertEqual(result["fuel_reason_code"], "MASS_AND_PROPULSION_MODEL_REQUIRED")
+        self.assertEqual(result["probability_reason_code"], "TLE_ELEMENT_EPOCH_UNAVAILABLE")
+        self.assertIsNotNone(result["fuel_cost_kg"])
+        self.assertEqual(result["fuel"]["assumption_status"], "estimated_from_default_assumptions")
     def test_search_boundary_candidates_are_not_assigned_ml_ranks(self):
         with patch("app.services.conjunction._refine_sampled_minimum", side_effect=lambda times, distances, evaluate: {
             "distance_km": float(min(distances)), "elapsed_seconds": float(times[0]),
@@ -287,8 +314,8 @@ class ResearchManeuverTests(unittest.TestCase):
         }):
             result = optimize_maneuver(_event(), lead_seconds=300, burn_magnitudes_m_s=(0.01,))
         self.assertEqual(result["physics_candidate_status"], "evaluated")
-        self.assertEqual(result["ml_result"]["status"], "unavailable")
-        self.assertEqual(result["ml_result"]["reason_code"], "NO_PHYSICS_ELIGIBLE_CANDIDATES")
+        self.assertEqual(result["ml_result"]["status"], "fallback_physics_ranking")
+        self.assertFalse(result["ml_result"]["ranking_used"])
         self.assertTrue(all(row["objective_status"] == "search_boundary_minimum" for row in result["candidates"]))
         self.assertTrue(all(row["maneuver_ml_rank"] is None for row in result["candidates"]))
 
@@ -444,7 +471,7 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(baseline["closest_approach_offset_from_original_tca_seconds"], first["baseline_reference_comparison"]["zero_burn_tca_offset_from_reference_seconds"])
         self.assertTrue(baseline["closest_approach_utc"].endswith("+00:00"))
 
-    def test_maneuver_preserves_only_same_event_foster_baseline_and_never_claims_pc_reduction(self):
+    def test_event_specific_foster_pc_stays_separate_from_consistent_research_comparison(self):
         event = _event()
         event.collision_probability = CollisionProbabilityResult(
             status="available", event_id=event.id,
@@ -453,15 +480,15 @@ class ResearchManeuverTests(unittest.TestCase):
             provenance=Provenance(source="event-matched test CDM", source_type="user_supplied", reference_frame="TEME"),
         )
         result = optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,))
-        self.assertEqual(result["probability_before"]["status"], "available")
-        self.assertEqual(result["probability_before"]["pc"], 2e-5)
+        self.assertEqual(result["event_context"]["event_specific_foster_pc"]["pc"], 2e-5)
+        self.assertEqual(result["probability_before"]["status"], "unavailable")
         self.assertEqual(result["probability_before"]["event_id"], event.id)
         self.assertEqual(result["probability_after"]["status"], "unavailable")
         self.assertIsNone(result["risk_reduction_pct"])
-        self.assertEqual(result["probability_comparison"]["status"], "not_comparable")
+        self.assertEqual(result["probability_comparison"]["status"], "unavailable")
         event.collision_probability.event_id = "another-event"
         mismatch = optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,))
-        self.assertEqual(mismatch["probability_before"]["status"], "unavailable")
+        self.assertEqual(mismatch["event_context"]["event_specific_foster_pc"]["status"], "unavailable")
 
     def test_maneuver_response_carries_selected_event_context_and_keeps_pc_channels_separate(self):
         event = _event()
@@ -482,8 +509,8 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(context["event_specific_foster_pc"]["pc"], 2e-5)
         self.assertEqual(context["source_reported_pc"]["status"], "unavailable")
         self.assertEqual(context["ai_queue_index"]["status"], "unavailable")
-        self.assertEqual(context["uncertainty_provenance"]["post_burn_covariance_propagation"], "not_implemented")
-        self.assertEqual(result["probability_comparison"]["status"], "not_comparable")
+        self.assertIn("not_dynamically_propagated", context["uncertainty_provenance"]["post_burn_covariance_propagation"])
+        self.assertEqual(result["probability_comparison"]["status"], "unavailable")
 
     def test_configurable_delta_v_search_refines_candidates_and_returns_bounded_best(self):
         result = optimize_maneuver(_event(), lead_seconds=240, max_delta_v_m_s=0.04)
@@ -513,10 +540,13 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertAlmostEqual(result["fuel_cost_kg"], expected, places=12)
         self.assertTrue(any("Tsiolkovsky" in assumption for assumption in result["assumptions"]))
 
-    def test_fuel_remains_unavailable_without_both_physical_parameters(self):
+    def test_fuel_uses_configurable_default_assumptions_when_parameters_are_omitted(self):
         result = optimize_maneuver(_event(), lead_seconds=300, burn_magnitudes_m_s=(0.01,))
-        self.assertIsNone(result["fuel_cost_kg"])
-        self.assertEqual(result["fuel"]["reason_code"], "MASS_AND_PROPULSION_MODEL_REQUIRED")
+        self.assertIsNotNone(result["fuel_cost_kg"])
+        self.assertEqual(result["fuel"]["initial_mass_kg"], 500.0)
+        self.assertEqual(result["fuel"]["specific_impulse_s"], 220.0)
+        self.assertEqual(result["fuel"]["assumption_status"], "estimated_from_default_assumptions")
+        self.assertEqual(result["fuel"]["standard_gravity_m_s2"], 9.80665)
 
     def test_search_finds_maneuver_shifted_closest_approach_outside_old_local_window(self):
         result = optimize_maneuver(_event(), lead_seconds=300, burn_magnitudes_m_s=(0.1,))
@@ -713,9 +743,13 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(result["status"], "available_with_warning")
         self.assertEqual(result["probability_before"]["status"], "unavailable")
         self.assertEqual(result["probability_after"]["status"], "unavailable")
-        self.assertIsNone(result["fuel_cost_kg"])
-        self.assertTrue(any("Covariance and hard-body radius" in item for item in result["limitations"]))
-        self.assertTrue(any("mass and propulsion" in item for item in result["limitations"]))
+        self.assertIsNotNone(result["fuel_cost_kg"])
+        self.assertTrue(any("ESA-prior covariance/HBR" in item for item in result["limitations"]))
+        self.assertTrue(any("configurable default spacecraft assumptions" in item for item in result["limitations"]))
+        along_track = next(row for row in result["candidates"] if row["direction"] == "along-track +")
+        sanity = along_track["along_track_sanity_check"]
+        self.assertEqual(sanity["relation"], "delta_s ~= 3 * delta_v * delta_t")
+        self.assertAlmostEqual(sanity["estimated_displacement_m"], 3 * along_track["delta_v_m_s"] * along_track["lead_time_seconds"])
 
     def test_maneuver_api_uses_valid_event_and_bounded_configuration(self):
         event = _event()
@@ -832,20 +866,20 @@ class ResearchManeuverTests(unittest.TestCase):
             self.assertEqual(response.json()["data"][block_name]["event_id"], event.id)
             self.assertEqual(response.json()["data"][block_name]["screening_job_id"], job_id)
         self.assertGreaterEqual(len(response.json()["data"]["physics_candidates"]["candidates"]), 6)
-        self.assertEqual(response.json()["data"]["surrogate_rank"]["synthetic_training_labels"], True)
+        self.assertEqual(response.json()["data"]["surrogate_rank"]["synthetic_training_labels"], False)
         self.assertFalse(response.json()["data"]["surrogate_rank"]["ranking_used"])
         self.assertGreater(len(response.json()["data"]["candidates"]), 7)
         maneuver_ml = response.json()["data"]["ml_result"]
-        self.assertEqual(maneuver_ml["status"], "research_only")
+        self.assertEqual(maneuver_ml["status"], "fallback_physics_ranking")
         self.assertEqual(maneuver_ml["provenance"]["source_event_id"], event.id)
         self.assertEqual(maneuver_ml["provenance"]["screening_job_id"], job_id)
-        self.assertEqual(maneuver_ml["score_units"], "km")
-        self.assertEqual(maneuver_ml["evaluation_summary"]["held_out_scenario_count"], 12)
-        self.assertGreater(
-            maneuver_ml["evaluation_summary"]["model_mean_regret_km"],
-            maneuver_ml["evaluation_summary"]["minimum_delta_v_baseline_mean_regret_km"],
+        self.assertEqual(maneuver_ml["score_units"], "log10 ratio; positive predicts reduction")
+        self.assertEqual(maneuver_ml["evaluation_summary"]["held_out_scenario_count"], 9)
+        self.assertLess(
+            maneuver_ml["evaluation_summary"]["model_mean_regret_log10_pc_reduction"],
+            maneuver_ml["evaluation_summary"]["baseline_mean_regret_log10_pc_reduction"],
         )
-        scored_candidates = [item for item in response.json()["data"]["candidates"] if item.get("maneuver_ml_predicted_miss_distance_km") is not None]
+        scored_candidates = [item for item in response.json()["data"]["candidates"] if item.get("maneuver_ml_predicted_log10_pc_reduction") is not None]
         self.assertTrue(scored_candidates)
         self.assertTrue(all(item.get("maneuver_ml_rank") is None for item in response.json()["data"]["candidates"]))
         self.assertEqual(response.json()["data"]["baseline_reference_comparison"]["status"], "discrepancy")
@@ -914,9 +948,9 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertIn(b"offset from original Stage 2A TCA", assessment_pdf.content)
         self.assertIn(b"0.8154338340375001 km", assessment_pdf.content)
         self.assertIn(b"change vs zero-burn two-body baseline", assessment_pdf.content)
-        self.assertIn(b"Maneuver ML status: research_only", assessment_pdf.content)
-        self.assertIn(b"12 scenarios / 72 candidates", assessment_pdf.content)
-        self.assertIn(b"ORION simulated two-body maneuver miss-distance ranker v1.0.0", assessment_pdf.content)
+        self.assertIn(b"Maneuver ML status: fallback_physics_ranking", assessment_pdf.content)
+        self.assertIn(b"9 scenarios / 51 candidates", assessment_pdf.content)
+        self.assertIn(b"ORION physics-supervised maneuver research-Pc reduction ranker v1.0.0", assessment_pdf.content)
         self.assertIn(b"Maneuver ML provenance:", assessment_pdf.content)
         self.assertIn(f"Maneuver event ID: {event.id}".encode(), assessment_pdf.content)
         self.assertIn(f"Maneuver screening job ID: {job_id}".encode(), assessment_pdf.content)
