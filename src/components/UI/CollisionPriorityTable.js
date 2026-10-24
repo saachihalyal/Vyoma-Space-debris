@@ -52,6 +52,9 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
   const sourcePc = matchedSourcePc(event);
   const preferred = primaryPc(event, fosterAvailable, sourcePc, research);
   const ai = event.ai_risk_assessment;
+  const collisionAi = event.collision_ai_assessment;
+  const pcSurrogate = collisionAi?.pc_surrogate;
+  const riskSurrogate = collisionAi?.risk_classifier;
   const valid = physics.status === "valid";
   const queueScore = Number.isFinite(ai?.score) ? `${(ai.score * 100).toFixed(1)} / 100` : "Unavailable";
   const category = ai?.category || "Unclassified";
@@ -88,6 +91,19 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
       React.createElement("strong", null, `AI queue ${queueScore} · ${category}`),
       React.createElement("span", null, `${ai?.model_name || "No AI prioritization assessment"}${ai?.model_version ? ` v${ai.model_version}` : ""}; ${ai?.prediction_method || "method unavailable"}`),
       React.createElement("small", null, ai ? `${ai.explanation || "No explanation supplied."} Deterministic prioritization index; not a probability or trained live collision predictor.` : "A score is withheld because valid event geometry and relative speed are unavailable.")),
+    React.createElement("details", { className: "conjunction-collision-models" },
+      React.createElement("summary", null, `Physics-supervised collision models · ${collisionAi?.status || "unavailable"}`),
+      React.createElement("p", null, `Pc surrogate: ${pcSurrogate?.status === "available"
+        ? `${pcSurrogate.ai_predicted_log10_pc?.toFixed(4)} log10(Pc) · ${pcSurrogate.model_name || "model"} v${pcSurrogate.model_version || "unknown"}`
+        : pcSurrogate?.status === "fallback"
+          ? `AI unavailable; deterministic research reference ${pcSurrogate.deterministic_reference_log10_pc?.toFixed(4)} log10(Pc) (${pcSurrogate.fallback_method}).`
+          : `Unavailable (${pcSurrogate?.reason_code || "not assessed"}).`}`),
+      React.createElement("p", null, `Risk classifier: ${riskSurrogate?.status === "available"
+        ? `${riskSurrogate.ai_risk_class} · ${riskSurrogate.model_name || "model"} v${riskSurrogate.model_version || "unknown"}`
+        : riskSurrogate?.status === "fallback"
+          ? `AI unavailable; deterministic physics class ${riskSurrogate.deterministic_reference_risk_class} (${riskSurrogate.fallback_method}).`
+          : `Unavailable (${riskSurrogate?.reason_code || "not assessed"}).`}`),
+      React.createElement("small", null, "Model outputs support triage only. The physics research Pc remains authoritative; neither model is validated against observed collisions.")),
     React.createElement("p", { className: "conjunction-ranking-basis" }, React.createElement("b", null, "Ranking basis: "), ai?.ranking_explanation || priority.basis),
     React.createElement("div", { className: "conjunction-card-actions" },
       React.createElement("button", { type: "button", className: "secondary-action", onClick: () => onSelect?.(event), "aria-label": `Open details for ${eventPair(event)}` }, "Details"),

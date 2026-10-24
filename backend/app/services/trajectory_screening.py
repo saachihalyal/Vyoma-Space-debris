@@ -17,6 +17,7 @@ from sgp4.api import Satrec, SatrecArray, SGP4_ERRORS, WGS72, jday
 from app.ai.comparison import compare_ml_and_physics
 from app.ai.inference import predict_from_physics
 from app.ai.anomaly import predict_orbital_anomaly
+from app.ai.collision_models import assess_collision_ai
 from app.models import (
     ComparisonResult,
     ConjunctionAssessmentEvent,
@@ -998,6 +999,14 @@ def _valid_assessment(
         physics, collision_probability, review_priority,
         primary=_object_summary(primary), secondary=_object_summary(secondary),
     )
+    collision_ai_assessment = assess_collision_ai(ConjunctionAssessmentEvent(
+        id=event_id, primary=_object_summary(primary), secondary=_object_summary(secondary),
+        obj_a=_object_summary(primary), obj_b=_object_summary(secondary),
+        pair_type=_pair_type(primary, secondary), provenance=provenance,
+        physics_result=physics, collision_probability=collision_probability,
+        automatic_research_pc_assessment=automatic_research_pc_assessment,
+        review_priority=review_priority,
+    ))
     ai_risk_assessment = assess_live_geometry(physics)
     return ConjunctionAssessmentEvent(
         id=event_id,
@@ -1010,6 +1019,7 @@ def _valid_assessment(
         physics_result=physics,
         collision_probability=collision_probability,
         automatic_research_pc_assessment=automatic_research_pc_assessment,
+        collision_ai_assessment=collision_ai_assessment,
         ml_result=ml_result,
         anomaly_result=anomaly_result,
         comparison_result=comparison_result,

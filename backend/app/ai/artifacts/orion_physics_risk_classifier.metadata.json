@@ -1,0 +1,539 @@
+{
+  "artifact_filename": "orion_physics_risk_classifier.joblib",
+  "artifact_sha256": "530b318cf2dd59c13930ec9dfea277d7e80619561bc88641414943a8d33a40a1",
+  "baseline": "training-split majority class",
+  "class_balance_all_scenarios": {
+    "High": 656,
+    "Low": 127,
+    "Medium": 21
+  },
+  "class_order": [
+    "Low",
+    "Medium",
+    "High"
+  ],
+  "dataset_provenance": {
+    "covariance_scales": [
+      0.5,
+      1.0,
+      2.0,
+      3.0
+    ],
+    "dataset_version": "orion-collision-scenarios-v1",
+    "feature_names": [
+      "miss_distance_km",
+      "relative_speed_km_s",
+      "primary_tle_age_days",
+      "secondary_tle_age_days",
+      "primary_altitude_km",
+      "secondary_altitude_km",
+      "primary_inclination_deg",
+      "secondary_inclination_deg",
+      "hbr_km",
+      "covariance_scale",
+      "hbr_scale",
+      "primary_category_active",
+      "primary_category_debris",
+      "primary_category_payload",
+      "primary_category_rocket_body",
+      "primary_category_unknown",
+      "secondary_category_active",
+      "secondary_category_debris",
+      "secondary_category_payload",
+      "secondary_category_rocket_body",
+      "secondary_category_unknown"
+    ],
+    "feature_schema_version": "orion-collision-features-v1",
+    "hbr_scales": [
+      0.75,
+      1.0,
+      1.5
+    ],
+    "independent_parent_events_with_scenarios": 67,
+    "physics_calculator_version": "1.1.0",
+    "rejected_scenarios_by_reason": {
+      "FOSTER_PRIOR_CALCULATION_PC_METHOD_NOT_APPLICABLE": 612
+    },
+    "risk_policy_version": "orion-physics-pc-risk-v1",
+    "scenario_count": 804,
+    "snapshot_created_at": "2026-10-19T09:43:03.120187+00:00",
+    "snapshot_job_id": "08c33d64c8d34ddfb6838a565d3c0db3",
+    "snapshot_path": "screening-job-08c33d64c8d34ddfb6838a565d3c0db3.json",
+    "snapshot_sha256": "5c54434b021dc9370e574ac55f9525d130758830f9ae444fe8e47229540fb026",
+    "source_policy": "valid live, non-synthetic CelesTrak GP/TLE screening events only",
+    "valid_parent_events_in_snapshot": 118
+  },
+  "dataset_version": "orion-collision-scenarios-v1",
+  "feature_names": [
+    "miss_distance_km",
+    "relative_speed_km_s",
+    "primary_tle_age_days",
+    "secondary_tle_age_days",
+    "primary_altitude_km",
+    "secondary_altitude_km",
+    "primary_inclination_deg",
+    "secondary_inclination_deg",
+    "hbr_km",
+    "covariance_scale",
+    "hbr_scale",
+    "primary_category_active",
+    "primary_category_debris",
+    "primary_category_payload",
+    "primary_category_rocket_body",
+    "primary_category_unknown",
+    "secondary_category_active",
+    "secondary_category_debris",
+    "secondary_category_payload",
+    "secondary_category_rocket_body",
+    "secondary_category_unknown"
+  ],
+  "feature_schema_version": "orion-collision-features-v1",
+  "features": [
+    {
+      "name": "miss_distance_km",
+      "units": "km"
+    },
+    {
+      "name": "relative_speed_km_s",
+      "units": "km/s"
+    },
+    {
+      "name": "primary_tle_age_days",
+      "units": "day at TCA"
+    },
+    {
+      "name": "secondary_tle_age_days",
+      "units": "day at TCA"
+    },
+    {
+      "name": "primary_altitude_km",
+      "units": "km"
+    },
+    {
+      "name": "secondary_altitude_km",
+      "units": "km"
+    },
+    {
+      "name": "primary_inclination_deg",
+      "units": "degree"
+    },
+    {
+      "name": "secondary_inclination_deg",
+      "units": "degree"
+    },
+    {
+      "name": "hbr_km",
+      "units": "km, assumed research HBR"
+    },
+    {
+      "name": "covariance_scale",
+      "units": "dimensionless assumed scenario multiplier"
+    },
+    {
+      "name": "hbr_scale",
+      "units": "dimensionless assumed scenario multiplier"
+    },
+    {
+      "name": "primary_category_active",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "primary_category_debris",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "primary_category_payload",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "primary_category_rocket_body",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "primary_category_unknown",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "secondary_category_active",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "secondary_category_debris",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "secondary_category_payload",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "secondary_category_rocket_body",
+      "units": "one-hot object category"
+    },
+    {
+      "name": "secondary_category_unknown",
+      "units": "one-hot object category"
+    }
+  ],
+  "grouping_strategy": "parent_event_id; all covariance/HBR variants from an event remain in one partition",
+  "independent_parent_event_counts": {
+    "test": 11,
+    "train": 46,
+    "validation": 10
+  },
+  "limitations": [
+    "Targets are generated by ORION's own research Pc and risk policy, not observed collision outcomes.",
+    "The model is a surrogate for the declared assumptions; it is not an independently validated collision predictor.",
+    "A saved screening snapshot provides limited independent parent events; variants do not increase the independent-event count."
+  ],
+  "metrics": {
+    "test": {
+      "accuracy": 0.9545454545454546,
+      "class_balance": {
+        "High": 122,
+        "Low": 4,
+        "Medium": 6
+      },
+      "class_order": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "confusion_matrix_rows_true_columns_predicted": [
+        [
+          2,
+          2,
+          0
+        ],
+        [
+          0,
+          6,
+          0
+        ],
+        [
+          1,
+          3,
+          118
+        ]
+      ],
+      "macro_f1": 0.7535480859010271,
+      "majority_baseline": {
+        "accuracy": 0.9242424242424242,
+        "class_balance": {
+          "High": 122,
+          "Low": 4,
+          "Medium": 6
+        },
+        "class_order": [
+          "Low",
+          "Medium",
+          "High"
+        ],
+        "confusion_matrix_rows_true_columns_predicted": [
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            0,
+            6
+          ],
+          [
+            0,
+            0,
+            122
+          ]
+        ],
+        "macro_f1": 0.3202099737532808,
+        "parent_event_count": 11,
+        "per_class": {
+          "High": {
+            "f1": 0.9606299212598425,
+            "precision": 0.9242424242424242,
+            "recall": 1.0,
+            "support": 122
+          },
+          "Low": {
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "support": 4
+          },
+          "Medium": {
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "support": 6
+          }
+        },
+        "sample_count": 132,
+        "split": "test",
+        "strategy": "training-split majority class",
+        "training_majority_class": "High",
+        "weighted_f1": 0.8878549272250059
+      },
+      "parent_event_count": 11,
+      "per_class": {
+        "High": {
+          "f1": 0.9833333333333333,
+          "precision": 1.0,
+          "recall": 0.9672131147540983,
+          "support": 122
+        },
+        "Low": {
+          "f1": 0.5714285714285714,
+          "precision": 0.6666666666666666,
+          "recall": 0.5,
+          "support": 4
+        },
+        "Medium": {
+          "f1": 0.7058823529411765,
+          "precision": 0.5454545454545454,
+          "recall": 1.0,
+          "support": 6
+        }
+      },
+      "sample_count": 132,
+      "split": "test",
+      "weighted_f1": 0.9582399626517273
+    },
+    "validation": {
+      "accuracy": 0.975,
+      "class_balance": {
+        "High": 85,
+        "Low": 31,
+        "Medium": 4
+      },
+      "class_order": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "confusion_matrix_rows_true_columns_predicted": [
+        [
+          28,
+          3,
+          0
+        ],
+        [
+          0,
+          4,
+          0
+        ],
+        [
+          0,
+          0,
+          85
+        ]
+      ],
+      "macro_f1": 0.8921417565485362,
+      "majority_baseline": {
+        "accuracy": 0.7083333333333334,
+        "class_balance": {
+          "High": 85,
+          "Low": 31,
+          "Medium": 4
+        },
+        "class_order": [
+          "Low",
+          "Medium",
+          "High"
+        ],
+        "confusion_matrix_rows_true_columns_predicted": [
+          [
+            0,
+            0,
+            31
+          ],
+          [
+            0,
+            0,
+            4
+          ],
+          [
+            0,
+            0,
+            85
+          ]
+        ],
+        "macro_f1": 0.2764227642276423,
+        "parent_event_count": 10,
+        "per_class": {
+          "High": {
+            "f1": 0.8292682926829268,
+            "precision": 0.7083333333333334,
+            "recall": 1.0,
+            "support": 85
+          },
+          "Low": {
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "support": 31
+          },
+          "Medium": {
+            "f1": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "support": 4
+          }
+        },
+        "sample_count": 120,
+        "split": "validation",
+        "strategy": "training-split majority class",
+        "training_majority_class": "High",
+        "weighted_f1": 0.5873983739837398
+      },
+      "parent_event_count": 10,
+      "per_class": {
+        "High": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 85
+        },
+        "Low": {
+          "f1": 0.9491525423728814,
+          "precision": 1.0,
+          "recall": 0.9032258064516129,
+          "support": 31
+        },
+        "Medium": {
+          "f1": 0.7272727272727273,
+          "precision": 0.5714285714285714,
+          "recall": 1.0,
+          "support": 4
+        }
+      },
+      "sample_count": 120,
+      "split": "validation",
+      "weighted_f1": 0.9777734976887519
+    }
+  },
+  "model_name": "ORION Physics Pc Risk Classifier",
+  "model_task": "three-class classification",
+  "model_version": "1.0.0",
+  "preprocessing": "scikit-learn Pipeline with median SimpleImputer fitted on training partition only; no live inference imputation when a required feature is missing",
+  "random_seed": 20261024,
+  "risk_policy_version": "orion-physics-pc-risk-v1",
+  "scenario_count_by_split": {
+    "test": 132,
+    "train": 552,
+    "validation": 120
+  },
+  "scenario_dataset_filename": "orion-collision-scenarios-v1.jsonl",
+  "scenario_dataset_sha256": "f0b9ee1b77694e7b41aad69461e1542830310f90aca1f68c2224e32349d25d65",
+  "scenario_split": {
+    "grouping_key": "parent_event_id",
+    "parent_event_ids": {
+      "test": [
+        "CA-178080E20CB468BE5F71",
+        "CA-1A39743744101E3C9135",
+        "CA-26E8CF416C838EF4FCA5",
+        "CA-36357BCA7311CF682612",
+        "CA-64F13DB4EB3190ED47B4",
+        "CA-9EDB065E5C4C89F5D740",
+        "CA-AB7D25AA510F78BB1188",
+        "CA-B0C382C94D39F79B3DB2",
+        "CA-D645FA20EA632C489BC3",
+        "CA-D6B05648A899E2CAD35A",
+        "CA-DC6BDCD68C0475815CF2"
+      ],
+      "train": [
+        "CA-0980980B61FE5861707F",
+        "CA-10DAF30CDBFE086243E3",
+        "CA-1AE96C32BAC2C1A0F3EE",
+        "CA-1E4D711DDC556F00CDDD",
+        "CA-2162E0F04D232C37A171",
+        "CA-248685DE60A49ACA53E3",
+        "CA-2CF4BB5B3FFAD7F4167C",
+        "CA-3220D1F86C6B173EDA0B",
+        "CA-373F7443DF2038962E6C",
+        "CA-3CCC73C3612481400D4F",
+        "CA-457BC56914B3BCABC913",
+        "CA-46385507DA3F47D72F85",
+        "CA-4BE12B6BA2AFC2FE60D9",
+        "CA-5521C3A56F5C4ED1531B",
+        "CA-60A635EE57F04393DD3C",
+        "CA-62E9FF32270D0102E0A5",
+        "CA-6768F0762B5B4098E4C8",
+        "CA-7054F787382A42BA42F5",
+        "CA-7589D5C4DAA1C528FEFA",
+        "CA-766C1F7AF4841A90E5C4",
+        "CA-77048CC96EB4BED36B14",
+        "CA-7D0F8DB3EA8A80C82EF0",
+        "CA-81B9091387C888961569",
+        "CA-8497F2CE1B0DD9B435B3",
+        "CA-9FAE43134F8181A1B3D0",
+        "CA-A3380BA915D228925A87",
+        "CA-A50957FC6ECDC1FE71BB",
+        "CA-AA2193736C4BB633E71C",
+        "CA-ACA21FB160C12ED55E63",
+        "CA-B20C00FC2746A07301FE",
+        "CA-C68358CE397D2E897683",
+        "CA-CBB751C4BC3D8A247AA5",
+        "CA-CDBB32CB84F0A6744B8C",
+        "CA-CF63CF27E37A91F83CFF",
+        "CA-D668E7535685DD75BB0D",
+        "CA-D9461AB10F155E38DC0A",
+        "CA-DBB14125E2A34BE98D66",
+        "CA-DBB6EAC57769FEB8B78F",
+        "CA-E3824B4E4643A9DEC6EF",
+        "CA-E400F4603917D58F751D",
+        "CA-E4CC7C5F06490D2A4F2B",
+        "CA-E63EA545A57FF1B71282",
+        "CA-E71FC0E546C75A9780DA",
+        "CA-ED02B352C23EBC7760CA",
+        "CA-F0121C2FA7DE98A43938",
+        "CA-F276797EEB794B5D063A"
+      ],
+      "validation": [
+        "CA-1E3244F7D54B346E33CB",
+        "CA-638BE240823DD59AA408",
+        "CA-734B6FACBDC4710F5F34",
+        "CA-918C45F57C0536392781",
+        "CA-A0E6EF9AB6F13E048EF0",
+        "CA-D8B07D700032269D8C54",
+        "CA-DB31DE00E8BEADD8E55F",
+        "CA-DF1CB7D678E5E58078B1",
+        "CA-F1B51FA8BC54524750BC",
+        "CA-F79CE22D34785115A7DD"
+      ]
+    },
+    "scenario_counts": {
+      "test": {
+        "parent_event_count": 11,
+        "scenario_count": 132
+      },
+      "train": {
+        "parent_event_count": 46,
+        "scenario_count": 552
+      },
+      "validation": {
+        "parent_event_count": 10,
+        "scenario_count": 120
+      }
+    },
+    "seed": 20261024,
+    "split_strategy": "fixed-seed shuffled unique parent IDs; approximately 70/15/15",
+    "version": "orion-collision-scenarios-v1"
+  },
+  "split_counts": {
+    "test": {
+      "parent_event_count": 11,
+      "scenario_count": 132
+    },
+    "train": {
+      "parent_event_count": 46,
+      "scenario_count": 552
+    },
+    "validation": {
+      "parent_event_count": 10,
+      "scenario_count": 120
+    }
+  },
+  "split_manifest_filename": "orion-collision-scenarios-v1-splits.json",
+  "split_manifest_sha256": "84cfc9f24c9d41ad877a387ff511636856ce3496c28de582b0aa93db4244a8ea",
+  "target_definition": "Low/Medium/High labels from the same generated research_pc under orion-physics-pc-risk-v1"
+}

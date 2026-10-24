@@ -25,7 +25,7 @@ from app.services.probability_classification import classify_orion_physics_pc
 
 
 METHOD_NAME = "ORION ESA population-prior Foster 2D research estimate"
-METHOD_VERSION = "1.0.0"
+METHOD_VERSION = "1.1.0"
 PRIOR_PATH = Path(__file__).resolve().parents[1] / "ai" / "artifacts" / "esa_research_uncertainty_prior_v1.json"
 DEFAULT_CONFIG: dict[str, Any] = {
     "age_inflation_per_day": 0.05,
@@ -49,6 +49,9 @@ def assess_automatic_research_pc(
     review_priority: ReviewPriority,
     primary: ObjectSummary | None = None,
     secondary: ObjectSummary | None = None,
+    *,
+    covariance_scale: float = 1.0,
+    hbr_scale: float = 1.0,
 ) -> AutomaticResearchPcAssessment:
     shared = {
         "method_name": METHOD_NAME,
@@ -84,6 +87,11 @@ def assess_automatic_research_pc(
 
     if primary is None or secondary is None:
         return _unavailable(shared, "OBJECT_PROVENANCE_UNAVAILABLE")
+    if (isinstance(covariance_scale, bool) or not isinstance(covariance_scale, (int, float))
+            or not math.isfinite(covariance_scale) or covariance_scale <= 0
+            or isinstance(hbr_scale, bool) or not isinstance(hbr_scale, (int, float))
+            or not math.isfinite(hbr_scale) or hbr_scale <= 0):
+        return _unavailable(shared, "INVALID_RESEARCH_SCENARIO_SCALE")
     try:
         prior = json.loads(PRIOR_PATH.read_text(encoding="utf-8"))
         config = _config()
@@ -105,10 +113,10 @@ def assess_automatic_research_pc(
         values: list[tuple[float | None, float, float]] = []
         for quantile in ("p10", "p50", "p90"):
             covariances = [
-                _covariance(obj.id, tca, state, spec[0], quantile, spec[2], spec[4])
+                _covariance(obj.id, tca, state, spec[0], quantile, spec[2] * covariance_scale, spec[4])
                 for obj, state, spec in zip((primary, secondary), states, specs)
             ]
-            hbr_km = sum(spec[3][quantile] for spec in specs) / 1000.0
+            hbr_km = (sum(spec[3][quantile] for spec in specs) / 1000.0) * hbr_scale
             result = _calculate(physics, primary.id, secondary.id, tca, states, covariances, hbr_km)
             if result.status == "available" and result.pc is not None:
                 log_pc = math.log(float(result.pc))
@@ -136,6 +144,7 @@ def assess_automatic_research_pc(
             "ESA span inputs are treated as diameters and converted to radius; this is an assumed size mapping, not authenticated object dimensions.",
             "Object covariances are assumed independent for the Foster relative covariance.",
             "p10/p50/p90 joint scenarios vary all component sigmas and span together; the resulting sensitivity endpoints are not confidence bounds.",
+            f"Scenario covariance multiplier: {covariance_scale:g}; scenario HBR multiplier: {hbr_scale:g}. Both are explicit research-scenario controls, not measured inputs.",
             "When a result is below binary64's representable range, the same Foster disk integral is evaluated in log space and reported in scientific notation rather than substituted with zero.",
         ]
         return AutomaticResearchPcAssessment(
@@ -162,6 +171,7 @@ def assess_automatic_research_pc(
                 "prior_model_version": prior.get("model_version"), "role_by_object": {primary.id: roles[0], secondary.id: roles[1]},
                 "tca_utc": tca.isoformat(), "covariance_frame": "TEME", "covariance_assignment_epoch": "TCA",
                 "covariance_independence_assumed": True, "configuration": config,
+                "scenario_covariance_scale": float(covariance_scale), "scenario_hbr_scale": float(hbr_scale),
                 "object_metadata": {obj.id: {"band": obj.band, "category": obj.category, "tle_age_days": age}
                                     for obj, age in zip((primary, secondary), age_days)},
                 "scenario_quantiles": ["p10", "p50", "p90"],

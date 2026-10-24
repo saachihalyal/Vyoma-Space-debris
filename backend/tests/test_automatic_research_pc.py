@@ -57,7 +57,7 @@ class AutomaticResearchPcQualityTests(unittest.TestCase):
         self.assertEqual(first.id, second.id)
         self.assertEqual(first.physics_result.tca.value, second.physics_result.tca.value)
         self.assertEqual(first.physics_result.miss_distance.value, second.physics_result.miss_distance.value)
-        self.assertEqual(first.automatic_research_pc_assessment.method_version, "1.0.0")
+        self.assertEqual(first.automatic_research_pc_assessment.method_version, "1.1.0")
         self.assertEqual(first.automatic_research_pc_assessment.model_dump(), second.automatic_research_pc_assessment.model_dump())
         self.assertEqual(first.physics_result.status, "valid")
         self.assertEqual(first.primary.provenance.source_type, "live")

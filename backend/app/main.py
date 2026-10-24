@@ -24,6 +24,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.ai.inference import model_status
 from app.ai.anomaly import model_status as orbital_anomaly_model_status
+from app.ai.collision_models import assess_collision_ai, collision_model_status
 from app.models import (
     CatalogSnapshot,
     CdmImportRequest,
@@ -370,6 +371,7 @@ async def health() -> dict:
         "ai_reason": ml_status["reason_code"],
         "ml_model": ml_status,
         "orbital_anomaly_model": orbital_anomaly_model_status(),
+        "collision_models": collision_model_status(),
         "database_status": "in_memory_tle_cache; no persistent database configured",
         "gpu_status": "not_used",
         "dataset_loaded": bool(snapshot.objects),
@@ -391,6 +393,12 @@ async def health() -> dict:
 @app.get("/api/catalog", response_model=CatalogSnapshot)
 async def catalog(limit: int = Query(850, ge=25, le=2_000), forecast_hours: int = Query(0, ge=0, le=336)) -> CatalogSnapshot:
     return await build_snapshot(limit=limit, forecast_hours=forecast_hours)
+
+
+@app.get("/api/collision-models")
+async def get_collision_model_status() -> dict:
+    """Expose validated offline artifact versions, metrics, schema, and provenance."""
+    return collision_model_status()
 
 
 @app.get("/api/forecast")
@@ -436,6 +444,7 @@ async def system_health() -> dict:
             "ai_reason": ml_status["reason_code"],
             "ml_model": ml_status,
             "orbital_anomaly_model": orbital_anomaly_model_status(),
+            "collision_models": collision_model_status(),
             "gpu_status": "not_used",
             "database_status": "no_persistent_database_configured",
             "version": app.version,
@@ -881,6 +890,9 @@ def _backfill_archived_research_pc(result: dict) -> None:
             )
             record["automatic_research_pc_assessment"] = assessment.model_dump(mode="json")
             event = event.model_copy(update={"automatic_research_pc_assessment": assessment})
+        collision_ai = assess_collision_ai(event)
+        event = event.model_copy(update={"collision_ai_assessment": collision_ai})
+        record["collision_ai_assessment"] = collision_ai.model_dump(mode="json")
         if event.ai_risk_assessment is None:
             ai_assessment = assess_live_geometry(event.physics_result)
             if ai_assessment is not None:

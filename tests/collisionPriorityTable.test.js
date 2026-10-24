@@ -173,3 +173,20 @@ test("malformed AI data is shown as unavailable, not low", () => {
   assert.match(markup, /AI queue Unavailable/);
   assert.match(markup, /category Unclassified/);
 });
+
+test("collision surrogates remain distinct from deterministic fallback values", () => {
+  const markup = render([{
+    id: "ai-fallback", result_kind: "physics_assessment",
+    primary: { id: "A" }, secondary: { id: "B" }, physics_result: { status: "valid" },
+    automatic_research_pc_assessment: { status: "prior_based_research_estimate", estimated_pc_scientific: "2.0e-8" },
+    collision_ai_assessment: {
+      status: "fallback",
+      pc_surrogate: { status: "fallback", deterministic_reference_log10_pc: -7.69897, fallback_method: "physics_research_pc_reference" },
+      risk_classifier: { status: "fallback", deterministic_reference_risk_class: "Low", fallback_method: "physics_research_pc_classification" },
+    },
+  }]);
+  assert.match(markup, /Physics-supervised collision models.*fallback/);
+  assert.match(markup, /AI unavailable; deterministic research reference -7\.6990 log10\(Pc\)/);
+  assert.match(markup, /AI unavailable; deterministic physics class Low/);
+  assert.doesNotMatch(markup, /AI predicted log10/);
+});
