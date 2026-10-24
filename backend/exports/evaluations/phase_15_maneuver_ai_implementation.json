@@ -1,0 +1,282 @@
+{
+  "phase": "15",
+  "title": "Maneuver Assessment AI implementation and integration",
+  "assessment_date": "2026-10-17",
+  "repository_path": "C:/Users/NARSINH K/Documents/Codex/2026-10-04/you-are-modifying-an-existing-research/outputs/space-debris-ssa-platform",
+  "implementation_status": "IMPLEMENTED_WITH_MAJOR_RESEARCH_LIMITATIONS",
+  "completion_criteria": {
+    "defensible_ml_objective_implemented": true,
+    "documented_held_out_evaluation": true,
+    "hash_version_schema_checked_artifact_loaded_by_backend": true,
+    "frontend_displays_backend_model_output": true,
+    "existing_physics_simulator_independently_evaluates_candidates": true,
+    "identity_missing_input_and_constraint_regressions_added_or_preserved": true,
+    "limitations_disclosed": true,
+    "actual_browser_verification": false,
+    "scientific_usefulness_over_baseline_demonstrated": false
+  },
+  "files_inspected": [
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json",
+    "backend/exports/evaluations/phase_12_8_scientific_provenance_integration.json",
+    "backend/exports/evaluations/phase_12_9_browser_workflow_validation.json",
+    "backend/exports/evaluations/phase_13_integration_readiness.json",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_data_foundation.py",
+    "backend/tests/test_report_status.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/main.py",
+    "backend/app/models.py",
+    "backend/app/services/reports.py",
+    "backend/app/services/orbit.py",
+    "backend/app/ai/training.py",
+    "backend/app/ai/inference.py",
+    "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "backend/ml_data/train_data.zip",
+    "backend/ml_data/trajectory-assessments-8fa7230ce99e4182afc2c1a8506130bf.csv",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js",
+    "tests/maneuverSelection.test.js",
+    "tests/maneuverBaselineComparison.test.js",
+    "package.json",
+    "backend/requirements.txt",
+    "backend/requirements-optional.txt"
+  ],
+  "data_suitability": {
+    "historical_maneuver_dataset_found": false,
+    "local_dataset_findings": "The local ESA challenge archive contains historical risk labels/features but no candidate burn actions or candidate outcomes. The trajectory-assessment export contains screening/event data, not validated executed maneuver outcome labels. No real maneuver-success dataset or validated before/after Pc observations were found in the inspected material.",
+    "synthetic_training_data_used": true,
+    "synthetic_dataset_path": "backend/ml_data/maneuver_rank_synthetic_v1.csv",
+    "synthetic_dataset_sha256": "3aff88ec9abb47448f50948bc501d437028361143104bb3c7fd6ff6df3d0366d",
+    "independent_scenarios": 60,
+    "candidate_rows_after_boundary_exclusion": 354,
+    "simulator_boundary_candidate_rows_excluded": 7,
+    "real_world_outcomes_used": false,
+    "dataset_provenance": "Generated offline by backend/app/ai/maneuver_training.py from deterministic synthetic Cartesian states. Every label is produced by the existing app.services.conjunction.optimize_maneuver routine. All labels are simulated, not observed maneuver outcomes."
+  },
+  "ml_objective": {
+    "task": "Regression surrogate used to rank the existing physically generated nonzero candidate burns.",
+    "target": "Existing simulator's candidate predicted_miss_distance_km.",
+    "target_units": "km",
+    "ranking_rule": "Eligible candidates are ordered by ascending model-predicted bounded two-body simulated closest-approach miss distance. The model does not generate new candidates or claim superiority over the existing optimizer.",
+    "not_the_task": "This is not a collision-probability model, real maneuver outcome model, safety model, or optimizer discovery task.",
+    "label_generator": "Existing bounded Earth two-body point-mass RK4 simulator with 5 s maximum sample spacing and local closest-approach refinement; simulator convergence checks remain active.",
+    "scenario_generation_assumptions": [
+      "Synthetic primary TCA radius 6800–7400 km; speed within 0.2% of the configured two-body circular speed.",
+      "Synthetic relative TCA separation 0.1–20 km and orthogonal relative speed 0.001–0.02 km/s.",
+      "Burn leads cycle through 60, 300, 900, and 1800 seconds.",
+      "Each scenario cycles one magnitude from 0.005, 0.02, and 0.05 m/s; the existing simulator evaluates six RTN directions and a zero-burn baseline.",
+      "Zero-burn baseline rows are not model training candidates. Search-boundary minima are excluded from training and evaluation candidate rows."
+    ],
+    "preprocessing": "No missing-value imputation or scaling. Inputs must be finite and pass event identity, state-vector, frame, unit, and UTC epoch checks; categorical RTN directions are one-hot encoded.",
+    "feature_schema_version": "1.0.0",
+    "feature_schema": [
+      {
+        "name": "primary TCA position XYZ",
+        "units": "km",
+        "frame_epoch": "TEME at TCA"
+      },
+      {
+        "name": "primary TCA velocity XYZ",
+        "units": "km/s",
+        "frame_epoch": "TEME at TCA"
+      },
+      {
+        "name": "secondary-minus-primary TCA position XYZ",
+        "units": "km",
+        "frame_epoch": "TEME at TCA"
+      },
+      {
+        "name": "secondary-minus-primary TCA velocity XYZ",
+        "units": "km/s",
+        "frame_epoch": "TEME at TCA"
+      },
+      {
+        "name": "candidate delta-v magnitude",
+        "units": "m/s",
+        "frame_epoch": "impulse magnitude; direction separate"
+      },
+      {
+        "name": "burn lead time",
+        "units": "s",
+        "frame_epoch": "TCA minus burn epoch"
+      },
+      {
+        "name": "RTN direction radial +/−, along-track +/−, cross-track +/−",
+        "units": "unitless one-hot",
+        "frame_epoch": "direction label from existing candidate generator at burn epoch"
+      }
+    ],
+    "model_artifact": {
+      "path": "backend/app/ai/artifacts/maneuver_miss_ranker.joblib",
+      "metadata_path": "backend/app/ai/artifacts/maneuver_miss_ranker.metadata.json",
+      "model_name": "ORION simulated two-body maneuver miss-distance ranker",
+      "version": "1.0.0",
+      "artifact_sha256": "bc633a096c1da0613c3c7d5f56d529294f6e70fa5c6e4993ebda7b6a967a8327",
+      "estimator": "RandomForestRegressor(n_estimators=160, max_depth=12, min_samples_leaf=2, max_features=1.0, random_state=1501, n_jobs=1)",
+      "runtime_version": "scikit-learn 1.9.1"
+    }
+  },
+  "training_and_evaluation": {
+    "split": "Deterministic 60/20/20 split by independent scenario_id using seed 1501. Every candidate from one scenario remains in one partition. The estimator configuration was fixed; validation data were not used to tune against test results.",
+    "scenario_counts": {
+      "train": 36,
+      "validation": 12,
+      "test": 12
+    },
+    "candidate_row_counts": {
+      "train": 216,
+      "validation": 66,
+      "test": 72
+    },
+    "test_denominators": {
+      "regression_metrics": "72 eligible nonzero candidate rows from 12 held-out scenarios.",
+      "ranking_metrics": "12 independent held-out scenarios, ranking the eligible candidate rows within each scenario.",
+      "baseline": "One minimum-delta-v candidate selected in each of the same 12 scenarios; deterministic candidate order breaks ties."
+    },
+    "test_metrics": {
+      "candidate_count": 72,
+      "scenario_count": 12,
+      "mae_km": 4.898242495557611,
+      "rmse_km": 7.184787110495454,
+      "r2": -0.27408139999213965,
+      "candidate_level_spearman": 0.38885679953174307,
+      "mean_within_scenario_spearman": -0.06862831582142699,
+      "top1_agreement_with_simulator_best": 0.25,
+      "mean_selected_simulator_miss_regret_vs_best_km": 0.05908566767496617,
+      "minimum_delta_v_baseline_mean_regret_vs_best_km": 0.036976011287772816,
+      "top1_agreement_count": "3 of 12 scenarios",
+      "mean_model_selected_simulator_miss_regret_vs_best_km": 0.05908566767496617
+    },
+    "baseline_comparison": {
+      "baseline": "minimum delta-v candidate; deterministic candidate order breaks ties",
+      "baseline_mean_simulator_miss_regret_vs_best_km": 0.036976011287772816,
+      "comparison": "The learned model had higher mean held-out regret than the minimum-delta-v baseline (0.0591 km vs 0.0370 km). It did not demonstrate useful ranking improvement on this test set.",
+      "interpretation": "Small synthetic evaluation only; not evidence about real maneuvers."
+    },
+    "training_elapsed_seconds": 45.425,
+    "held_out_test_used_for_tuning": false
+  },
+  "integration": {
+    "backend_inference_path": "backend/app/services/conjunction.py::optimize_maneuver calls app.ai.maneuver_ranker.score_candidates on the existing candidate set. The backend loads the persisted artifact, verifies SHA-256, scikit-learn runtime, model version, and feature schema, scores only nonzero candidate inputs, and attaches ranks only to candidates whose independent simulator result is a refined in-window minimum. Boundary candidates stay unranked.",
+    "api": "POST /api/conjunctions/{event_id}/maneuver resolves the requested screening_job_id and exact stored physical event before simulation. The response carries the screening job ID, event ID, nested model/version/score metadata, candidate scores, and source event/screening-job provenance.",
+    "frontend": "src/App.jsx ManeuverPage consumes the actual job-bound backend response, displays model/status/score meaning and limitation text, and renders each physical candidate's ML rank and predicted simulator miss-distance score. Unavailable scores render as unavailable, not zero.",
+    "reports": "backend/app/services/reports.py adds model identity, score meaning, event/job provenance, candidate ranks and predicted simulator miss distances to the job-bound maneuver PDF.",
+    "failure_behavior": "Missing or incompatible artifact, invalid event features, or inference errors return an explicit unavailable ML result. Physics candidate evaluation remains available independently if ML scoring fails.",
+    "physical_constraints": "Existing optimize_maneuver validation and candidate generation remain in place. The model does not alter impulses, propagation, closest-approach search, baseline comparison, Pc, or feasibility. Search-boundary candidates are not assigned model ranks.",
+    "identity": "Event identity comes from the authoritative stored screening job event; model provenance is tagged with that event ID and screening job ID. Existing frontend event/job selection-generation safeguards continue to apply to the complete response."
+  },
+  "tests_and_validation": {
+    "backend_command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_data_foundation tests.test_report_status (from backend)",
+    "backend_result": "64 tests passed. Includes saved artifact loading/version, real artifact-backed job-bound API inference, event/job provenance, malformed state/frame/units/epoch, missing model artifact, injected inference failure preserving physical results, boundary-candidate exclusion, zero-burn baseline, Pc unavailable, and PDF provenance regressions.",
+    "focused_frontend_command": "node --test tests/maneuverAiSummary.test.js tests/maneuverSelection.test.js tests/maneuverBaselineComparison.test.js (from repository root)",
+    "focused_frontend_result": "11 tests passed.",
+    "full_frontend_command": "npm test (from repository root)",
+    "full_frontend_result": "105 tests passed; 0 failed.",
+    "build_command": "npm run build (from repository root)",
+    "build_result": "Passed; Vite transformed 3,203 modules and built in 1m43s. Existing large-chunk advisory remains (1,756.66 kB minified main bundle).",
+    "artifact_dataset_validation_command": "PowerShell here-string piped to backend .venv\\Scripts\\python.exe - to verify artifact/dataset hashes, schema order, model load/version, scenario counts, boundary exclusions, and recorded held-out metrics.",
+    "artifact_dataset_validation_result": "Passed; artifact SHA-256, dataset SHA-256, loader status, v1.0.0, scenario/row counts, and metadata test metrics matched.",
+    "training_command": ".\\.venv\\Scripts\\python.exe -m app.ai.maneuver_training (from backend)",
+    "training_result": "Completed offline; generated 60 scenarios, 354 refined candidate labels after excluding 7 search-boundary candidates, trained v1.0.0 on 216 train rows, and evaluated 72 held-out rows from 12 independent scenarios in 45.425 seconds.",
+    "initial_training_attempt": "An initial bounded training attempt stopped at synthetic scenario 19 when a randomly selected sub-circular state propagated below the Earth surface. The generator was corrected to use near-circular primary speeds; no propagation code was changed. The completed training run then passed.",
+    "browser_verification": "Not performed. Component/static-markup tests verify labels and values, API tests exercise the actual backend artifact, and the production bundle builds; no browser session or live service was started."
+  },
+  "files_changed": [
+    "backend/app/ai/maneuver_ranker.py",
+    "backend/app/ai/maneuver_training.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/main.py",
+    "backend/app/services/reports.py",
+    "backend/app/ai/artifacts/maneuver_miss_ranker.joblib",
+    "backend/app/ai/artifacts/maneuver_miss_ranker.metadata.json",
+    "backend/ml_data/maneuver_rank_synthetic_v1.csv",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_data_foundation.py",
+    "src/App.jsx",
+    "src/components/UI/ManeuverAiSummary.js",
+    "tests/maneuverAiSummary.test.js",
+    "tests/maneuverSelection.test.js",
+    "docs/MANEUVER_AI_MODEL_CARD.md",
+    "backend/exports/evaluations/phase_15_maneuver_ai_implementation.json",
+    "dist/index.html",
+    "dist/assets/index-CqUduYpV.js",
+    "dist/assets/index-OdWyoLGH.css",
+    "dist/assets/SmartFilterGlobe-BeF286Z9.js"
+  ],
+  "known_limitations_and_blockers": [
+    "No historical real-world maneuver action/outcome data were found; all labels are generated by the existing simulator.",
+    "Held-out model performance is weak: negative R2, near-zero mean within-scenario Spearman, 25% top-1 agreement, and greater mean regret than the minimum-delta-v baseline. The current model should be treated as experimental display-only ranking, not a useful or validated recommendation.",
+    "Only 12 independent scenarios are in the held-out test set, so estimates are unstable and limited to this scenario generator.",
+    "The model cannot validate the two-body simulator because its labels come from that same simulator.",
+    "Covariance, Foster Pc, execution uncertainty, spacecraft control, propulsion, attitude, J2, drag, third-body effects, and operational feasibility are not modeled.",
+    "Actual browser interaction and live application service connectivity remain unverified."
+  ],
+  "scientific_integrity": {
+    "sgp4_or_orbital_propagation_changed": false,
+    "existing_two_body_candidate_evaluation_changed": false,
+    "closest_approach_calculation_changed": false,
+    "zero_burn_baseline_changed": false,
+    "pc_calculation_or_inputs_fabricated": false,
+    "real_maneuver_outcomes_fabricated": false,
+    "model_claims_pc_or_operational_safety": false,
+    "actual_model_inference_connected": true,
+    "independent_physics_candidate_evaluation_preserved": true,
+    "event_and_job_identity_provenance_preserved": true
+  },
+  "execution_constraints": {
+    "network_accessed": false,
+    "packages_installed": false,
+    "live_services_started": false,
+    "screening_jobs_started": false,
+    "unrelated_ai_inference_triggered": false,
+    "training_source": "Offline synthetic scenario generation and existing local two-body simulator only."
+  },
+  "report_validation": {
+    "json_parse": "Passed with python -m json.tool.",
+    "recorded_hashes_and_metrics_consistency": "Passed; report values matched local model metadata and artifact/dataset hashes."
+  },
+  "commands_executed": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m app.ai.maneuver_training",
+      "working_directory": "backend",
+      "result": "Completed; 60 scenarios, 354 eligible candidate rows, 7 simulator boundary candidates excluded, 45.425 seconds. A prior invocation stopped at scenario 19 due synthetic sub-circular state propagation below Earth; the generator was corrected and rerun."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_data_foundation tests.test_report_status",
+      "working_directory": "backend",
+      "result": "64 tests passed."
+    },
+    {
+      "command": "node --test tests/maneuverAiSummary.test.js tests/maneuverSelection.test.js tests/maneuverBaselineComparison.test.js",
+      "working_directory": "repository root",
+      "result": "11 tests passed."
+    },
+    {
+      "command": "npm test",
+      "working_directory": "repository root",
+      "result": "105 tests passed, 0 failed."
+    },
+    {
+      "command": "npm run build",
+      "working_directory": "repository root",
+      "result": "Passed; 3,203 modules transformed, 1m43s; existing large bundle advisory."
+    },
+    {
+      "command": "PowerShell here-string piped to backend .venv\\Scripts\\python.exe - (hash/schema/metadata validation)",
+      "working_directory": "backend",
+      "result": "Passed; dataset and artifact hashes, feature schema, artifact load/version, scenario counts, and recorded metrics matched."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m json.tool exports\\evaluations\\phase_15_maneuver_ai_implementation.json | Out-Null",
+      "working_directory": "backend",
+      "result": "Passed; report parsed as valid JSON."
+    },
+    {
+      "command": "PowerShell here-string piped to backend .venv\\Scripts\\python.exe - (report-to-artifact consistency assertions)",
+      "working_directory": "backend",
+      "result": "Passed; report dataset/artifact hashes, scenario/row counts, held-out metrics, baseline, integration assertions, and execution constraints matched local metadata."
+    }
+  ]
+}

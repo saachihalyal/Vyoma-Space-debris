@@ -1,0 +1,1335 @@
+﻿{
+    "id":  "CA-0E45D17A7FD97444E98C",
+    "event_identity_type":  "trajectory_event_deterministic",
+    "result_kind":  "physics_assessment",
+    "primary":  {
+                    "id":  "33762",
+                    "name":  "COSMOS 2251 DEB",
+                    "category":  "debris",
+                    "object_type":  "SPACE_DEBRIS",
+                    "band":  "LEO",
+                    "orbit_type":  "High-inclination LEO",
+                    "altitude_km":  778.65,
+                    "inclination_deg":  74.039,
+                    "velocity_kms":  7.4656,
+                    "heuristic_risk_score":  0.99,
+                    "heuristic_forecast_score":  1.0,
+                    "provenance":  {
+                                       "source":  "CelesTrak GP/TLE group=cosmos_debris",
+                                       "source_type":  "live",
+                                       "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                       "element_epoch":  "26286.64287698",
+                                       "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                       "reference_frame":  "TEME",
+                                       "units":  {
+                                                     "position":  "km",
+                                                     "velocity":  "km/s",
+                                                     "altitude":  "km",
+                                                     "inclination":  "deg"
+                                                 },
+                                       "catalog_id":  "33762",
+                                       "object_id":  "33762",
+                                       "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                       "source_record":  {
+                                                             "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                             "source_group":  "cosmos_debris",
+                                                             "retrieval_http_status":  200,
+                                                             "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                             "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                             "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                             "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                             "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                             "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                             "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                             "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                             "parsed_catalog_id":  "33762",
+                                                             "parsed_propagation_parameters":  {
+                                                                                                   "epochyr":  26,
+                                                                                                   "epochdays":  286.64287698,
+                                                                                                   "ndot":  2.0907589997848738E-12,
+                                                                                                   "nddot":  0.0,
+                                                                                                   "bstar":  0.000034014,
+                                                                                                   "inclo":  1.2922243248840817,
+                                                                                                   "nodeo":  1.964614164544149,
+                                                                                                   "ecco":  0.001424,
+                                                                                                   "argpo":  1.8343043919317483,
+                                                                                                   "mo":  5.791571435453336,
+                                                                                                   "no_kozai":  0.06255860393140455
+                                                                                               }
+                                                         },
+                                       "propagator":  "python-sgp4 SGP4/SDP4",
+                                       "propagator_version":  "2.27",
+                                       "propagator_configuration":  {
+                                                                        "api":  "Satrec.twoline2rv",
+                                                                        "gravity_model":  "WGS72",
+                                                                        "position_output_frame":  "TEME"
+                                                                    },
+                                       "method":  "SGP4 TLE propagation",
+                                       "method_version":  "2.27",
+                                       "validity_status":  "valid",
+                                       "reason_code":  null,
+                                       "is_synthetic":  false,
+                                       "is_fallback":  false
+                                   },
+                    "heuristic_score_provenance":  {
+                                                       "source":  "Heuristic scores derived from CelesTrak GP/TLE group=cosmos_debris",
+                                                       "source_type":  "derived",
+                                                       "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                       "element_epoch":  "26286.64287698",
+                                                       "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                                       "reference_frame":  "TEME",
+                                                       "units":  {
+                                                                     "position":  "km",
+                                                                     "velocity":  "km/s",
+                                                                     "altitude":  "km",
+                                                                     "inclination":  "deg"
+                                                                 },
+                                                       "catalog_id":  "33762",
+                                                       "object_id":  "33762",
+                                                       "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                       "source_record":  {
+                                                                             "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                                             "source_group":  "cosmos_debris",
+                                                                             "retrieval_http_status":  200,
+                                                                             "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                                             "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                                             "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                                             "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                                             "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                             "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                             "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                             "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                             "parsed_catalog_id":  "33762",
+                                                                             "parsed_propagation_parameters":  {
+                                                                                                                   "epochyr":  26,
+                                                                                                                   "epochdays":  286.64287698,
+                                                                                                                   "ndot":  2.0907589997848738E-12,
+                                                                                                                   "nddot":  0.0,
+                                                                                                                   "bstar":  0.000034014,
+                                                                                                                   "inclo":  1.2922243248840817,
+                                                                                                                   "nodeo":  1.964614164544149,
+                                                                                                                   "ecco":  0.001424,
+                                                                                                                   "argpo":  1.8343043919317483,
+                                                                                                                   "mo":  5.791571435453336,
+                                                                                                                   "no_kozai":  0.06255860393140455
+                                                                                                               }
+                                                                         },
+                                                       "propagator":  "python-sgp4 SGP4/SDP4",
+                                                       "propagator_version":  "2.27",
+                                                       "propagator_configuration":  {
+                                                                                        "api":  "Satrec.twoline2rv",
+                                                                                        "gravity_model":  "WGS72",
+                                                                                        "position_output_frame":  "TEME"
+                                                                                    },
+                                                       "method":  "legacy orbital shell heuristic formulas",
+                                                       "method_version":  "1",
+                                                       "validity_status":  "valid",
+                                                       "reason_code":  "heuristic_score_not_collision_probability_or_physical_density",
+                                                       "is_synthetic":  false,
+                                                       "is_fallback":  false
+                                                   }
+                },
+    "secondary":  {
+                      "id":  "33776",
+                      "name":  "IRIDIUM 33 DEB",
+                      "category":  "debris",
+                      "object_type":  "SPACE_DEBRIS",
+                      "band":  "LEO",
+                      "orbit_type":  "Polar LEO",
+                      "altitude_km":  764.45,
+                      "inclination_deg":  86.402,
+                      "velocity_kms":  7.4636,
+                      "heuristic_risk_score":  0.99,
+                      "heuristic_forecast_score":  1.0,
+                      "provenance":  {
+                                         "source":  "CelesTrak GP/TLE group=iridium_debris",
+                                         "source_type":  "live",
+                                         "source_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                         "element_epoch":  "26286.56590829",
+                                         "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                         "reference_frame":  "TEME",
+                                         "units":  {
+                                                       "position":  "km",
+                                                       "velocity":  "km/s",
+                                                       "altitude":  "km",
+                                                       "inclination":  "deg"
+                                                   },
+                                         "catalog_id":  "33776",
+                                         "object_id":  "33776",
+                                         "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                         "source_record":  {
+                                                               "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                               "source_group":  "iridium_debris",
+                                                               "retrieval_http_status":  200,
+                                                               "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                               "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                               "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                               "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                               "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                               "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                               "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                               "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                               "parsed_catalog_id":  "33776",
+                                                               "parsed_propagation_parameters":  {
+                                                                                                     "epochyr":  26,
+                                                                                                     "epochdays":  286.56590829,
+                                                                                                     "ndot":  1.7483593375012642E-11,
+                                                                                                     "nddot":  0.0,
+                                                                                                     "bstar":  0.00018178,
+                                                                                                     "inclo":  1.5079958896496366,
+                                                                                                     "nodeo":  5.458192604371395,
+                                                                                                     "ecco":  0.0012203,
+                                                                                                     "argpo":  4.846697302313409,
+                                                                                                     "mo":  3.404132060991788,
+                                                                                                     "no_kozai":  0.06277304590434593
+                                                                                                 }
+                                                           },
+                                         "propagator":  "python-sgp4 SGP4/SDP4",
+                                         "propagator_version":  "2.27",
+                                         "propagator_configuration":  {
+                                                                          "api":  "Satrec.twoline2rv",
+                                                                          "gravity_model":  "WGS72",
+                                                                          "position_output_frame":  "TEME"
+                                                                      },
+                                         "method":  "SGP4 TLE propagation",
+                                         "method_version":  "2.27",
+                                         "validity_status":  "valid",
+                                         "reason_code":  null,
+                                         "is_synthetic":  false,
+                                         "is_fallback":  false
+                                     },
+                      "heuristic_score_provenance":  {
+                                                         "source":  "Heuristic scores derived from CelesTrak GP/TLE group=iridium_debris",
+                                                         "source_type":  "derived",
+                                                         "source_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                         "element_epoch":  "26286.56590829",
+                                                         "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                                         "reference_frame":  "TEME",
+                                                         "units":  {
+                                                                       "position":  "km",
+                                                                       "velocity":  "km/s",
+                                                                       "altitude":  "km",
+                                                                       "inclination":  "deg"
+                                                                   },
+                                                         "catalog_id":  "33776",
+                                                         "object_id":  "33776",
+                                                         "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                         "source_record":  {
+                                                                               "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                                               "source_group":  "iridium_debris",
+                                                                               "retrieval_http_status":  200,
+                                                                               "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                                               "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                                               "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                                               "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                                               "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                               "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                               "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                               "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                               "parsed_catalog_id":  "33776",
+                                                                               "parsed_propagation_parameters":  {
+                                                                                                                     "epochyr":  26,
+                                                                                                                     "epochdays":  286.56590829,
+                                                                                                                     "ndot":  1.7483593375012642E-11,
+                                                                                                                     "nddot":  0.0,
+                                                                                                                     "bstar":  0.00018178,
+                                                                                                                     "inclo":  1.5079958896496366,
+                                                                                                                     "nodeo":  5.458192604371395,
+                                                                                                                     "ecco":  0.0012203,
+                                                                                                                     "argpo":  4.846697302313409,
+                                                                                                                     "mo":  3.404132060991788,
+                                                                                                                     "no_kozai":  0.06277304590434593
+                                                                                                                 }
+                                                                           },
+                                                         "propagator":  "python-sgp4 SGP4/SDP4",
+                                                         "propagator_version":  "2.27",
+                                                         "propagator_configuration":  {
+                                                                                          "api":  "Satrec.twoline2rv",
+                                                                                          "gravity_model":  "WGS72",
+                                                                                          "position_output_frame":  "TEME"
+                                                                                      },
+                                                         "method":  "legacy orbital shell heuristic formulas",
+                                                         "method_version":  "1",
+                                                         "validity_status":  "valid",
+                                                         "reason_code":  "heuristic_score_not_collision_probability_or_physical_density",
+                                                         "is_synthetic":  false,
+                                                         "is_fallback":  false
+                                                     }
+                  },
+    "obj_a":  {
+                  "id":  "33762",
+                  "name":  "COSMOS 2251 DEB",
+                  "category":  "debris",
+                  "object_type":  "SPACE_DEBRIS",
+                  "band":  "LEO",
+                  "orbit_type":  "High-inclination LEO",
+                  "altitude_km":  778.65,
+                  "inclination_deg":  74.039,
+                  "velocity_kms":  7.4656,
+                  "heuristic_risk_score":  0.99,
+                  "heuristic_forecast_score":  1.0,
+                  "provenance":  {
+                                     "source":  "CelesTrak GP/TLE group=cosmos_debris",
+                                     "source_type":  "live",
+                                     "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                     "element_epoch":  "26286.64287698",
+                                     "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                     "reference_frame":  "TEME",
+                                     "units":  {
+                                                   "position":  "km",
+                                                   "velocity":  "km/s",
+                                                   "altitude":  "km",
+                                                   "inclination":  "deg"
+                                               },
+                                     "catalog_id":  "33762",
+                                     "object_id":  "33762",
+                                     "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                     "source_record":  {
+                                                           "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                           "source_group":  "cosmos_debris",
+                                                           "retrieval_http_status":  200,
+                                                           "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                           "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                           "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                           "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                           "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                           "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                           "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                           "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                           "parsed_catalog_id":  "33762",
+                                                           "parsed_propagation_parameters":  {
+                                                                                                 "epochyr":  26,
+                                                                                                 "epochdays":  286.64287698,
+                                                                                                 "ndot":  2.0907589997848738E-12,
+                                                                                                 "nddot":  0.0,
+                                                                                                 "bstar":  0.000034014,
+                                                                                                 "inclo":  1.2922243248840817,
+                                                                                                 "nodeo":  1.964614164544149,
+                                                                                                 "ecco":  0.001424,
+                                                                                                 "argpo":  1.8343043919317483,
+                                                                                                 "mo":  5.791571435453336,
+                                                                                                 "no_kozai":  0.06255860393140455
+                                                                                             }
+                                                       },
+                                     "propagator":  "python-sgp4 SGP4/SDP4",
+                                     "propagator_version":  "2.27",
+                                     "propagator_configuration":  {
+                                                                      "api":  "Satrec.twoline2rv",
+                                                                      "gravity_model":  "WGS72",
+                                                                      "position_output_frame":  "TEME"
+                                                                  },
+                                     "method":  "SGP4 TLE propagation",
+                                     "method_version":  "2.27",
+                                     "validity_status":  "valid",
+                                     "reason_code":  null,
+                                     "is_synthetic":  false,
+                                     "is_fallback":  false
+                                 },
+                  "heuristic_score_provenance":  {
+                                                     "source":  "Heuristic scores derived from CelesTrak GP/TLE group=cosmos_debris",
+                                                     "source_type":  "derived",
+                                                     "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                     "element_epoch":  "26286.64287698",
+                                                     "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                                     "reference_frame":  "TEME",
+                                                     "units":  {
+                                                                   "position":  "km",
+                                                                   "velocity":  "km/s",
+                                                                   "altitude":  "km",
+                                                                   "inclination":  "deg"
+                                                               },
+                                                     "catalog_id":  "33762",
+                                                     "object_id":  "33762",
+                                                     "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                     "source_record":  {
+                                                                           "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                                           "source_group":  "cosmos_debris",
+                                                                           "retrieval_http_status":  200,
+                                                                           "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                                           "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                                           "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                                           "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                                           "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                           "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                           "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                           "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                           "parsed_catalog_id":  "33762",
+                                                                           "parsed_propagation_parameters":  {
+                                                                                                                 "epochyr":  26,
+                                                                                                                 "epochdays":  286.64287698,
+                                                                                                                 "ndot":  2.0907589997848738E-12,
+                                                                                                                 "nddot":  0.0,
+                                                                                                                 "bstar":  0.000034014,
+                                                                                                                 "inclo":  1.2922243248840817,
+                                                                                                                 "nodeo":  1.964614164544149,
+                                                                                                                 "ecco":  0.001424,
+                                                                                                                 "argpo":  1.8343043919317483,
+                                                                                                                 "mo":  5.791571435453336,
+                                                                                                                 "no_kozai":  0.06255860393140455
+                                                                                                             }
+                                                                       },
+                                                     "propagator":  "python-sgp4 SGP4/SDP4",
+                                                     "propagator_version":  "2.27",
+                                                     "propagator_configuration":  {
+                                                                                      "api":  "Satrec.twoline2rv",
+                                                                                      "gravity_model":  "WGS72",
+                                                                                      "position_output_frame":  "TEME"
+                                                                                  },
+                                                     "method":  "legacy orbital shell heuristic formulas",
+                                                     "method_version":  "1",
+                                                     "validity_status":  "valid",
+                                                     "reason_code":  "heuristic_score_not_collision_probability_or_physical_density",
+                                                     "is_synthetic":  false,
+                                                     "is_fallback":  false
+                                                 }
+              },
+    "obj_b":  {
+                  "id":  "33776",
+                  "name":  "IRIDIUM 33 DEB",
+                  "category":  "debris",
+                  "object_type":  "SPACE_DEBRIS",
+                  "band":  "LEO",
+                  "orbit_type":  "Polar LEO",
+                  "altitude_km":  764.45,
+                  "inclination_deg":  86.402,
+                  "velocity_kms":  7.4636,
+                  "heuristic_risk_score":  0.99,
+                  "heuristic_forecast_score":  1.0,
+                  "provenance":  {
+                                     "source":  "CelesTrak GP/TLE group=iridium_debris",
+                                     "source_type":  "live",
+                                     "source_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                     "element_epoch":  "26286.56590829",
+                                     "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                     "reference_frame":  "TEME",
+                                     "units":  {
+                                                   "position":  "km",
+                                                   "velocity":  "km/s",
+                                                   "altitude":  "km",
+                                                   "inclination":  "deg"
+                                               },
+                                     "catalog_id":  "33776",
+                                     "object_id":  "33776",
+                                     "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                     "source_record":  {
+                                                           "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                           "source_group":  "iridium_debris",
+                                                           "retrieval_http_status":  200,
+                                                           "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                           "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                           "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                           "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                           "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                           "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                           "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                           "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                           "parsed_catalog_id":  "33776",
+                                                           "parsed_propagation_parameters":  {
+                                                                                                 "epochyr":  26,
+                                                                                                 "epochdays":  286.56590829,
+                                                                                                 "ndot":  1.7483593375012642E-11,
+                                                                                                 "nddot":  0.0,
+                                                                                                 "bstar":  0.00018178,
+                                                                                                 "inclo":  1.5079958896496366,
+                                                                                                 "nodeo":  5.458192604371395,
+                                                                                                 "ecco":  0.0012203,
+                                                                                                 "argpo":  4.846697302313409,
+                                                                                                 "mo":  3.404132060991788,
+                                                                                                 "no_kozai":  0.06277304590434593
+                                                                                             }
+                                                       },
+                                     "propagator":  "python-sgp4 SGP4/SDP4",
+                                     "propagator_version":  "2.27",
+                                     "propagator_configuration":  {
+                                                                      "api":  "Satrec.twoline2rv",
+                                                                      "gravity_model":  "WGS72",
+                                                                      "position_output_frame":  "TEME"
+                                                                  },
+                                     "method":  "SGP4 TLE propagation",
+                                     "method_version":  "2.27",
+                                     "validity_status":  "valid",
+                                     "reason_code":  null,
+                                     "is_synthetic":  false,
+                                     "is_fallback":  false
+                                 },
+                  "heuristic_score_provenance":  {
+                                                     "source":  "Heuristic scores derived from CelesTrak GP/TLE group=iridium_debris",
+                                                     "source_type":  "derived",
+                                                     "source_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                     "element_epoch":  "26286.56590829",
+                                                     "propagation_epoch":  "2026-10-14T06:13:37.447147+00:00",
+                                                     "reference_frame":  "TEME",
+                                                     "units":  {
+                                                                   "position":  "km",
+                                                                   "velocity":  "km/s",
+                                                                   "altitude":  "km",
+                                                                   "inclination":  "deg"
+                                                               },
+                                                     "catalog_id":  "33776",
+                                                     "object_id":  "33776",
+                                                     "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                     "source_record":  {
+                                                                           "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                                           "source_group":  "iridium_debris",
+                                                                           "retrieval_http_status":  200,
+                                                                           "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                                           "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                                           "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                                           "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                                           "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                           "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                           "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                           "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                           "parsed_catalog_id":  "33776",
+                                                                           "parsed_propagation_parameters":  {
+                                                                                                                 "epochyr":  26,
+                                                                                                                 "epochdays":  286.56590829,
+                                                                                                                 "ndot":  1.7483593375012642E-11,
+                                                                                                                 "nddot":  0.0,
+                                                                                                                 "bstar":  0.00018178,
+                                                                                                                 "inclo":  1.5079958896496366,
+                                                                                                                 "nodeo":  5.458192604371395,
+                                                                                                                 "ecco":  0.0012203,
+                                                                                                                 "argpo":  4.846697302313409,
+                                                                                                                 "mo":  3.404132060991788,
+                                                                                                                 "no_kozai":  0.06277304590434593
+                                                                                                             }
+                                                                       },
+                                                     "propagator":  "python-sgp4 SGP4/SDP4",
+                                                     "propagator_version":  "2.27",
+                                                     "propagator_configuration":  {
+                                                                                      "api":  "Satrec.twoline2rv",
+                                                                                      "gravity_model":  "WGS72",
+                                                                                      "position_output_frame":  "TEME"
+                                                                                  },
+                                                     "method":  "legacy orbital shell heuristic formulas",
+                                                     "method_version":  "1",
+                                                     "validity_status":  "valid",
+                                                     "reason_code":  "heuristic_score_not_collision_probability_or_physical_density",
+                                                     "is_synthetic":  false,
+                                                     "is_fallback":  false
+                                                 }
+              },
+    "pair_type":  "DEBRIS vs DEBRIS",
+    "provenance":  {
+                       "source":  "paired TLE inputs: CelesTrak GP/TLE group=cosmos_debris; CelesTrak GP/TLE group=iridium_debris",
+                       "source_type":  "derived",
+                       "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                       "element_epoch":  null,
+                       "propagation_epoch":  "2026-10-14T06:22:15.243382+00:00",
+                       "reference_frame":  "TEME",
+                       "units":  {
+                                     "position":  "km",
+                                     "velocity":  "km/s",
+                                     "miss_distance":  "km",
+                                     "relative_speed":  "km/s"
+                                 },
+                       "catalog_id":  null,
+                       "object_id":  null,
+                       "input_hash":  "c62e6984bf412db520d73bf1cb8dcfcd2e7fa59956219b25633a23c8393ea0b2",
+                       "source_record":  {
+                                             "primary":  {
+                                                             "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                             "source_group":  "cosmos_debris",
+                                                             "retrieval_http_status":  200,
+                                                             "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                             "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                             "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                             "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                             "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                             "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                             "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                             "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                             "parsed_catalog_id":  "33762",
+                                                             "parsed_propagation_parameters":  {
+                                                                                                   "epochyr":  26,
+                                                                                                   "epochdays":  286.64287698,
+                                                                                                   "ndot":  2.0907589997848738E-12,
+                                                                                                   "nddot":  0.0,
+                                                                                                   "bstar":  0.000034014,
+                                                                                                   "inclo":  1.2922243248840817,
+                                                                                                   "nodeo":  1.964614164544149,
+                                                                                                   "ecco":  0.001424,
+                                                                                                   "argpo":  1.8343043919317483,
+                                                                                                   "mo":  5.791571435453336,
+                                                                                                   "no_kozai":  0.06255860393140455
+                                                                                               }
+                                                         },
+                                             "secondary":  {
+                                                               "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                               "source_group":  "iridium_debris",
+                                                               "retrieval_http_status":  200,
+                                                               "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                               "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                               "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                               "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                               "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                               "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                               "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                               "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                               "parsed_catalog_id":  "33776",
+                                                               "parsed_propagation_parameters":  {
+                                                                                                     "epochyr":  26,
+                                                                                                     "epochdays":  286.56590829,
+                                                                                                     "ndot":  1.7483593375012642E-11,
+                                                                                                     "nddot":  0.0,
+                                                                                                     "bstar":  0.00018178,
+                                                                                                     "inclo":  1.5079958896496366,
+                                                                                                     "nodeo":  5.458192604371395,
+                                                                                                     "ecco":  0.0012203,
+                                                                                                     "argpo":  4.846697302313409,
+                                                                                                     "mo":  3.404132060991788,
+                                                                                                     "no_kozai":  0.06277304590434593
+                                                                                                 }
+                                                           }
+                                         },
+                       "propagator":  "python-sgp4 SGP4/SDP4",
+                       "propagator_version":  "2.27",
+                       "propagator_configuration":  {
+                                                        "gravity_model":  "WGS72",
+                                                        "frame_transform":  "none; both objects propagated in TEME",
+                                                        "inputs":  [
+                                                                       {
+                                                                           "object_id":  "33762",
+                                                                           "source_type":  "live",
+                                                                           "element_epoch":  "26286.64287698",
+                                                                           "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c"
+                                                                       },
+                                                                       {
+                                                                           "object_id":  "33776",
+                                                                           "source_type":  "live",
+                                                                           "element_epoch":  "26286.56590829",
+                                                                           "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3"
+                                                                       }
+                                                                   ]
+                                                    },
+                       "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                       "method_version":  "1.0",
+                       "validity_status":  "valid",
+                       "reason_code":  null,
+                       "is_synthetic":  false,
+                       "is_fallback":  false
+                   },
+    "physics_result":  {
+                           "result_type":  "physics",
+                           "event_id":  "CA-0E45D17A7FD97444E98C",
+                           "status":  "valid",
+                           "applicability":  "within_configured_screening_horizon",
+                           "provenance":  {
+                                              "source":  "paired TLE inputs: CelesTrak GP/TLE group=cosmos_debris; CelesTrak GP/TLE group=iridium_debris",
+                                              "source_type":  "derived",
+                                              "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                              "element_epoch":  null,
+                                              "propagation_epoch":  "2026-10-14T06:22:15.243382+00:00",
+                                              "reference_frame":  "TEME",
+                                              "units":  {
+                                                            "position":  "km",
+                                                            "velocity":  "km/s",
+                                                            "miss_distance":  "km",
+                                                            "relative_speed":  "km/s"
+                                                        },
+                                              "catalog_id":  null,
+                                              "object_id":  null,
+                                              "input_hash":  "c62e6984bf412db520d73bf1cb8dcfcd2e7fa59956219b25633a23c8393ea0b2",
+                                              "source_record":  {
+                                                                    "primary":  {
+                                                                                    "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                                                    "source_group":  "cosmos_debris",
+                                                                                    "retrieval_http_status":  200,
+                                                                                    "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                                                    "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                                                    "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                                                    "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                                                    "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                                    "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                                    "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                                    "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                                    "parsed_catalog_id":  "33762",
+                                                                                    "parsed_propagation_parameters":  {
+                                                                                                                          "epochyr":  26,
+                                                                                                                          "epochdays":  286.64287698,
+                                                                                                                          "ndot":  2.0907589997848738E-12,
+                                                                                                                          "nddot":  0.0,
+                                                                                                                          "bstar":  0.000034014,
+                                                                                                                          "inclo":  1.2922243248840817,
+                                                                                                                          "nodeo":  1.964614164544149,
+                                                                                                                          "ecco":  0.001424,
+                                                                                                                          "argpo":  1.8343043919317483,
+                                                                                                                          "mo":  5.791571435453336,
+                                                                                                                          "no_kozai":  0.06255860393140455
+                                                                                                                      }
+                                                                                },
+                                                                    "secondary":  {
+                                                                                      "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                                                      "source_group":  "iridium_debris",
+                                                                                      "retrieval_http_status":  200,
+                                                                                      "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                                                      "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                                                      "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                                                      "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                                                      "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                                      "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                                      "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                                      "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                                      "parsed_catalog_id":  "33776",
+                                                                                      "parsed_propagation_parameters":  {
+                                                                                                                            "epochyr":  26,
+                                                                                                                            "epochdays":  286.56590829,
+                                                                                                                            "ndot":  1.7483593375012642E-11,
+                                                                                                                            "nddot":  0.0,
+                                                                                                                            "bstar":  0.00018178,
+                                                                                                                            "inclo":  1.5079958896496366,
+                                                                                                                            "nodeo":  5.458192604371395,
+                                                                                                                            "ecco":  0.0012203,
+                                                                                                                            "argpo":  4.846697302313409,
+                                                                                                                            "mo":  3.404132060991788,
+                                                                                                                            "no_kozai":  0.06277304590434593
+                                                                                                                        }
+                                                                                  }
+                                                                },
+                                              "propagator":  "python-sgp4 SGP4/SDP4",
+                                              "propagator_version":  "2.27",
+                                              "propagator_configuration":  {
+                                                                               "gravity_model":  "WGS72",
+                                                                               "frame_transform":  "none; both objects propagated in TEME",
+                                                                               "inputs":  [
+                                                                                              {
+                                                                                                  "object_id":  "33762",
+                                                                                                  "source_type":  "live",
+                                                                                                  "element_epoch":  "26286.64287698",
+                                                                                                  "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c"
+                                                                                              },
+                                                                                              {
+                                                                                                  "object_id":  "33776",
+                                                                                                  "source_type":  "live",
+                                                                                                  "element_epoch":  "26286.56590829",
+                                                                                                  "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3"
+                                                                                              }
+                                                                                          ]
+                                                                           },
+                                              "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                              "method_version":  "1.0",
+                                              "validity_status":  "valid",
+                                              "reason_code":  null,
+                                              "is_synthetic":  false,
+                                              "is_fallback":  false
+                                          },
+                           "object_primary_id":  "33762",
+                           "object_secondary_id":  "33776",
+                           "screening_horizon_start":  "2026-10-14T06:13:37.447147+00:00",
+                           "screening_horizon_end":  "2026-10-15T06:13:37.447147+00:00",
+                           "screening_threshold_km":  25.0,
+                           "tca_status":  "valid",
+                           "state_information":  {
+                                                     "source_frame":  "TEME",
+                                                     "target_frame":  "TEME",
+                                                     "transformation_applied":  false,
+                                                     "time_scale":  "UTC calendar input converted to split Julian date for SGP4",
+                                                     "gravity_model":  "WGS72",
+                                                     "propagator":  "python-sgp4 SGP4/SDP4",
+                                                     "propagator_version":  "2.27",
+                                                     "position_units":  "km",
+                                                     "velocity_units":  "km/s"
+                                                 },
+                           "tca":  {
+                                       "status":  "available",
+                                       "value":  "2026-10-14T06:22:15.243382+00:00",
+                                       "units":  "UTC",
+                                       "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                       "method_version":  "1.0",
+                                       "reason_code":  null
+                                   },
+                           "miss_distance":  {
+                                                 "status":  "available",
+                                                 "value":  21.946216702033038,
+                                                 "units":  "km",
+                                                 "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                                 "method_version":  "1.0",
+                                                 "reason_code":  null
+                                             },
+                           "relative_position_at_tca":  {
+                                                            "status":  "available",
+                                                            "value":  [
+                                                                          19.638517277020583,
+                                                                          9.795559146879441,
+                                                                          0.10994404369739641
+                                                                      ],
+                                                            "units":  "km",
+                                                            "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                                            "method_version":  "1.0",
+                                                            "reason_code":  null
+                                                        },
+                           "relative_velocity_at_tca":  {
+                                                            "status":  "available",
+                                                            "value":  [
+                                                                          -4.698854896455078,
+                                                                          9.521438548909721,
+                                                                          -9.841371197071695
+                                                                      ],
+                                                            "units":  "km/s",
+                                                            "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                                            "method_version":  "1.0",
+                                                            "reason_code":  null
+                                                        },
+                           "relative_speed_at_tca":  {
+                                                         "status":  "available",
+                                                         "value":  14.477210242900952,
+                                                         "units":  "km/s",
+                                                         "method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                                         "method_version":  "1.0",
+                                                         "reason_code":  null
+                                                     },
+                           "primary_state_at_tca":  {
+                                                        "object_id":  "33762",
+                                                        "epoch":  "2026-10-14T06:22:15.243382+00:00",
+                                                        "position_km":  [
+                                                                            -3096.5509859497943,
+                                                                            3837.875027548362,
+                                                                            5173.328516424686
+                                                                        ],
+                                                        "velocity_km_s":  [
+                                                                              0.8041153898974919,
+                                                                              -5.739056471104054,
+                                                                              4.715968472467847
+                                                                          ],
+                                                        "frame":  "TEME",
+                                                        "provenance":  {
+                                                                           "source":  "CelesTrak GP/TLE group=cosmos_debris",
+                                                                           "source_type":  "live",
+                                                                           "source_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                                           "element_epoch":  "26286.64287698",
+                                                                           "propagation_epoch":  "2026-10-14T06:22:15.243382+00:00",
+                                                                           "reference_frame":  "TEME",
+                                                                           "units":  {
+                                                                                         "position":  "km",
+                                                                                         "velocity":  "km/s"
+                                                                                     },
+                                                                           "catalog_id":  "33762",
+                                                                           "object_id":  "33762",
+                                                                           "input_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                                           "source_record":  {
+                                                                                                 "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris\u0026FORMAT=TLE",
+                                                                                                 "source_group":  "cosmos_debris",
+                                                                                                 "retrieval_http_status":  200,
+                                                                                                 "retrieval_timestamp":  "2026-10-14T06:01:30.677075+00:00",
+                                                                                                 "raw_response_hash":  "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a",
+                                                                                                 "raw_record_hash":  "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+                                                                                                 "normalized_record_hash":  "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+                                                                                                 "normalized_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                                                 "normalized_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                                                 "original_line1":  "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+                                                                                                 "original_line2":  "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+                                                                                                 "parsed_catalog_id":  "33762",
+                                                                                                 "parsed_propagation_parameters":  {
+                                                                                                                                       "epochyr":  26,
+                                                                                                                                       "epochdays":  286.64287698,
+                                                                                                                                       "ndot":  2.0907589997848738E-12,
+                                                                                                                                       "nddot":  0.0,
+                                                                                                                                       "bstar":  0.000034014,
+                                                                                                                                       "inclo":  1.2922243248840817,
+                                                                                                                                       "nodeo":  1.964614164544149,
+                                                                                                                                       "ecco":  0.001424,
+                                                                                                                                       "argpo":  1.8343043919317483,
+                                                                                                                                       "mo":  5.791571435453336,
+                                                                                                                                       "no_kozai":  0.06255860393140455
+                                                                                                                                   }
+                                                                                             },
+                                                                           "propagator":  "python-sgp4 SGP4/SDP4",
+                                                                           "propagator_version":  "2.27",
+                                                                           "propagator_configuration":  {
+                                                                                                            "api":  "Satrec.twoline2rv",
+                                                                                                            "gravity_model":  "WGS72",
+                                                                                                            "position_output_frame":  "TEME"
+                                                                                                        },
+                                                                           "method":  "SGP4 TLE propagation",
+                                                                           "method_version":  "2.27",
+                                                                           "validity_status":  "valid",
+                                                                           "reason_code":  null,
+                                                                           "is_synthetic":  false,
+                                                                           "is_fallback":  false
+                                                                       }
+                                                    },
+                           "secondary_state_at_tca":  {
+                                                          "object_id":  "33776",
+                                                          "epoch":  "2026-10-14T06:22:15.243382+00:00",
+                                                          "position_km":  [
+                                                                              -3076.9124686727737,
+                                                                              3847.6705866952416,
+                                                                              5173.438460468384
+                                                                          ],
+                                                          "velocity_km_s":  [
+                                                                                -3.8947395065575865,
+                                                                                3.782382077805666,
+                                                                                -5.125402724603847
+                                                                            ],
+                                                          "frame":  "TEME",
+                                                          "provenance":  {
+                                                                             "source":  "CelesTrak GP/TLE group=iridium_debris",
+                                                                             "source_type":  "live",
+                                                                             "source_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                                             "element_epoch":  "26286.56590829",
+                                                                             "propagation_epoch":  "2026-10-14T06:22:15.243382+00:00",
+                                                                             "reference_frame":  "TEME",
+                                                                             "units":  {
+                                                                                           "position":  "km",
+                                                                                           "velocity":  "km/s"
+                                                                                       },
+                                                                             "catalog_id":  "33776",
+                                                                             "object_id":  "33776",
+                                                                             "input_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                                             "source_record":  {
+                                                                                                   "source_url":  "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris\u0026FORMAT=TLE",
+                                                                                                   "source_group":  "iridium_debris",
+                                                                                                   "retrieval_http_status":  200,
+                                                                                                   "retrieval_timestamp":  "2026-10-14T06:01:29.847801+00:00",
+                                                                                                   "raw_response_hash":  "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f",
+                                                                                                   "raw_record_hash":  "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+                                                                                                   "normalized_record_hash":  "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+                                                                                                   "normalized_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                                                   "normalized_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                                                   "original_line1":  "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+                                                                                                   "original_line2":  "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+                                                                                                   "parsed_catalog_id":  "33776",
+                                                                                                   "parsed_propagation_parameters":  {
+                                                                                                                                         "epochyr":  26,
+                                                                                                                                         "epochdays":  286.56590829,
+                                                                                                                                         "ndot":  1.7483593375012642E-11,
+                                                                                                                                         "nddot":  0.0,
+                                                                                                                                         "bstar":  0.00018178,
+                                                                                                                                         "inclo":  1.5079958896496366,
+                                                                                                                                         "nodeo":  5.458192604371395,
+                                                                                                                                         "ecco":  0.0012203,
+                                                                                                                                         "argpo":  4.846697302313409,
+                                                                                                                                         "mo":  3.404132060991788,
+                                                                                                                                         "no_kozai":  0.06277304590434593
+                                                                                                                                     }
+                                                                                               },
+                                                                             "propagator":  "python-sgp4 SGP4/SDP4",
+                                                                             "propagator_version":  "2.27",
+                                                                             "propagator_configuration":  {
+                                                                                                              "api":  "Satrec.twoline2rv",
+                                                                                                              "gravity_model":  "WGS72",
+                                                                                                              "position_output_frame":  "TEME"
+                                                                                                          },
+                                                                             "method":  "SGP4 TLE propagation",
+                                                                             "method_version":  "2.27",
+                                                                             "validity_status":  "valid",
+                                                                             "reason_code":  null,
+                                                                             "is_synthetic":  false,
+                                                                             "is_fallback":  false
+                                                                         }
+                                                      },
+                           "encounter_geometry":  {
+                                                      "relative_speed_km_s":  14.477210242900952,
+                                                      "radial_rate_km_s":  -0.004225272319818563,
+                                                      "transverse_speed_km_s":  14.4772096263137,
+                                                      "relative_vector_convention":  "secondary minus primary",
+                                                      "frame":  "TEME"
+                                                  },
+                           "convergence":  {
+                                               "method":  "bounded golden-section minimization of Euclidean relative distance",
+                                               "iterations":  20,
+                                               "time_tolerance_seconds":  0.01,
+                                               "final_bracket_width_seconds":  0.007932835362339574,
+                                               "neighbor_check_seconds":  0.1,
+                                               "neighbor_check_passed":  true,
+                                               "bracket_origin":  "coarse sampled local minimum and adjacent sample epochs"
+                                           },
+                           "covariance":  {
+                                              "status":  "unavailable",
+                                              "value":  null,
+                                              "units":  null,
+                                              "method":  null,
+                                              "method_version":  null,
+                                              "reason_code":  "covariance_not_provided"
+                                          },
+                           "hard_body_radius":  {
+                                                    "status":  "unavailable",
+                                                    "value":  null,
+                                                    "units":  null,
+                                                    "method":  null,
+                                                    "method_version":  null,
+                                                    "reason_code":  "hard_body_radius_not_provided"
+                                                },
+                           "probability_of_collision":  {
+                                                            "status":  "unavailable",
+                                                            "value":  null,
+                                                            "units":  null,
+                                                            "method":  null,
+                                                            "method_version":  null,
+                                                            "reason_code":  "see_separate_collision_probability_result"
+                                                        },
+                           "reason_codes":  [
+
+                                            ]
+                       },
+    "collision_probability":  {
+                                  "result_type":  "collision_probability",
+                                  "status":  "unavailable",
+                                  "event_id":  "CA-0E45D17A7FD97444E98C",
+                                  "object_1_id":  "33762",
+                                  "object_2_id":  "33776",
+                                  "tca_utc":  "2026-10-14T06:22:15.243382+00:00",
+                                  "miss_distance_km":  21.94621670203304,
+                                  "hbr_km":  null,
+                                  "hbr_source":  "unavailable",
+                                  "hbr_provenance":  null,
+                                  "pc":  null,
+                                  "method":  "Foster 2D encounter-plane Gaussian integral",
+                                  "method_version":  "1.0",
+                                  "covariance_status":  "unavailable",
+                                  "covariance_sources":  [
+
+                                                         ],
+                                  "covariance_frame":  null,
+                                  "covariance_epoch":  null,
+                                  "encounter_plane_definition":  "e_v = normalized relative velocity; e_1 is the normalized TCA miss vector projected perpendicular to e_v (or a deterministic least-aligned Cartesian axis at zero miss); e_2 = cross(e_v, e_1); project the common-frame relative position covariance onto [e_1, e_2].",
+                                  "numerical_tolerance":  {
+                                                              "relative_tolerance":  1E-08
+                                                          },
+                                  "evaluations":  null,
+                                  "applicability_status":  "not_assessed",
+                                  "assumptions":  [
+                                                      "TCA relative-position uncertainty is represented by a bivariate Gaussian.",
+                                                      "Relative motion is locally linear over the encounter interval.",
+                                                      "Relative position covariance is treated as constant over the encounter interval.",
+                                                      "Object covariances are combined as independent only because the caller explicitly requested that assumption."
+                                                  ],
+                                  "provenance":  {
+                                                     "source":  "ORION Foster 2D research calculation",
+                                                     "source_type":  "derived",
+                                                     "source_timestamp":  null,
+                                                     "element_epoch":  null,
+                                                     "propagation_epoch":  null,
+                                                     "reference_frame":  null,
+                                                     "units":  {
+                                                                   "miss_distance":  "km",
+                                                                   "hbr":  "km",
+                                                                   "probability":  "dimensionless"
+                                                               },
+                                                     "catalog_id":  null,
+                                                     "object_id":  null,
+                                                     "input_hash":  null,
+                                                     "source_record":  null,
+                                                     "propagator":  null,
+                                                     "propagator_version":  null,
+                                                     "propagator_configuration":  {
+
+                                                                                  },
+                                                     "method":  "Foster 2D encounter-plane Gaussian integral",
+                                                     "method_version":  "1.0",
+                                                     "validity_status":  "unavailable",
+                                                     "reason_code":  "NO_COVARIANCE",
+                                                     "is_synthetic":  false,
+                                                     "is_fallback":  false
+                                                 },
+                                  "reason_codes":  [
+                                                       "NO_COVARIANCE",
+                                                       "HBR_UNAVAILABLE"
+                                                   ],
+                                  "warnings":  [
+                                                   "Applicability assumptions are not independently verified by TLE-only propagation.",
+                                                   "This is a research implementation and is not NASA operational conjunction software."
+                                               ]
+                              },
+    "scenario_collision_probability":  null,
+    "scenario_assumptions":  [
+
+                             ],
+    "ml_result":  {
+                      "result_type":  "ml",
+                      "status":  "available",
+                      "model_name":  "ORION ESA event final log10-risk estimator",
+                      "model_version":  "1.0.0",
+                      "training_dataset":  "ESA Collision Avoidance Challenge training dataset",
+                      "feature_schema":  {
+                                             "version":  "1.0.0",
+                                             "features":  [
+                                                              {
+                                                                  "name":  "time_to_tca_days",
+                                                                  "units":  "day"
+                                                              },
+                                                              {
+                                                                  "name":  "miss_distance_m",
+                                                                  "units":  "m"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_speed_m_s",
+                                                                  "units":  "m/s"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_position_r_m",
+                                                                  "units":  "m"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_position_t_m",
+                                                                  "units":  "m"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_position_n_m",
+                                                                  "units":  "m"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_velocity_r_m_s",
+                                                                  "units":  "m/s"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_velocity_t_m_s",
+                                                                  "units":  "m/s"
+                                                              },
+                                                              {
+                                                                  "name":  "relative_velocity_n_m_s",
+                                                                  "units":  "m/s"
+                                                              }
+                                                          ],
+                                             "source_frame":  "Stage 2A TEME, projected to instantaneous primary-object RTN at TCA",
+                                             "target":  "final event risk in log10 space",
+                                             "target_units":  "log10 risk",
+                                             "exponentiated_event_risk_display":  "10 ** predicted_log_risk on the ESA event-risk scale; not a calibrated probability or Foster Pc",
+                                             "probability_display":  "Deprecated compatibility alias for exponentiated_event_risk_display; not a calibrated probability or Foster Pc"
+                                         },
+                      "prediction":  {
+                                         "quantity_label":  "ESA log10 event-risk estimate; not a calibrated probability or Foster Pc",
+                                         "predicted_log_risk":  -21.902972086279842,
+                                         "target_units":  "log10 risk",
+                                         "predicted_risk_estimate":  1.2503393915939965E-22,
+                                         "predicted_risk_probability":  1.2503393915939965E-22,
+                                         "threshold_flag_at_minus_6":  false,
+                                         "high_risk":  false,
+                                         "high_risk_threshold_log10":  -6.0
+                                     },
+                      "feature_availability":  {
+                                                   "time_to_tca_days":  true,
+                                                   "miss_distance_m":  true,
+                                                   "relative_speed_m_s":  true,
+                                                   "relative_position_r_m":  true,
+                                                   "relative_position_t_m":  true,
+                                                   "relative_position_n_m":  true,
+                                                   "relative_velocity_r_m_s":  true,
+                                                   "relative_velocity_t_m_s":  true,
+                                                   "relative_velocity_n_m_s":  true
+                                               },
+                      "features_imputed":  false,
+                      "provenance":  {
+                                         "inference_timestamp_utc":  "2026-10-14T06:13:53.647490+00:00",
+                                         "source_physics_event_id":  "CA-0E45D17A7FD97444E98C",
+                                         "source_physics_method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                         "source_physics_method_version":  "1.0",
+                                         "source_physics_frame":  "TEME",
+                                         "feature_frame":  "instantaneous primary RTN at TCA",
+                                         "feature_schema_version":  "1.0.0",
+                                         "training_dataset":  "ESA Collision Avoidance Challenge training dataset",
+                                         "training_dataset_sha256":  "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+                                         "artifact_sha256":  "a13f2b125d4f0142872485bbae14ee7facfa8e688d21cd34fe44de97a9a462fc",
+                                         "is_synthetic":  false,
+                                         "is_fallback":  false,
+                                         "input_features_imputed":  false
+                                     },
+                      "uncertainty":  null,
+                      "validation_metrics":  {
+                                                 "false_negative_high_risk_events":  55,
+                                                 "false_positive_high_risk_events":  0,
+                                                 "high_risk_f1":  0.0,
+                                                 "high_risk_pr_auc_average_precision":  0.05351034282620575,
+                                                 "high_risk_precision":  0.0,
+                                                 "high_risk_recall":  0.0,
+                                                 "high_risk_test_events":  55,
+                                                 "high_risk_threshold_log10":  -6.0,
+                                                 "mae_log10":  6.2264674259798705,
+                                                 "predicted_high_risk_events":  0,
+                                                 "r2":  0.2405477725989389,
+                                                 "rmse_log10":  8.28673896780418,
+                                                 "spearman_correlation":  0.528624088240082,
+                                                 "test_event_count":  1939,
+                                                 "true_positive_high_risk_events":  0
+                                             },
+                      "reason_code":  "prediction_available"
+                  },
+    "anomaly_result":  {
+                           "result_type":  "orbital_anomaly",
+                           "status":  "available",
+                           "model_name":  "ORION orbital feature Isolation Forest",
+                           "model_version":  "1.0.0",
+                           "training_dataset":  "ESA Collision Avoidance Challenge training dataset",
+                           "classification":  "not_flagged",
+                           "decision_score":  0.013410124405354384,
+                           "anomaly_score":  0.7293440991040814,
+                           "score_definition":  "empirical lower-tail rank within training decision scores; not a probability or danger estimate",
+                           "input_features":  {
+                                                  "time_to_tca_days":  0.005993011979166667,
+                                                  "miss_distance_m":  21946.216702033038,
+                                                  "relative_speed_m_s":  14477.210242900952,
+                                                  "relative_position_r_m":  -3168.937990068339,
+                                                  "relative_position_t_m":  -5348.274928941684,
+                                                  "relative_position_n_m":  21047.33272488819,
+                                                  "relative_velocity_r_m_s":  25.14143993571505,
+                                                  "relative_velocity_t_m_s":  -14031.123732266547,
+                                                  "relative_velocity_n_m_s":  -3566.0273603802725
+                                              },
+                           "feature_units":  {
+                                                 "time_to_tca_days":  "day",
+                                                 "miss_distance_m":  "m",
+                                                 "relative_speed_m_s":  "m/s",
+                                                 "relative_position_r_m":  "m",
+                                                 "relative_position_t_m":  "m",
+                                                 "relative_position_n_m":  "m",
+                                                 "relative_velocity_r_m_s":  "m/s",
+                                                 "relative_velocity_t_m_s":  "m/s",
+                                                 "relative_velocity_n_m_s":  "m/s"
+                                             },
+                           "feature_frame":  "instantaneous primary RTN at TCA",
+                           "training_reference_event_count":  9041,
+                           "reason_code":  "ANOMALY_ASSESSED",
+                           "provenance":  {
+                                              "source_physics_event_id":  "CA-0E45D17A7FD97444E98C",
+                                              "source_physics_method":  "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+                                              "source_physics_frame":  "TEME",
+                                              "feature_schema_version":  "1.0.0",
+                                              "training_dataset_sha256":  "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+                                              "artifact_sha256":  "bf643f2922a8570b647cdb071cd7cedd14273046dc8427e9b6b09831a9429992",
+                                              "training_event_split":  "ESA risk model\u0027s event-level training split only; risk targets excluded from anomaly estimator",
+                                              "is_synthetic":  false,
+                                              "is_fallback":  false
+                                          }
+                       },
+    "comparison_result":  {
+                              "result_type":  "comparison",
+                              "status":  "not_comparable",
+                              "consistency":  null,
+                              "ml_available":  true,
+                              "physics_pc_available":  false,
+                              "validation_claim":  "none",
+                              "reason_code":  "ESA_EVENT_LOG_RISK_IS_NOT_PHYSICAL_GEOMETRY_OR_PC"
+                          },
+    "automatic_research_pc_assessment":  {
+                                             "result_type":  "automatic_research_pc_assessment",
+                                             "status":  "prior_based_research_estimate",
+                                             "quality_status":  "prior_based_unvalidated",
+                                             "estimated_pc":  1.5535212283845223E-167,
+                                             "estimated_pc_scientific":  "1.55352e-167",
+                                             "percentage":  1.5535212283845223E-165,
+                                             "percentage_scientific":  "1.55352e-165",
+                                             "lower_sensitivity_pc":  null,
+                                             "upper_sensitivity_pc":  2.7226483378613037E-10,
+                                             "lower_sensitivity_pc_scientific":  "5.17264e-9574",
+                                             "upper_sensitivity_pc_scientific":  "2.72265e-10",
+                                             "method_name":  "ORION ESA population-prior Foster 2D research estimate",
+                                             "method_version":  "1.0.0",
+                                             "covariance_method":  "ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors.",
+                                             "hbr_method":  "ESA target/chaser span population prior by ORION object class; assumed span diameter converted to a per-object radius and combined; not an authenticated object dimension.",
+                                             "hbr_km":  0.002,
+                                             "hbr_sensitivity_km":  [
+                                                                        0.002,
+                                                                        0.002
+                                                                    ],
+                                             "provenance":  {
+                                                                "source":  "backend/ml_data/train_data.zip",
+                                                                "source_archive_sha256":  "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+                                                                "prior_artifact":  "esa_research_uncertainty_prior_v1.json",
+                                                                "prior_artifact_sha256":  "f22c0a45285d4f2cbd721b9871d509c77d4a30c7272f4803694cbbab893789c0",
+                                                                "prior_model_version":  "1.0.0",
+                                                                "role_by_object":  {
+                                                                                       "33762":  "esa_chaser",
+                                                                                       "33776":  "esa_chaser"
+                                                                                   },
+                                                                "tca_utc":  "2026-10-14T06:22:15.243382+00:00",
+                                                                "covariance_frame":  "TEME",
+                                                                "covariance_assignment_epoch":  "TCA",
+                                                                "covariance_independence_assumed":  true,
+                                                                "configuration":  {
+                                                                                      "age_inflation_per_day":  0.05,
+                                                                                      "age_inflation_cap":  10.0,
+                                                                                      "band_sigma_multiplier":  {
+                                                                                                                    "LEO":  1.0,
+                                                                                                                    "MEO":  1.25,
+                                                                                                                    "GEO":  1.5,
+                                                                                                                    "HEO":  1.5
+                                                                                                                },
+                                                                                      "eccentricity_sigma_multiplier":  1.0,
+                                                                                      "bstar_sigma_multiplier":  0.25,
+                                                                                      "bstar_reference_abs":  0.0001
+                                                                                  },
+                                                                "object_metadata":  {
+                                                                                        "33762":  {
+                                                                                                      "band":  "LEO",
+                                                                                                      "category":  "debris",
+                                                                                                      "tle_age_days":  0.6225772258101852
+                                                                                                  },
+                                                                                        "33776":  {
+                                                                                                      "band":  "LEO",
+                                                                                                      "category":  "debris",
+                                                                                                      "tle_age_days":  0.6995459158101852
+                                                                                                  }
+                                                                                    },
+                                                                "scenario_quantiles":  [
+                                                                                           "p10",
+                                                                                           "p50",
+                                                                                           "p90"
+                                                                                       ],
+                                                                "quadrature_relative_tolerance":  1E-06,
+                                                                "log_domain_fallback":  "same Foster circular Gaussian integral, used only when probability-domain Foster quadrature fails"
+                                                            },
+                                             "reason_codes":  [
+
+                                                              ],
+                                             "reason_message":  null,
+                                             "geometry_review_category":  "UNCLASSIFIED",
+                                             "geometry_review_policy_version":  "orion-geometry-review-v1",
+                                             "ranking_basis":  "UNCLASSIFIED under orion-geometry-review-v1; geometry-only queue rank, separate from Pc",
+                                             "sensitivity_status":  "available",
+                                             "sensitivity_reason":  "Range is the min/max of coupled ESA p10, p50 and p90 prior scenarios; it is not a statistical confidence interval.",
+                                             "assumptions":  [
+                                                                 "This is a prior-based research estimate, not an event-specific or operationally validated Pc.",
+                                                                 "ESA Kelvins CDM-derived population p10/p50/p90 component sigmas are used as per-object priors; they are not live-object measurements.",
+                                                                 "ESA r/t/n sigma labels are mapped to local RTN at TCA, then rotated to TEME using each propagated SGP4 state; this frame interpretation is an explicit model assumption.",
+                                                                 "Covariance is diagonal in RTN; ESA correlations and cross-object covariance are unavailable and omitted.",
+                                                                 "The covariance is assigned at TCA; no covariance propagation from TLE epoch is performed.",
+                                                                 "ESA target/chaser roles are mapped from ORION object class: active/payload to target; debris/rocket body/unknown to chaser.",
+                                                                 "ESA span inputs are treated as diameters and converted to radius; this is an assumed size mapping, not authenticated object dimensions.",
+                                                                 "Object covariances are assumed independent for the Foster relative covariance.",
+                                                                 "p10/p50/p90 joint scenarios vary all component sigmas and span together; the resulting sensitivity endpoints are not confidence bounds.",
+                                                                 "When a result is below binary64\u0027s representable range, the same Foster disk integral is evaluated in log space and reported in scientific notation rather than substituted with zero."
+                                                             ],
+                                             "limitations":  [
+
+                                                             ]
+                                         },
+    "ai_risk_assessment":  {
+                               "score":  0.3329003363206914,
+                               "category":  "Low",
+                               "model_name":  "ORION deterministic live-geometry risk prioritizer",
+                               "model_version":  "1.0.0",
+                               "target_definition":  "Normalized screening-priority index in [0,1]; not collision probability, Pc, or ESA log10 event risk.",
+                               "prediction_method":  "deterministic_geometry_speed_fallback",
+                               "feature_provenance":  {
+                                                          "source_event_id":  "CA-0E45D17A7FD97444E98C",
+                                                          "miss_distance_km":  21.946216702033038,
+                                                          "screening_threshold_km":  25.0,
+                                                          "relative_speed_km_s":  14.477210242900952,
+                                                          "proximity_component":  0.12215133191867844,
+                                                          "speed_component":  0.9651473495267301,
+                                                          "speed_normalization_reference_km_s":  15.0,
+                                                          "weights":  {
+                                                                          "proximity":  0.75,
+                                                                          "relative_speed":  0.25
+                                                                      },
+                                                          "source":  "screening_pipeline PhysicsResult; propagated SGP4 TLE encounter geometry"
+                                                      },
+                               "model_quality":  {
+                                                     "status":  "deterministic_fallback_not_trained_or_calibrated",
+                                                     "validation_metrics":  null,
+                                                     "limitations":  [
+                                                                         "Queue index is not a collision probability, Foster Pc, or calibrated event-risk probability.",
+                                                                         "Relative speed reference is a normalization scale, not an empirically validated threshold.",
+                                                                         "ESA log10-risk regressor is withheld because historical and live feature semantics are unverified."
+                                                                     ]
+                                                 },
+                               "explanation":  "Normalized geometry/speed queue index: proximity 0.122 (miss 21.9462 km / 25 km screen), relative-speed component 0.965 (reference 15 km/s); deterministic fallback, not Pc or trained ESA prediction.",
+                               "geometry_rank":  17,
+                               "foster_pc_rank":  null,
+                               "research_pc_rank":  8,
+                               "final_priority_rank":  17,
+                               "final_priority_score":  0.2538694596699365,
+                               "ranking_explanation":  "Final priority combines 50% deterministic AI queue index, 30% normalized geometry, and 20% relative Pc percentile only in a multi-event result where every event has the same Pc provenance (Pc evidence has a separate source-specific rank and is excluded from the composite); otherwise AI and geometry weights are renormalized and Pc rankings remain separate. An ESA-prior Pc retains its unvalidated research-prior status and is not treated as operationally calibrated."
+                           }
+}

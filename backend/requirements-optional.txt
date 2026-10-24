@@ -1,0 +1,6 @@
+# Optional machine-learning and advanced research-mode packages.
+# Physics-only API operation remains available if these packages are absent.
+scikit-learn==1.9.1
+torch>=2.5.1
+poliastro>=0.17.0
+

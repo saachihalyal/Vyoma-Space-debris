@@ -1,0 +1,124 @@
+{
+  "phase": "12.7",
+  "title": "Collision probability input and presentation integrity validation",
+  "status": "completed_with_input_validation_correction",
+  "objective": "Audit and validate the existing Foster Pc workflow, including CDM and research-scenario inputs, event identity, unavailable states, and frontend/report presentation. No scientific calculation redesign.",
+  "workflow_audit": [
+    {
+      "step": "Physical event and TCA state provenance",
+      "files": [
+        "backend/app/services/trajectory_screening.py",
+        "backend/app/services/event_pc_inputs.py",
+        "backend/app/models.py"
+      ],
+      "finding": "Event Pc inputs are applied to an identified physical assessment event. Validation binds physics event ID, ordered primary/secondary object IDs, UTC TCA, state object IDs, state frame and units, state epochs, and state-derived separation to the stored miss distance. CDM inputs additionally require exact object membership, matching event TCA, matching covariance epochs, and a common covariance frame."
+    },
+    {
+      "step": "Foster Pc calculation and uncertainty contract",
+      "files": [
+        "backend/app/services/collision_probability.py",
+        "backend/app/services/event_pc_inputs.py",
+        "backend/app/services/cdm_ingestion.py"
+      ],
+      "finding": "The existing Foster 2D Gaussian encounter-plane integration remains unchanged. It validates covariance shape, finite values, symmetry, positive definiteness, units, frame, epoch, object identity, and HBR provenance/value. It requires an explicit independent-covariances assumption. The scenario endpoint marks covariance/HBR synthetic and user-entered. Imported CDM originator/source labels are disclosed as unauthenticated."
+    },
+    {
+      "step": "API association and persistence",
+      "files": [
+        "backend/app/main.py",
+        "backend/tests/test_cdm_ingestion.py"
+      ],
+      "finding": "CDM and scenario Pc endpoints resolve the requested event from the exact completed screening job before applying inputs. Input validation errors return 422. Regression coverage checks a malformed event state epoch is rejected and the stored scenario Pc remains null."
+    },
+    {
+      "step": "UI and exported reports",
+      "files": [
+        "src/components/UI/CollisionPcSummary.js",
+        "backend/app/services/reports.py",
+        "backend/tests/test_report_status.py",
+        "tests/collisionPcRendering.test.js"
+      ],
+      "finding": "Source CDM Pc and research-scenario Pc remain separate. UI numeric values are gated on available status and finite in-range Pc. The summary now also displays method/version, dimensionless units, source/covariance frame and epoch provenance, HBR provenance, and warnings. Report exports preserve source and scenario status/provenance separately and emit blank/unavailable values rather than substituting zero."
+    }
+  ],
+  "reproduced_defects": [
+    {
+      "id": "scenario_pc_accepts_inconsistent_tca_state_metadata",
+      "severity": "input_validation",
+      "reproduction": "On a deterministic physical_event fixture, changing a TCA state object ID, epoch, or frame still allowed apply_scenario_inputs to return an available Pc (2.4382718084254695e-06). This let scenario covariance assumptions be evaluated against inconsistent event geometry metadata.",
+      "correction": "The shared event-input validator now checks event and ordered object identity; UTC TCA and matching state epochs; state object IDs, frame and units; finite three-component position/velocity vectors; and agreement between state separation and available km miss distance. It rejects inconsistent inputs with stable reason codes. The Foster calculation itself was not changed.",
+      "regression": "backend/tests/test_cdm_ingestion.py::test_scenario_pc_rejects_inconsistent_event_tca_state_metadata_and_geometry and backend/tests/test_cdm_ingestion.py::test_scenario_api_rejects_inconsistent_state_epoch_without_persisting_pc"
+    }
+  ],
+  "critical_cases": {
+    "event_identity_and_job_binding": "Existing API tests in test_cdm_ingestion.py verify event resolution within a job and reject mismatched imported object designators. Scenario payload hashing includes event ID, UTC TCA, and frame. The new shared validator rejects physics/event and ordered object identity inconsistencies.",
+    "missing_malformed_or_mismatched_state": "Existing collision-probability tests cover unavailable and invalid inputs; new event-input tests exercise state object ID, epoch, frame/units, vector, and miss-distance inconsistencies. API state-epoch regression expects 422 and no computed scenario result.",
+    "covariance_epoch_frame_units_and_hbr": "Existing test_collision_probability.py covers frame/epoch/unit mismatch, covariance validity, HBR validity, missing inputs, explicit independence assumptions, and method applicability. CDM ingestion tests cover parsed covariance and event association.",
+    "source_vs_scenario_pc_and_unavailable_values": "Existing report-status tests cover available and unavailable source/scenario combinations and no substitution of zero. UI tests confirm values remain separately labeled and unavailable values are not rendered numerically.",
+    "warnings_and_applicability": "UI rendering regression verifies warnings and provenance remain visible alongside the status. Foster applicability and input warnings continue to be returned by the unchanged calculation service.",
+    "screening_job_terminal_statuses": "Not invoked as part of this Pc-specific validation. Screening lifecycle and event/job status handling were exercised and reported in Phase 12.6; this phase adds no job execution."
+  },
+  "tests": {
+    "backend_focused": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_collision_probability tests.test_cdm_ingestion tests.test_report_status",
+      "result": "60 tests passed, 0 failed (Ran 60 tests in 1.013 s)",
+      "notes": "Includes Foster numerical/reference and invalid-input tests, CDM/API/event-input regressions, and report status tests. A Starlette/httpx deprecation warning was emitted by the installed TestClient dependency."
+    },
+    "frontend_focused": {
+      "command": "node --test tests/collisionPcRendering.test.js",
+      "result": "6 passed, 0 failed, 0 skipped",
+      "notes": "Includes distinct source/scenario status, provenance and warning display, and unavailable-value rendering."
+    },
+    "production_build": {
+      "command": "npm run build",
+      "result": "passed; Vite 6.4.4 transformed 3,201 modules and built in 49.45 s",
+      "notes": "Vite emitted the large JavaScript chunk warning (1,754.87 kB minified); the build completed successfully."
+    },
+    "report_validation": {
+      "command": "Python JSON parse and required-section assertions for phase_12_7_pc_integrity_validation.json",
+      "result": "passed"
+    }
+  },
+  "no_inference_and_execution_controls": {
+    "network_accessed": false,
+    "packages_installed": false,
+    "services_or_live_jobs_started": false,
+    "screening_invocations": 0,
+    "actual_model_inference": false,
+    "downstream_esa_prediction_and_anomaly_hooks": "No screening invocation occurred. Pc-focused tests call event-input, Foster, API TestClient, and report/UI code paths without invoking screening or AI assessment hooks.",
+    "production_pc_algorithm_changed": false,
+    "trained_model_artifacts_or_thresholds_changed": false
+  },
+  "browser_behavior": {
+    "status": "not_verified",
+    "detail": "Frontend behavior was checked with rendering tests and a production build. No browser session or interactive UI inspection was run."
+  },
+  "limitations": [
+    "Validation used deterministic offline fixtures and mocked API job storage, not operational screening archives or live CDM providers.",
+    "CDM source labels are user-declared and not authenticated by this application; imported covariance and HBR remain subject to source uncertainty.",
+    "Foster Pc uses its existing local-linear Gaussian and explicit independence assumptions; these tests establish software input and presentation behavior, not model adequacy for a real conjunction.",
+    "A scenario Pc is a research result from user-entered assumptions and does not demonstrate collision-risk reduction, maneuver effectiveness, or operational safety.",
+    "No live browser behavior was inspected."
+  ],
+  "files_inspected": [
+    "backend/app/main.py",
+    "backend/app/models.py",
+    "backend/app/services/trajectory_screening.py",
+    "backend/app/services/event_pc_inputs.py",
+    "backend/app/services/collision_probability.py",
+    "backend/app/services/cdm_ingestion.py",
+    "backend/app/services/reports.py",
+    "backend/tests/test_collision_probability.py",
+    "backend/tests/test_cdm_ingestion.py",
+    "backend/tests/test_report_status.py",
+    "src/components/UI/CollisionPcSummary.js",
+    "tests/collisionPcRendering.test.js"
+  ],
+  "files_changed": [
+    "backend/app/services/event_pc_inputs.py",
+    "backend/tests/test_cdm_ingestion.py",
+    "src/components/UI/CollisionPcSummary.js",
+    "tests/collisionPcRendering.test.js",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json"
+  ]
+}

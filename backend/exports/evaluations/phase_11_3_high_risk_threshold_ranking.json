@@ -1,0 +1,1327 @@
+{
+  "created_utc": "2026-10-16T04:50:23.540293+00:00",
+  "distributions": {
+    "test": {
+      "candidates": {
+        "histogram_gradient_boosting": {
+          "predicted_esa_logrisk": {
+            "count": 3832,
+            "max": -9.320578053659156,
+            "median": -25.451899344187204,
+            "min": -31.109828026356954,
+            "quantiles": {
+              "0": -31.109828026356954,
+              "0.01": -29.31896279405824,
+              "0.05": -28.51776461899862,
+              "0.1": -28.030931006936683,
+              "0.25": -27.02503470348475,
+              "0.5": -25.451899344187204,
+              "0.75": -22.808184943489362,
+              "0.9": -19.859610911951826,
+              "0.95": -18.07077333809748,
+              "0.975": -16.540766210369338,
+              "0.99": -14.570708635797281,
+              "1": -9.320578053659156
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        },
+        "ridge": {
+          "predicted_esa_logrisk": {
+            "count": 3832,
+            "max": -17.548350852058206,
+            "median": -25.420184806153067,
+            "min": -28.868441117676884,
+            "quantiles": {
+              "0": -28.868441117676884,
+              "0.01": -27.591218494304762,
+              "0.05": -26.889456385094796,
+              "0.1": -26.534721301408382,
+              "0.25": -26.102231836228885,
+              "0.5": -25.420184806153067,
+              "0.75": -24.65884268223692,
+              "0.9": -22.012637694091826,
+              "0.95": -20.68021707972461,
+              "0.975": -19.945798819391904,
+              "0.99": -19.274154781279556,
+              "1": -17.548350852058206
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        },
+        "training_event_mean": {
+          "predicted_esa_logrisk": {
+            "count": 3832,
+            "max": -22.6013941387927,
+            "median": -22.6013941387927,
+            "min": -22.6013941387927,
+            "quantiles": {
+              "0": -22.6013941387927,
+              "0.01": -22.6013941387927,
+              "0.05": -22.6013941387927,
+              "0.1": -22.6013941387927,
+              "0.25": -22.6013941387927,
+              "0.5": -22.6013941387927,
+              "0.75": -22.6013941387927,
+              "0.9": -22.6013941387927,
+              "0.95": -22.6013941387927,
+              "0.975": -22.6013941387927,
+              "0.99": -22.6013941387927,
+              "1": -22.6013941387927
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        }
+      },
+      "observed_esa_logrisk": {
+        "count": 3832,
+        "max": -1.6846595233727115,
+        "median": -30.0,
+        "min": -30.0,
+        "quantiles": {
+          "0": -30.0,
+          "0.01": -30.0,
+          "0.05": -30.0,
+          "0.1": -30.0,
+          "0.25": -30.0,
+          "0.5": -30.0,
+          "0.75": -15.610089124720579,
+          "0.9": -7.4046202503375715,
+          "0.95": -6.268135556382317,
+          "0.975": -5.606941952842192,
+          "0.99": -5.056208656908499,
+          "1": -1.6846595233727115
+        }
+      },
+      "observed_high_risk_labels": 145,
+      "observed_low_risk_labels": 3687
+    },
+    "train": {
+      "candidates": {
+        "histogram_gradient_boosting": {
+          "predicted_esa_logrisk": {
+            "count": 7683,
+            "max": -6.844587523533795,
+            "median": -25.437013976477548,
+            "min": -32.37756403342045,
+            "quantiles": {
+              "0": -32.37756403342045,
+              "0.01": -30.33293369036648,
+              "0.05": -29.49827335394718,
+              "0.1": -28.862067364261215,
+              "0.25": -27.554899350333095,
+              "0.5": -25.437013976477548,
+              "0.75": -20.272372948593727,
+              "0.9": -15.780559198191323,
+              "0.95": -13.79900124356175,
+              "0.975": -12.284434079928133,
+              "0.99": -10.723899064759086,
+              "1": -6.844587523533795
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        },
+        "ridge": {
+          "predicted_esa_logrisk": {
+            "count": 7683,
+            "max": -16.092332774304367,
+            "median": -25.148765554633712,
+            "min": -28.79293429390906,
+            "quantiles": {
+              "0": -28.79293429390906,
+              "0.01": -27.739982413860957,
+              "0.05": -26.95473038712313,
+              "0.1": -26.5769763834094,
+              "0.25": -26.033395008473583,
+              "0.5": -25.148765554633712,
+              "0.75": -23.66951545452912,
+              "0.9": -21.10728877031056,
+              "0.95": -20.040027430275856,
+              "0.975": -19.448769741659756,
+              "0.99": -18.85220085579323,
+              "1": -16.092332774304367
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        },
+        "training_event_mean": {
+          "predicted_esa_logrisk": {
+            "count": 7683,
+            "max": -22.6013941387927,
+            "median": -22.6013941387927,
+            "min": -22.6013941387927,
+            "quantiles": {
+              "0": -22.6013941387927,
+              "0.01": -22.6013941387927,
+              "0.05": -22.6013941387927,
+              "0.1": -22.6013941387927,
+              "0.25": -22.6013941387927,
+              "0.5": -22.6013941387927,
+              "0.75": -22.6013941387927,
+              "0.9": -22.6013941387927,
+              "0.95": -22.6013941387927,
+              "0.975": -22.6013941387927,
+              "0.99": -22.6013941387927,
+              "1": -22.6013941387927
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        }
+      },
+      "observed_esa_logrisk": {
+        "count": 7683,
+        "max": -2.688034339631633,
+        "median": -30.0,
+        "min": -30.0,
+        "quantiles": {
+          "0": -30.0,
+          "0.01": -30.0,
+          "0.05": -30.0,
+          "0.1": -30.0,
+          "0.25": -30.0,
+          "0.5": -30.0,
+          "0.75": -12.849093404708576,
+          "0.9": -7.431798339414296,
+          "0.95": -6.6337267351176274,
+          "0.975": -6.096592849745443,
+          "0.99": -5.516521830278658,
+          "1": -2.688034339631633
+        }
+      },
+      "observed_high_risk_labels": 167,
+      "observed_low_risk_labels": 7516
+    },
+    "validation": {
+      "candidates": {
+        "histogram_gradient_boosting": {
+          "predicted_esa_logrisk": {
+            "count": 407,
+            "max": -12.01161755671637,
+            "median": -25.005683602948352,
+            "min": -31.561298625401683,
+            "quantiles": {
+              "0": -31.561298625401683,
+              "0.01": -29.64534948200956,
+              "0.05": -28.46440047418685,
+              "0.1": -27.947004224926335,
+              "0.25": -26.925683616702624,
+              "0.5": -25.005683602948352,
+              "0.75": -21.87283536608091,
+              "0.9": -19.0249079994448,
+              "0.95": -16.090920323573407,
+              "0.975": -14.792644898051702,
+              "0.99": -14.110990374978584,
+              "1": -12.01161755671637
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        },
+        "ridge": {
+          "predicted_esa_logrisk": {
+            "count": 407,
+            "max": -17.9966200201946,
+            "median": -25.37188627082445,
+            "min": -28.071742337575962,
+            "quantiles": {
+              "0": -28.071742337575962,
+              "0.01": -27.647187771881875,
+              "0.05": -27.111190701266242,
+              "0.1": -26.67337268153162,
+              "0.25": -26.043426330571542,
+              "0.5": -25.37188627082445,
+              "0.75": -23.484333540508203,
+              "0.9": -20.98454057394492,
+              "0.95": -20.068579133963706,
+              "0.975": -19.496196440342818,
+              "0.99": -18.86607037427986,
+              "1": -17.9966200201946
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        },
+        "training_event_mean": {
+          "predicted_esa_logrisk": {
+            "count": 407,
+            "max": -22.6013941387927,
+            "median": -22.6013941387927,
+            "min": -22.6013941387927,
+            "quantiles": {
+              "0": -22.6013941387927,
+              "0.01": -22.6013941387927,
+              "0.05": -22.6013941387927,
+              "0.1": -22.6013941387927,
+              "0.25": -22.6013941387927,
+              "0.5": -22.6013941387927,
+              "0.75": -22.6013941387927,
+              "0.9": -22.6013941387927,
+              "0.95": -22.6013941387927,
+              "0.975": -22.6013941387927,
+              "0.99": -22.6013941387927,
+              "1": -22.6013941387927
+            }
+          },
+          "predictions_at_or_above_minus_6": 0
+        }
+      },
+      "observed_esa_logrisk": {
+        "count": 407,
+        "max": -4.659159450187668,
+        "median": -30.0,
+        "min": -30.0,
+        "quantiles": {
+          "0": -30.0,
+          "0.01": -30.0,
+          "0.05": -30.0,
+          "0.1": -30.0,
+          "0.25": -30.0,
+          "0.5": -30.0,
+          "0.75": -14.388825988611973,
+          "0.9": -8.557443024520639,
+          "0.95": -6.741251384141804,
+          "0.975": -6.193010277025788,
+          "0.99": -5.525584772437444,
+          "1": -4.659159450187668
+        }
+      },
+      "observed_high_risk_labels": 10,
+      "observed_low_risk_labels": 397
+    }
+  },
+  "experiment": "ORION Phase 11.3 high-risk threshold and ranking analysis",
+  "held_out_test_fixed_minus_6": {
+    "metrics": {
+      "histogram_gradient_boosting": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.07935785644558951,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.848859453759289,
+        "predicted_high_risk_events": 0,
+        "r2": 0.13950914086438393,
+        "rmse_log10": 8.580070333065274,
+        "spearman_correlation": 0.35099389871848996,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.12709927579322158,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.8934832116469416,
+        "predicted_high_risk_events": 0,
+        "r2": 0.1745328133818187,
+        "rmse_log10": 8.403643575541269,
+        "spearman_correlation": 0.442401539139016,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "training_event_mean": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.037839248434238,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 8.782282154338473,
+        "predicted_high_risk_events": 0,
+        "r2": -0.032780505112528724,
+        "rmse_log10": 9.399867525639579,
+        "spearman_correlation": null,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      }
+    },
+    "status": "reproduction of predeclared fixed-threshold test metrics only; validation-derived thresholds were not applied to or selected on test"
+  },
+  "phase_11_2b_reproduction": {
+    "archive_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+    "eligible_populations_match": true,
+    "mission_splits_match": true,
+    "status": "exact metrics reproduced within 1e-12; all stored mission assignments and eligibility populations match",
+    "validation_and_test_saved_metrics_match": true
+  },
+  "protocol": {
+    "candidate_parameters": {
+      "hgb": {
+        "early_stopping": false,
+        "l2_regularization": 1.0,
+        "learning_rate": 0.1,
+        "loss": "squared_error",
+        "max_iter": 200,
+        "max_leaf_nodes": 31,
+        "min_samples_leaf": 20,
+        "random_state": 42
+      },
+      "names": [
+        "time_to_tca_days",
+        "miss_distance_m",
+        "relative_speed_m_s",
+        "relative_position_r_m",
+        "relative_position_t_m",
+        "relative_position_n_m",
+        "relative_velocity_r_m_s",
+        "relative_velocity_t_m_s",
+        "relative_velocity_n_m_s"
+      ],
+      "preprocessing": "median imputer with missingness indicators fit on training eligible rows; Ridge additionally StandardScaler fit on training only",
+      "ridge": {
+        "alpha": 1.0,
+        "solver": "lsqr"
+      },
+      "training_weights": "each training event total weight 1 across its eligible rows"
+    },
+    "confusion_semantics": "actual high-risk label is y >= -6; alert is predicted log-risk >= candidate threshold; log-risk threshold is not Pc",
+    "eligibility": "time_to_tca_days >= 2.0 inclusive",
+    "feature_names": [
+      "time_to_tca_days",
+      "miss_distance_m",
+      "relative_speed_m_s",
+      "relative_position_r_m",
+      "relative_position_t_m",
+      "relative_position_n_m",
+      "relative_velocity_r_m_s",
+      "relative_velocity_t_m_s",
+      "relative_velocity_n_m_s"
+    ],
+    "inherited_from": "Phase 11.2B",
+    "seed": 42,
+    "split": "sorted mission IDs, Python random.Random(42), 70/15/15 floor/floor/remainder",
+    "training_predictions": "in-sample predictions on one eligible event row per training event; descriptive distribution/ranking only, not generalization estimates",
+    "validation_thresholds": "fixed -6 plus 90th, 95th, 97.5th and 99th quantiles of each candidate's validation predictions only; no test-derived thresholds"
+  },
+  "ranking_metrics": {
+    "test": {
+      "histogram_gradient_boosting": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.07935785644558951,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.848859453759289,
+        "predicted_high_risk_events": 0,
+        "r2": 0.13950914086438393,
+        "rmse_log10": 8.580070333065274,
+        "spearman_correlation": 0.35099389871848996,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.12709927579322158,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.8934832116469416,
+        "predicted_high_risk_events": 0,
+        "r2": 0.1745328133818187,
+        "rmse_log10": 8.403643575541269,
+        "spearman_correlation": 0.442401539139016,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "training_event_mean": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.037839248434238,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 8.782282154338473,
+        "predicted_high_risk_events": 0,
+        "r2": -0.032780505112528724,
+        "rmse_log10": 9.399867525639579,
+        "spearman_correlation": null,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      }
+    },
+    "train": {
+      "histogram_gradient_boosting": {
+        "false_negative_high_risk_events": 167,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.08397886458414014,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 167,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 5.054980610606056,
+        "predicted_high_risk_events": 0,
+        "r2": 0.5380227945168141,
+        "rmse_log10": 6.532204337125718,
+        "spearman_correlation": 0.754189411798795,
+        "test_event_count": 7683,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge": {
+        "false_negative_high_risk_events": 167,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.05515969870395558,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 167,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 7.501355454874224,
+        "predicted_high_risk_events": 0,
+        "r2": 0.1430851677593481,
+        "rmse_log10": 8.896482277677206,
+        "spearman_correlation": 0.4876861764507044,
+        "test_event_count": 7683,
+        "true_positive_high_risk_events": 0
+      },
+      "training_event_mean": {
+        "false_negative_high_risk_events": 167,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.02173630092411818,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 167,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 8.979201409446217,
+        "predicted_high_risk_events": 0,
+        "r2": 0.0,
+        "rmse_log10": 9.610577559719898,
+        "spearman_correlation": null,
+        "test_event_count": 7683,
+        "true_positive_high_risk_events": 0
+      }
+    },
+    "validation": {
+      "histogram_gradient_boosting": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.10976849334178633,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 7.058114462544394,
+        "predicted_high_risk_events": 0,
+        "r2": 0.08705189945459879,
+        "rmse_log10": 8.60433372221446,
+        "spearman_correlation": 0.267023414724342,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.17137424897133982,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.771915656714755,
+        "predicted_high_risk_events": 0,
+        "r2": 0.2113790383959554,
+        "rmse_log10": 7.997023272113595,
+        "spearman_correlation": 0.5307097126315508,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      },
+      "training_event_mean": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.02457002457002457,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 8.669070063139772,
+        "predicted_high_risk_events": 0,
+        "r2": -0.03661503704571767,
+        "rmse_log10": 9.168598473833306,
+        "spearman_correlation": null,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      }
+    }
+  },
+  "reproducibility": {
+    "code_version": "unavailable; no Git metadata",
+    "dataset_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+    "joblib": "1.6.0",
+    "new_architecture_or_artifact_write": false,
+    "numpy": "2.5.1",
+    "production_artifact_loaded_or_scored": false,
+    "production_artifact_sha256_reference_only": "a13f2b125d4f0142872485bbae14ee7facfa8e688d21cd34fe44de97a9a462fc",
+    "python": "3.14.0",
+    "scikit_learn": "1.9.1",
+    "scipy": "1.18.1"
+  },
+  "scientific_limitations": [
+    "The model estimates historical ESA final log-risk labels, not Foster Pc or calibrated collision probability.",
+    "The selected ESA challenge dataset and four held-out missions do not establish ORION live-domain or operational performance.",
+    "Training distributions/metrics are in-sample and are descriptive only.",
+    "Only 10 validation positives across two missions are inadequate for a stable operating-point claim.",
+    "Average precision and rank correlations describe association with ESA labels on this dataset; they do not validate physical collision risk."
+  ],
+  "split_populations": {
+    "test": {
+      "eligible_events": 3832,
+      "eligible_input_rows": 38063,
+      "excluded_events_without_eligible_input": 530,
+      "excluded_input_rows_below_2_days": 15616,
+      "high_risk_eligible_events": 145,
+      "low_risk_eligible_events": 3687,
+      "mission_count": 4,
+      "mission_ids": [
+        "1",
+        "14",
+        "19",
+        "2"
+      ],
+      "total_events": 4362
+    },
+    "train": {
+      "eligible_events": 7683,
+      "eligible_input_rows": 66768,
+      "excluded_events_without_eligible_input": 454,
+      "excluded_input_rows_below_2_days": 23394,
+      "high_risk_eligible_events": 167,
+      "low_risk_eligible_events": 7516,
+      "mission_count": 13,
+      "mission_ids": [
+        "10",
+        "15",
+        "16",
+        "18",
+        "20",
+        "22",
+        "23",
+        "24",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ],
+      "total_events": 8137
+    },
+    "validation": {
+      "eligible_events": 407,
+      "eligible_input_rows": 4055,
+      "excluded_events_without_eligible_input": 11,
+      "excluded_input_rows_below_2_days": 1204,
+      "high_risk_eligible_events": 10,
+      "low_risk_eligible_events": 397,
+      "mission_count": 2,
+      "mission_ids": [
+        "13",
+        "9"
+      ],
+      "total_events": 418
+    }
+  },
+  "validation_decision": {
+    "reason": "No operating threshold selected. Validation has only 407 events, 10 high-risk labels, and 2 missions; no acceptable precision/recall or alert-burden criterion was specified. Quantile-derived thresholds are descriptive trade-offs, not validated operating points.",
+    "threshold_selected": null
+  },
+  "validation_only_threshold_results": {
+    "histogram_gradient_boosting": {
+      "fixed_minus_6": {
+        "overall": {
+          "FN": 10,
+          "FP": 0,
+          "TN": 397,
+          "TP": 0,
+          "alerts": 0,
+          "false_positive_rate": 0.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": null,
+          "recall": 0.0,
+          "threshold_log10": -6.0
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -6.0
+          },
+          "9": {
+            "FN": 8,
+            "FP": 0,
+            "TN": 393,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -6.0
+          }
+        },
+        "source": "predeclared ESA log-risk threshold",
+        "threshold_log10": -6.0
+      },
+      "validation_prediction_q0.9": {
+        "overall": {
+          "FN": 6,
+          "FP": 37,
+          "TN": 360,
+          "TP": 4,
+          "alerts": 41,
+          "false_positive_rate": 0.09319899244332494,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.0975609756097561,
+          "recall": 0.4,
+          "threshold_log10": -19.0249079994448
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 1,
+            "FP": 1,
+            "TN": 3,
+            "TP": 1,
+            "alerts": 2,
+            "false_positive_rate": 0.25,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": 0.5,
+            "recall": 0.5,
+            "threshold_log10": -19.0249079994448
+          },
+          "9": {
+            "FN": 5,
+            "FP": 36,
+            "TN": 357,
+            "TP": 3,
+            "alerts": 39,
+            "false_positive_rate": 0.0916030534351145,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.07692307692307693,
+            "recall": 0.375,
+            "threshold_log10": -19.0249079994448
+          }
+        },
+        "source": "0.9 quantile of validation predictions only",
+        "threshold_log10": -19.0249079994448
+      },
+      "validation_prediction_q0.95": {
+        "overall": {
+          "FN": 8,
+          "FP": 19,
+          "TN": 378,
+          "TP": 2,
+          "alerts": 21,
+          "false_positive_rate": 0.04785894206549118,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.09523809523809523,
+          "recall": 0.2,
+          "threshold_log10": -16.090920323573407
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -16.090920323573407
+          },
+          "9": {
+            "FN": 6,
+            "FP": 19,
+            "TN": 374,
+            "TP": 2,
+            "alerts": 21,
+            "false_positive_rate": 0.04834605597964377,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.09523809523809523,
+            "recall": 0.25,
+            "threshold_log10": -16.090920323573407
+          }
+        },
+        "source": "0.95 quantile of validation predictions only",
+        "threshold_log10": -16.090920323573407
+      },
+      "validation_prediction_q0.975": {
+        "overall": {
+          "FN": 9,
+          "FP": 10,
+          "TN": 387,
+          "TP": 1,
+          "alerts": 11,
+          "false_positive_rate": 0.02518891687657431,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.09090909090909091,
+          "recall": 0.1,
+          "threshold_log10": -14.792644898051702
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -14.792644898051702
+          },
+          "9": {
+            "FN": 7,
+            "FP": 10,
+            "TN": 383,
+            "TP": 1,
+            "alerts": 11,
+            "false_positive_rate": 0.02544529262086514,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.09090909090909091,
+            "recall": 0.125,
+            "threshold_log10": -14.792644898051702
+          }
+        },
+        "source": "0.975 quantile of validation predictions only",
+        "threshold_log10": -14.792644898051702
+      },
+      "validation_prediction_q0.99": {
+        "overall": {
+          "FN": 10,
+          "FP": 5,
+          "TN": 392,
+          "TP": 0,
+          "alerts": 5,
+          "false_positive_rate": 0.012594458438287154,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.0,
+          "recall": 0.0,
+          "threshold_log10": -14.110990374978584
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -14.110990374978584
+          },
+          "9": {
+            "FN": 8,
+            "FP": 5,
+            "TN": 388,
+            "TP": 0,
+            "alerts": 5,
+            "false_positive_rate": 0.01272264631043257,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.0,
+            "recall": 0.0,
+            "threshold_log10": -14.110990374978584
+          }
+        },
+        "source": "0.99 quantile of validation predictions only",
+        "threshold_log10": -14.110990374978584
+      }
+    },
+    "ridge": {
+      "fixed_minus_6": {
+        "overall": {
+          "FN": 10,
+          "FP": 0,
+          "TN": 397,
+          "TP": 0,
+          "alerts": 0,
+          "false_positive_rate": 0.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": null,
+          "recall": 0.0,
+          "threshold_log10": -6.0
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -6.0
+          },
+          "9": {
+            "FN": 8,
+            "FP": 0,
+            "TN": 393,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -6.0
+          }
+        },
+        "source": "predeclared ESA log-risk threshold",
+        "threshold_log10": -6.0
+      },
+      "validation_prediction_q0.9": {
+        "overall": {
+          "FN": 5,
+          "FP": 36,
+          "TN": 361,
+          "TP": 5,
+          "alerts": 41,
+          "false_positive_rate": 0.0906801007556675,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.12195121951219512,
+          "recall": 0.5,
+          "threshold_log10": -20.98454057394492
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -20.98454057394492
+          },
+          "9": {
+            "FN": 3,
+            "FP": 36,
+            "TN": 357,
+            "TP": 5,
+            "alerts": 41,
+            "false_positive_rate": 0.0916030534351145,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.12195121951219512,
+            "recall": 0.625,
+            "threshold_log10": -20.98454057394492
+          }
+        },
+        "source": "0.9 quantile of validation predictions only",
+        "threshold_log10": -20.98454057394492
+      },
+      "validation_prediction_q0.95": {
+        "overall": {
+          "FN": 6,
+          "FP": 17,
+          "TN": 380,
+          "TP": 4,
+          "alerts": 21,
+          "false_positive_rate": 0.042821158690176324,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.19047619047619047,
+          "recall": 0.4,
+          "threshold_log10": -20.068579133963706
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -20.068579133963706
+          },
+          "9": {
+            "FN": 4,
+            "FP": 17,
+            "TN": 376,
+            "TP": 4,
+            "alerts": 21,
+            "false_positive_rate": 0.043256997455470736,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.19047619047619047,
+            "recall": 0.5,
+            "threshold_log10": -20.068579133963706
+          }
+        },
+        "source": "0.95 quantile of validation predictions only",
+        "threshold_log10": -20.068579133963706
+      },
+      "validation_prediction_q0.975": {
+        "overall": {
+          "FN": 7,
+          "FP": 8,
+          "TN": 389,
+          "TP": 3,
+          "alerts": 11,
+          "false_positive_rate": 0.020151133501259445,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.2727272727272727,
+          "recall": 0.3,
+          "threshold_log10": -19.496196440342818
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -19.496196440342818
+          },
+          "9": {
+            "FN": 5,
+            "FP": 8,
+            "TN": 385,
+            "TP": 3,
+            "alerts": 11,
+            "false_positive_rate": 0.020356234096692113,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.2727272727272727,
+            "recall": 0.375,
+            "threshold_log10": -19.496196440342818
+          }
+        },
+        "source": "0.975 quantile of validation predictions only",
+        "threshold_log10": -19.496196440342818
+      },
+      "validation_prediction_q0.99": {
+        "overall": {
+          "FN": 9,
+          "FP": 4,
+          "TN": 393,
+          "TP": 1,
+          "alerts": 5,
+          "false_positive_rate": 0.010075566750629723,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.2,
+          "recall": 0.1,
+          "threshold_log10": -18.86607037427986
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -18.86607037427986
+          },
+          "9": {
+            "FN": 7,
+            "FP": 4,
+            "TN": 389,
+            "TP": 1,
+            "alerts": 5,
+            "false_positive_rate": 0.010178117048346057,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.2,
+            "recall": 0.125,
+            "threshold_log10": -18.86607037427986
+          }
+        },
+        "source": "0.99 quantile of validation predictions only",
+        "threshold_log10": -18.86607037427986
+      }
+    },
+    "training_event_mean": {
+      "fixed_minus_6": {
+        "overall": {
+          "FN": 10,
+          "FP": 0,
+          "TN": 397,
+          "TP": 0,
+          "alerts": 0,
+          "false_positive_rate": 0.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": null,
+          "recall": 0.0,
+          "threshold_log10": -6.0
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 2,
+            "FP": 0,
+            "TN": 4,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -6.0
+          },
+          "9": {
+            "FN": 8,
+            "FP": 0,
+            "TN": 393,
+            "TP": 0,
+            "alerts": 0,
+            "false_positive_rate": 0.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": null,
+            "recall": 0.0,
+            "threshold_log10": -6.0
+          }
+        },
+        "source": "predeclared ESA log-risk threshold",
+        "threshold_log10": -6.0
+      },
+      "validation_prediction_q0.9": {
+        "overall": {
+          "FN": 0,
+          "FP": 397,
+          "TN": 0,
+          "TP": 10,
+          "alerts": 407,
+          "false_positive_rate": 1.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.02457002457002457,
+          "recall": 1.0,
+          "threshold_log10": -22.6013941387927
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 0,
+            "FP": 4,
+            "TN": 0,
+            "TP": 2,
+            "alerts": 6,
+            "false_positive_rate": 1.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          },
+          "9": {
+            "FN": 0,
+            "FP": 393,
+            "TN": 0,
+            "TP": 8,
+            "alerts": 401,
+            "false_positive_rate": 1.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.0199501246882793,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          }
+        },
+        "source": "0.9 quantile of validation predictions only",
+        "threshold_log10": -22.6013941387927
+      },
+      "validation_prediction_q0.95": {
+        "overall": {
+          "FN": 0,
+          "FP": 397,
+          "TN": 0,
+          "TP": 10,
+          "alerts": 407,
+          "false_positive_rate": 1.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.02457002457002457,
+          "recall": 1.0,
+          "threshold_log10": -22.6013941387927
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 0,
+            "FP": 4,
+            "TN": 0,
+            "TP": 2,
+            "alerts": 6,
+            "false_positive_rate": 1.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          },
+          "9": {
+            "FN": 0,
+            "FP": 393,
+            "TN": 0,
+            "TP": 8,
+            "alerts": 401,
+            "false_positive_rate": 1.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.0199501246882793,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          }
+        },
+        "source": "0.95 quantile of validation predictions only",
+        "threshold_log10": -22.6013941387927
+      },
+      "validation_prediction_q0.975": {
+        "overall": {
+          "FN": 0,
+          "FP": 397,
+          "TN": 0,
+          "TP": 10,
+          "alerts": 407,
+          "false_positive_rate": 1.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.02457002457002457,
+          "recall": 1.0,
+          "threshold_log10": -22.6013941387927
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 0,
+            "FP": 4,
+            "TN": 0,
+            "TP": 2,
+            "alerts": 6,
+            "false_positive_rate": 1.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          },
+          "9": {
+            "FN": 0,
+            "FP": 393,
+            "TN": 0,
+            "TP": 8,
+            "alerts": 401,
+            "false_positive_rate": 1.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.0199501246882793,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          }
+        },
+        "source": "0.975 quantile of validation predictions only",
+        "threshold_log10": -22.6013941387927
+      },
+      "validation_prediction_q0.99": {
+        "overall": {
+          "FN": 0,
+          "FP": 397,
+          "TN": 0,
+          "TP": 10,
+          "alerts": 407,
+          "false_positive_rate": 1.0,
+          "negative_support": 397,
+          "positive_support": 10,
+          "precision": 0.02457002457002457,
+          "recall": 1.0,
+          "threshold_log10": -22.6013941387927
+        },
+        "per_validation_mission": {
+          "13": {
+            "FN": 0,
+            "FP": 4,
+            "TN": 0,
+            "TP": 2,
+            "alerts": 6,
+            "false_positive_rate": 1.0,
+            "negative_support": 4,
+            "positive_support": 2,
+            "precision": 0.3333333333333333,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          },
+          "9": {
+            "FN": 0,
+            "FP": 393,
+            "TN": 0,
+            "TP": 8,
+            "alerts": 401,
+            "false_positive_rate": 1.0,
+            "negative_support": 393,
+            "positive_support": 8,
+            "precision": 0.0199501246882793,
+            "recall": 1.0,
+            "threshold_log10": -22.6013941387927
+          }
+        },
+        "source": "0.99 quantile of validation predictions only",
+        "threshold_log10": -22.6013941387927
+      }
+    }
+  }
+}

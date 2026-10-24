@@ -1,0 +1,50 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { validateAndFilterEvents, validateEvent } from "../src/utils/objectClassification.js";
+import { getObjectTypeLabel } from "../src/utils/objectClassification.js";
+import { resolveObjectType, OBJECT_TYPE } from "../src/utils/identityModel.js";
+import { createFallbackSnapshot } from "../src/data/fallbackData.js";
+
+test("same-type debris proxy pairs remain valid identities and are not logged as conjunctions", () => {
+  const proxy = {
+    id: "SP-debris-pair",
+    primary: { id: "34046", name: "COSMOS 2251 DEB", object_type: "SPACE_DEBRIS" },
+    secondary: { id: "33982", name: "COSMOS 2251 DEB FRAGMENT", object_type: "SPACE_DEBRIS" },
+  };
+  const originalInfo = console.info;
+  const messages = [];
+  console.info = (...args) => messages.push(args.join(" "));
+  try {
+    assert.equal(validateEvent(proxy), null);
+    assert.deepEqual(validateAndFilterEvents([proxy]), [proxy]);
+  } finally {
+    console.info = originalInfo;
+  }
+  assert.match(messages.join("\n"), /Matching object types do not invalidate a distinct-object pair\./);
+  assert.doesNotMatch(messages.join("\n"), /conjunction/i);
+});
+
+test("frontend labels only explicit metadata and agrees across Collision and Maneuver identity paths", () => {
+  const cases = [
+    [{ object_type: "ACTIVE_SATELLITE", category: "active" }, "ACTIVE SATELLITE", "ACTIVE_SATELLITE"],
+    [{ object_type: "SPACE_DEBRIS", category: "debris" }, "SPACE DEBRIS", "SPACE_DEBRIS"],
+    [{ object_type: "ROCKET_BODY", category: "rocket_body" }, "ROCKET BODY", "ROCKET_BODY"],
+    [{ object_type: "UNKNOWN", category: "unknown", name: "ISS DEBRIS ROCKET" }, "UNKNOWN / OTHER", "UNKNOWN"],
+    [{ name: "COSMOS 2251 DEB" }, "UNKNOWN / OTHER", "UNKNOWN"],
+    [{ name: "ARIANE ROCKET BODY" }, "UNKNOWN / OTHER", "UNKNOWN"],
+    [{ object_type: "SPACE_DEBRIS", category: "active" }, "UNKNOWN / OTHER", "UNKNOWN"],
+  ];
+  for (const [object, expectedLabel, expectedCode] of cases) {
+    assert.equal(getObjectTypeLabel(object), expectedLabel);
+    assert.equal(resolveObjectType(object), expectedCode);
+  }
+  assert.equal(getObjectTypeLabel({ name: "unclassified" }), "UNKNOWN / OTHER");
+});
+
+test("bundled synthetic browser fallback does not present generated labels as catalog classifications", () => {
+  const snapshot = createFallbackSnapshot();
+  assert.equal(snapshot.source_summary.status, "synthetic_demo");
+  assert.equal(snapshot.stats.unknown_objects, snapshot.objects.length);
+  assert.ok(snapshot.objects.every((object) => object.category === "unknown" && object.object_type === "UNKNOWN"));
+  assert.equal(Object.keys(snapshot.objects[0]).includes("_simulatedCategory"), false);
+});

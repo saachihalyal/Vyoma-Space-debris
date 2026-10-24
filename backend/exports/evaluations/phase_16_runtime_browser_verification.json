@@ -1,0 +1,211 @@
+{
+  "phase": "16A-16F",
+  "title": "ORION runtime and browser workflow verification",
+  "assessment_timestamp_utc": "2026-10-17T14:57:48Z",
+  "repository_path": "C:/Users/NARSINH K/Documents/Codex/2026-10-04/you-are-modifying-an-existing-research/outputs/space-debris-ssa-platform",
+  "overall_status": "BLOCKED",
+  "decision": "Backend maneuver inference and job-bound PDF responses were exercised against a local API using an archived deterministic partial screening result. Browser-visible behavior could not be exercised because no browser or browser automation framework is available. A current Collision AI estimate was not produced for the event because its TCA is inside the model's explicit two-day minimum input horizon. No fresh screening was run.",
+  "environment": {
+    "os_shell": "Windows PowerShell",
+    "python": "backend/.venv/Scripts/python.exe",
+    "node": "node.exe",
+    "backend_base_url": "http://127.0.0.1:8000",
+    "frontend_configured_url": "http://127.0.0.1:5173",
+    "browser_inventory": {
+      "tool": "cua.getState()",
+      "result": "apps=[]; browsers=[]",
+      "browser_automation_packages": {
+        "playwright": "not found in node_modules",
+        "@playwright/test": "not found in node_modules",
+        "puppeteer": "not found in node_modules",
+        "cypress": "not found in node_modules",
+        "selenium-webdriver": "not found in node_modules"
+      },
+      "actual_browser_interaction": false
+    },
+    "ports_before_start": "8000, 5173, and 4173 had no listeners.",
+    "services_after_assessment": "Backend process started for local API checks was stopped. No frontend service was started; no browser surface was available."
+  },
+  "prior_reports_reviewed": [
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json",
+    "backend/exports/evaluations/phase_12_8_scientific_provenance_integration.json",
+    "backend/exports/evaluations/phase_12_9_browser_workflow_validation.json",
+    "backend/exports/evaluations/phase_13_integration_readiness.json",
+    "backend/exports/evaluations/phase_14_collision_ai_implementation.json",
+    "backend/exports/evaluations/phase_14_1_collision_ai_diagnosis.json",
+    "backend/exports/evaluations/phase_15_maneuver_ai_implementation.json"
+  ],
+  "files_inspected": [
+    "README.md",
+    "package.json",
+    "backend/requirements.txt",
+    "backend/app/main.py",
+    "backend/app/services/tle_provider.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/ai/inference.py",
+    "backend/app/ai/features.py",
+    "backend/app/ai/maneuver_ranker.py",
+    "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "backend/app/ai/artifacts/maneuver_miss_ranker.metadata.json",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "backend/exports/screening-job-2a50f67a597442279de1d5178468953d.json",
+    "backend/tests/test_ai_stage3.py",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_screening_jobs.py",
+    "backend/tests/test_archived_job_restore.py",
+    "backend/tests/test_report_status.py"
+  ],
+  "runtime_checks": {
+    "local_backend_startup": {
+      "status": "PASS_WITH_CONSTRAINT_VIOLATION",
+      "command": "Start-Process -FilePath '.venv\\Scripts\\python.exe' -ArgumentList @('-m','uvicorn','app.main:app','--host','127.0.0.1','--port','8000','--no-access-log') -WorkingDirectory backend -WindowStyle Hidden",
+      "health_route": "GET /api/system-health returned HTTP 200; bundled fallback TLE data loaded and both model status records reported available.",
+      "network_attempt": "The health route called the TLE provider, which attempted CelesTrak requests for its configured groups. All attempts failed with connection errors and the bundled fallback was used. This was an unintended provider-side outbound attempt; no orbital data were retrieved and no screening job was started. The backend was stopped immediately after local API checks.",
+      "note": "This runtime path cannot be considered compliant with a strict no-outbound-attempt requirement; repeat only with provider access explicitly disabled or with a test fixture harness."
+    },
+    "archived_screening_job_restore": {
+      "status": "PASS",
+      "job_id": "2a50f67a597442279de1d5178468953d",
+      "completion_status": "partial",
+      "event_id": "CA-0E45D17A7FD97444E98C",
+      "method": "POST /api/conjunction-jobs/{job_id}/restore, then GET /api/conjunction-jobs/{job_id}",
+      "finding": "The archived record stayed explicitly partial and retained its job identity; no new screening was run."
+    },
+    "maneuver_ai_api": {
+      "status": "PASS_API_LEVEL",
+      "method": "POST /api/conjunctions/CA-0E45D17A7FD97444E98C/maneuver?screening_job_id=2a50f67a597442279de1d5178468953d with the stored event body",
+      "response": {
+        "http_status": 200,
+        "event_id": "CA-0E45D17A7FD97444E98C",
+        "screening_job_id": "2a50f67a597442279de1d5178468953d",
+        "assessment_status": "available_with_warning",
+        "model_name": "ORION simulated two-body maneuver miss-distance ranker",
+        "model_version": "1.0.0",
+        "model_status": "available",
+        "ranked_nonzero_candidates": 12,
+        "physical_candidate_count_including_zero_burn": 13,
+        "zero_burn_comparison_status": "within_comparison_tolerance",
+        "probability_before": null,
+        "probability_after": null
+      },
+      "verification": "Returned model ranking and candidate outcome fields came from the backend model and two-body candidate evaluator. Model provenance matched the requested event and job. The zero-burn reference and candidate physical outcomes remained present; Pc remained unavailable. This is a local API check, not browser verification or scientific validation."
+    },
+    "collision_ai": {
+      "status": "BLOCKED_FOR_FRESH_ELIGIBLE_INFERENCE",
+      "current_artifact": {
+        "model_version": "2.0.0",
+        "status": "available",
+        "sha256": "63f4ad9e73facac25ae03900ebc996cc24bd56d2e245fc74a80c0467e340c9f0"
+      },
+      "direct_current_model_call": {
+        "status": "unavailable",
+        "event_id": "CA-0E45D17A7FD97444E98C",
+        "reason_code": "ESA_INPUT_TIME_TO_TCA_BELOW_MINIMUM",
+        "screen_window_start_utc": "2026-10-14T06:13:37.447147+00:00",
+        "tca_utc": "2026-10-14T06:22:15.243382+00:00",
+        "prediction_returned": false,
+        "feature_availability": "All nine required feature fields were available; the event failed the model's minimum two-day time-to-TCA eligibility rule."
+      },
+      "archived_event_output": {
+        "status": "available_historical_snapshot",
+        "model_version": "1.0.0",
+        "inference_timestamp_utc": "2026-10-14T06:13:53.647490+00:00",
+        "artifact_sha256": "a13f2b125d4f0142872485bbae14ee7facfa8e688d21cd34fe44de97a9a462fc",
+        "quantity_label": "ESA log10 event-risk estimate; not calibrated probability or Foster Pc"
+      },
+      "finding": "The archived prediction is a timestamped v1 snapshot, not a new v2 inference. The current artifact loaded and enforced the eligibility rule. No current eligible Collision Analysis inference was demonstrated."
+    },
+    "job_bound_pdfs": {
+      "status": "PASS_API_DOWNLOAD_AND_CONTENT_CHECK",
+      "files_saved_to": "OS temporary directory (not repository)",
+      "event_report_route": "GET /api/conjunction-jobs/2a50f67a597442279de1d5178468953d/events/CA-0E45D17A7FD97444E98C/report.pdf",
+      "maneuver_assessment_route": "GET /api/conjunction-jobs/2a50f67a597442279de1d5178468953d/events/CA-0E45D17A7FD97444E98C/assessment.pdf",
+      "results": "Both returned HTTP 200, application/pdf, 14,749 bytes, %PDF signature, and embedded the selected event ID and screening-job ID.",
+      "limitation": "These were downloaded from the API with a local HTTP client, not by clicking a browser link."
+    },
+    "screening": {
+      "status": "NOT_TESTED",
+      "reason": "No new screening was run to avoid provider access and unbounded downstream assessment hooks. The archived result was used as a deterministic input."
+    }
+  },
+  "capability_status": {
+    "application_startup_and_configuration": "BLOCKED_FOR_STRICT_OFFLINE_RUNTIME; local backend started, but its health request attempted upstream provider access before falling back. Frontend build passed; frontend service was not started.",
+    "collision_analysis_current_model_inference": "BLOCKED; the tested event is ineligible under the current two-day minimum and archived v1 output is historical only.",
+    "maneuver_assessment_model_and_physics_api": "PASS_API_LEVEL; actual backend inference and physical candidate evaluation returned with event/job identity.",
+    "partial_screening_and_job_identity": "PASS_API_LEVEL; archived partial job and event identity were preserved.",
+    "event_and_maneuver_reports": "PASS_API_LEVEL; both PDFs returned and contained event/job IDs.",
+    "browser_visible_workflow": "BLOCKED; no browser/app surface or installed browser automation runner was available.",
+    "production_build": "PASS"
+  },
+  "commands_executed": [
+    {
+      "command": "Get-NetTCPConnection -State Listen -LocalPort 8000,5173,4173 -ErrorAction SilentlyContinue",
+      "result": "No listeners before startup; none remained after stopping the backend."
+    },
+    {
+      "command": "Start-Process ... uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log",
+      "result": "Backend started as process ID 20124; stopped by the assessment after local API checks."
+    },
+    {
+      "command": "Invoke-RestMethod http://127.0.0.1:8000/api/system-health",
+      "result": "HTTP 200, fallback TLE data and model status available; provider attempted CelesTrak access and all requests failed."
+    },
+    {
+      "command": "PowerShell here-string piped to backend/.venv/Scripts/python.exe - (urllib local API harness)",
+      "result": "Restored archived partial job, retrieved selected event, posted maneuver assessment, verified ranking/provenance/Pc nulls, downloaded both PDFs, and checked IDs/signatures."
+    },
+    {
+      "command": "PowerShell here-string piped to backend/.venv/Scripts/python.exe -B - (direct current ESA inference call on archived PhysicsResult)",
+      "result": "Current artifact loaded; prediction was unavailable with ESA_INPUT_TIME_TO_TCA_BELOW_MINIMUM."
+    },
+    {
+      "command": "node --test tests/*.test.js (via npm test)",
+      "result": "105 passed, 0 failed."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_ai_stage3 tests.test_maneuver_research tests.test_screening_jobs tests.test_archived_job_restore tests.test_report_status (from backend)",
+      "result": "75 tests passed. Expected injected screening-failure traceback appeared in the screening failure test; Starlette/httpx deprecation warning appeared."
+    },
+    {
+      "command": "npm run build",
+      "result": "Passed; Vite 6.4.4 transformed 3,203 modules in 42.23 seconds. Existing large-chunk warning: main JS 1,756.66 kB minified."
+    },
+    {
+      "command": "await cua.getState()",
+      "result": "No apps or browsers available."
+    }
+  ],
+  "automated_test_evidence_vs_browser_verification": {
+    "automated_tests": "Frontend Node tests, backend unittest suite, production bundle build, direct model-service eligibility check, and local HTTP API checks were executed.",
+    "actual_browser_verification": "Not performed. No browser interaction, rendered pixels, navigation, button click, or browser-managed file download was inspected.",
+    "api_level_checks_are_not_browser_evidence": true
+  },
+  "limitations_to_disclose": [
+    "A strict offline startup was not established: /api/system-health caused the provider to attempt external CelesTrak connections, all of which failed. No data were retrieved and no screening job was run.",
+    "The v2 Collision AI artifact is available, but this tested event is ineligible because its TCA is less than two days after the screening window start. The archived prediction is a historical v1 snapshot and must not be described as a fresh v2 result.",
+    "No browser-visible workflow was verified; in particular, Collision Analysis labels, Maneuver Assessment labels/warnings, stale-selection behavior, and browser PDF downloads remain unverified.",
+    "The maneuver ranker is trained only on synthetic simulator outcomes and performs worse than the minimum-delta-v baseline in the held-out Phase 15 scenarios; treat it as experimental display-only ranking.",
+    "Maneuver results are warning-qualified two-body simulations, not validated maneuver effectiveness or operational safety. No post-maneuver Pc is calculated; unavailable Pc is not zero.",
+    "The phase tests and local API checks do not establish physical model accuracy or operational readiness."
+  ],
+  "production_changes": {
+    "made": false,
+    "statement": "No production-code changes were made. No specific safe production correction was established by these checks.",
+    "regression_tests": "Not applicable; no code changes."
+  },
+  "report_validation": {
+    "status": "PASSED",
+    "checks": [
+      "JSON parsed successfully",
+      "required top-level keys present",
+      "overall status uses the declared status vocabulary",
+      "maneuver event/job identity matches the restored job",
+      "current Collision AI ineligibility is distinct from archived historical output",
+      "PDF response result recorded",
+      "test/build results consistent with command records",
+      "no production-code change recorded"
+    ]
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "phase": "12.9",
+  "title": "Browser-visible Collision Analysis to Maneuver Assessment workflow validation",
+  "status": "browser_verification_unavailable_offline_substitutes_passed",
+  "objective": "Verify the actual browser-visible workflow and scientific provenance presentation where available, otherwise report the exact browser limitation and feasible offline checks without claiming browser verification.",
+  "browser_environment": {
+    "actual_browser_interaction_performed": false,
+    "browser_tool_inventory": "Computer-use inventory returned no available apps or browsers and no tabs.",
+    "browser_automation_dependencies": {
+      "playwright": "not installed",
+      "@playwright/test": "not installed",
+      "puppeteer": "not installed",
+      "cypress": "not installed",
+      "selenium-webdriver": "not installed"
+    },
+    "project_test_setup": "package.json defines node --test for unit/integration test files; no browser automation test script or browser automation dependency is configured.",
+    "startup_constraints": "README.md instructs running Vite on 127.0.0.1:5173 and FastAPI on 127.0.0.1:8000. Starting those live application services was prohibited by the request. The built frontend also needs the API to exercise selected physical events and maneuver workflow.",
+    "limitation": "No existing browser surface or browser test runner was available, and the application could not be started under the no-live-services constraint. Therefore no actual browser-visible workflow was verified."
+  },
+  "workflow_checks": [
+    {
+      "id": "collision_analysis_selected_physical_event_and_job_identity",
+      "browser_result": "not_verified",
+      "offline_substitute": "Frontend rendering and selection tests verify accepted event selection and association with the originating screening job; backend/API tests verify stored job event resolution. These tests do not prove browser pixels or interactive navigation."
+    },
+    {
+      "id": "maneuver_request_event_and_job_identity",
+      "browser_result": "not_verified",
+      "offline_substitute": "Frontend API-client tests inspect the request URL/body and response identity behavior; backend tests verify the request event and job association."
+    },
+    {
+      "id": "mismatched_event_or_job_response_cannot_replace_current_result",
+      "browser_result": "not_verified",
+      "offline_substitute": "Node tests assert the client rejects returned event/job mismatches; selection tests assert old or mismatched event/job results do not replace the current selection."
+    },
+    {
+      "id": "stale_async_response_cannot_overwrite_newer_selection",
+      "browser_result": "not_verified",
+      "offline_substitute": "maneuverSelection tests exercise newer selection generations, late responses, duplicate requests, and cleared/aborted requests."
+    },
+    {
+      "id": "partial_screening_status_visible",
+      "browser_result": "not_verified",
+      "offline_substitute": "Server-rendered component tests assert accepted partial status, job identity, and limited coverage text."
+    },
+    {
+      "id": "new_failed_attempt_distinguished_from_accepted_result",
+      "browser_result": "not_verified",
+      "offline_substitute": "Server-rendered ManeuverScreeningContext and lifecycle tests assert the earlier accepted result/job remains distinct from a later failed attempt/job."
+    },
+    {
+      "id": "missing_or_cross_job_event_error_state",
+      "browser_result": "not_verified",
+      "offline_substitute": "Frontend selection/API tests reject missing and cross-job event identities; backend tests verify 404/422 behavior for absent jobs/events and proxy inputs."
+    },
+    {
+      "id": "missing_covariance_or_hbr_not_rendered_as_zero_pc",
+      "browser_result": "not_verified",
+      "offline_substitute": "Pc component, backend Foster, and report tests assert unavailable/reason-coded values do not render or export numeric zero."
+    },
+    {
+      "id": "source_pc_and_scenario_pc_visibly_separate",
+      "browser_result": "not_verified",
+      "offline_substitute": "Server-rendered CollisionPcSummary tests assert separate labels, provenance, warnings, and independent unavailable/available combinations."
+    },
+    {
+      "id": "warning_qualified_maneuver_not_presented_as_validated_risk_reduction",
+      "browser_result": "not_verified",
+      "offline_substitute": "Maneuver baseline component/API/PDF tests assert available_with_warning, discrepancy qualification, simulated-baseline wording, and unavailable Pc reduction."
+    },
+    {
+      "id": "pdf_actions_preserve_event_and_job_identity",
+      "browser_result": "not_verified",
+      "offline_substitute": "Frontend tests assert selected report paths include job/event IDs. Backend report tests assert the requested stored event and maneuver are passed to the PDF renderer and that the PDF includes screening job ID and event key. No browser click or rendered PDF download was exercised."
+    }
+  ],
+  "test_environment_and_controls": {
+    "network_accessed": false,
+    "packages_installed": false,
+    "live_services_started": false,
+    "live_screening_jobs_started": false,
+    "actual_ai_inference": false,
+    "screening_test_control": "No browser test or live screen was run. The existing maneuver-research tests include fixture screening calls only inside _screen_with_ai_hooks_stubbed, which patches and asserts predict_from_physics, predict_orbital_anomaly, and compare_ml_and_physics immediately before screen_tle_records and asserts their use. Screening-job lifecycle tests mock main.conjunctions."
+  },
+  "tests": {
+    "frontend_offline_substitutes": {
+      "command": "node --test tests/maneuverScreeningContext.test.js tests/maneuverSelection.test.js tests/maneuverBaselineComparison.test.js tests/catalogLifecycle.test.js tests/reportDownloads.test.js tests/collisionPcRendering.test.js",
+      "result": "65 passed, 0 failed, 0 skipped (Ran in 5.077 s)",
+      "notes": "Component markup is server-rendered under Node; lifecycle and request handling use mocks. This is not browser interaction. Expected diagnostic logs are generated by deliberately malformed/unavailable watchlist fixtures and mocked screening polling."
+    },
+    "backend_offline_substitutes": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_screening_jobs tests.test_collision_probability tests.test_cdm_ingestion tests.test_report_status",
+      "result": "83 passed, 0 failed (Ran 83 tests in 6.818 s)",
+      "notes": "The injected failure traceback is expected from the test that verifies a failed screening job remains failed. A Starlette/httpx deprecation warning is emitted. Fixture screening hooks are patched and asserted as described above."
+    },
+    "production_build": {
+      "result": "not rerun in Phase 12.9; no production code changed in this phase",
+      "prior_context": "Phase 12.8 reported a successful production build."
+    },
+    "command_correction": {
+      "command": "\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_screening_jobs tests.test_collision_probability tests.test_cdm_ingestion tests.test_report_status",
+      "result": "PowerShell rejected this attempted command because the relative executable path lacked the leading dot-slash. The command was immediately rerun as recorded above and all 83 tests passed."
+    }
+  },
+  "reproduced_browser_defects": [],
+  "production_code_changed": false,
+  "files_inspected": [
+    "package.json",
+    "README.md",
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json",
+    "backend/exports/evaluations/phase_12_8_scientific_provenance_integration.json",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js",
+    "src/utils/screeningRefreshPolicy.js",
+    "src/components/UI/ManeuverScreeningContext.js",
+    "src/components/UI/ManeuverBaselineComparison.js",
+    "src/components/UI/CollisionPcSummary.js",
+    "backend/app/main.py",
+    "backend/app/services/reports.py",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_screening_jobs.py",
+    "backend/tests/test_collision_probability.py",
+    "backend/tests/test_cdm_ingestion.py",
+    "backend/tests/test_report_status.py",
+    "tests/catalogLifecycle.test.js",
+    "tests/maneuverScreeningContext.test.js",
+    "tests/maneuverSelection.test.js",
+    "tests/maneuverBaselineComparison.test.js",
+    "tests/reportDownloads.test.js",
+    "tests/collisionPcRendering.test.js"
+  ],
+  "files_changed": [
+    "backend/exports/evaluations/phase_12_9_browser_workflow_validation.json"
+  ],
+  "limitations": [
+    "No real browser rendering, navigation, clicks, or browser-visible labels were inspected in Phase 12.9.",
+    "Offline component/API tests establish code-level behavior only and cannot guarantee browser accessibility, layout, or real browser integration.",
+    "No claim is made about operational safety, Pc reduction, or maneuver effectiveness."
+  ]
+}

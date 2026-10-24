@@ -1,0 +1,122 @@
+{
+  "model_name": "ORION ESA CDM population uncertainty and size prior",
+  "model_version": "1.0.0",
+  "source_archive": "backend/ml_data/train_data.zip",
+  "source_archive_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+  "source_csv_member": "train_data.csv",
+  "summary_method": "component-wise p10/p50/p90 from all positive finite rows; no covariance correlations are carried into this prior",
+  "roles": {
+    "esa_target": {
+      "fields": {
+        "sigma_r_m": {
+          "sample_count": 162634,
+          "p10": 2.0966061351393304,
+          "p50": 4.764258599194516,
+          "p90": 10.954697165782857,
+          "units": "m"
+        },
+        "sigma_t_m": {
+          "sample_count": 162634,
+          "p10": 16.008903058894887,
+          "p50": 85.8884410839236,
+          "p90": 587.3137795812912,
+          "units": "m"
+        },
+        "sigma_n_m": {
+          "sample_count": 162634,
+          "p10": 1.3216429554208953,
+          "p50": 2.0589260986233775,
+          "p90": 5.039249130036691,
+          "units": "m"
+        },
+        "sigma_rdot_m_s": {
+          "sample_count": 153404,
+          "p10": 0.015552210393959594,
+          "p50": 0.08613491244891414,
+          "p90": 0.4933060507349732,
+          "units": "m/s"
+        },
+        "sigma_tdot_m_s": {
+          "sample_count": 153404,
+          "p10": 0.0021319159057187767,
+          "p50": 0.0048963706439422265,
+          "p90": 0.01081656923425617,
+          "units": "m/s"
+        },
+        "sigma_ndot_m_s": {
+          "sample_count": 153404,
+          "p10": 0.002086044917948514,
+          "p50": 0.003363917590842979,
+          "p90": 0.006799968878170909,
+          "units": "m/s"
+        },
+        "span_diameter_m": {
+          "sample_count": 162634,
+          "p10": 1.0,
+          "p50": 9.1,
+          "p90": 21.0,
+          "units": "m"
+        }
+      }
+    },
+    "esa_chaser": {
+      "fields": {
+        "sigma_r_m": {
+          "sample_count": 162623,
+          "p10": 13.010205322986964,
+          "p50": 68.42867089166646,
+          "p90": 512.5225089950163,
+          "units": "m"
+        },
+        "sigma_t_m": {
+          "sample_count": 162623,
+          "p10": 282.908012898315,
+          "p50": 3965.313354578677,
+          "p90": 45429.2592932906,
+          "units": "m"
+        },
+        "sigma_n_m": {
+          "sample_count": 162623,
+          "p10": 6.85486750550422,
+          "p50": 39.962507428838855,
+          "p90": 242.67884071988266,
+          "units": "m"
+        },
+        "sigma_rdot_m_s": {
+          "sample_count": 153393,
+          "p10": 0.2931798014869592,
+          "p50": 4.034126919173467,
+          "p90": 45.79393191211023,
+          "units": "m/s"
+        },
+        "sigma_tdot_m_s": {
+          "sample_count": 153393,
+          "p10": 0.012393049925655115,
+          "p50": 0.059142590262474135,
+          "p90": 0.39888527521897055,
+          "units": "m/s"
+        },
+        "sigma_ndot_m_s": {
+          "sample_count": 153393,
+          "p10": 0.011619545943127698,
+          "p50": 0.0656174214671683,
+          "p90": 0.438676691874735,
+          "units": "m/s"
+        },
+        "span_diameter_m": {
+          "sample_count": 162634,
+          "p10": 2.0,
+          "p50": 2.0,
+          "p90": 2.0,
+          "units": "m"
+        }
+      }
+    }
+  },
+  "limitations": [
+    "ESA values are CDM-derived population priors and are not measured uncertainty for any live ORION TLE object.",
+    "Component correlations are omitted; the covariance prior is diagonal in the object's local RTN position/velocity ordering.",
+    "The challenge target/chaser population differs from the live TLE catalog; no calibration or coverage validation against live TLE truth is claimed.",
+    "ESA span is a collision-risk algorithm size input, not an authenticated physical dimension for a live object."
+  ]
+}

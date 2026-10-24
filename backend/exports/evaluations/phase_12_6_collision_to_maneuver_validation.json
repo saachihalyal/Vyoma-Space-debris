@@ -1,0 +1,134 @@
+{
+  "phase": "12.6",
+  "title": "Collision Analysis to Maneuver Assessment integration validation",
+  "status": "completed_with_one_presentation_correction",
+  "objective": "Validate encounter identity, job association, state handoff, status handling, and maneuver result display across offline fixtures. No physics redesign.",
+  "workflow_audit": [
+    {
+      "step": "Screening result and event identity",
+      "files": [
+        "backend/app/main.py",
+        "backend/app/services/trajectory_screening.py"
+      ],
+      "finding": "Screening job stores its result under a generated job ID. Physical event IDs are generated from pair-input identity, canonical UTC TCA, and method version."
+    },
+    {
+      "step": "Accepted frontend result and selection",
+      "files": [
+        "src/App.jsx",
+        "src/utils/screeningRefreshPolicy.js",
+        "src/utils/maneuverSelection.js"
+      ],
+      "finding": "Frontend accepts only terminal payloads matching the active run and expected job ID. Accepted event list and job metadata are updated together. Physical maneuver selection is re-resolved against unique valid events by exact event ID; refresh reconciliation clears selections absent from the new accepted result."
+    },
+    {
+      "step": "Request and authoritative backend resolution",
+      "files": [
+        "src/api/ssaClient.js",
+        "backend/app/main.py"
+      ],
+      "finding": "Request includes selected event JSON, path event ID, and screening_job_id. Backend checks path/body identity, physical kind, job availability/status, event membership in that exact job, stored event identity and valid interior TCA. Solver receives the job-stored event rather than client-supplied vectors."
+    },
+    {
+      "step": "Maneuver solver state contract",
+      "files": [
+        "backend/app/services/conjunction.py"
+      ],
+      "finding": "Input validation enforces event/object identity, UTC epoch, TEME frame, km and km/s vectors, finite state values, valid TCA and available miss-distance reference consistent with state separation. Existing solver returns warning-qualified exploratory results and unavailable values remain null/unavailable."
+    },
+    {
+      "step": "Response and frontend display",
+      "files": [
+        "src/App.jsx",
+        "src/components/UI/ManeuverBaselineComparison.js",
+        "src/api/ssaClient.js"
+      ],
+      "finding": "Client request generations suppress stale responses; rendered assessment is gated by matching event ID and screening job ID; response event ID mismatch becomes unavailable. Warning-qualified status and baseline interpretation are displayed, and no post-maneuver Pc reduction is claimed."
+    }
+  ],
+  "reproduced_defects": [
+    {
+      "id": "partial_run_display_label",
+      "severity": "presentation",
+      "reproduction": "Maneuver Assessment titled its source panel 'Completed Stage 2A Event' even for an accepted partial job. It also omitted the accepted job ID and did not distinguish that accepted result from a newer pending/failed attempt.",
+      "correction": "Panel now says 'Accepted Stage 2A Event'. Added a tested Screening Context panel showing accepted job ID/status separately from latest attempt, plus an explicit incomplete-coverage note for partial results. Kept event-specific maneuver evaluation available for a valid stored event in a partial job, consistent with backend behavior.",
+      "regression": "tests/maneuverScreeningContext.test.js renders accepted partial result plus later failed attempt and checks both statuses/job IDs and partial warning. Backend regression verifies valid event response/storage remain bound to the event in a partial job."
+    }
+  ],
+  "critical_cases": {
+    "event_identity_request_response": "Existing backend maneuver tests assert response event ID and authoritative stored event inputs; frontend tests bind request path and screening_job_id to exact accepted selection.",
+    "missing_expired_or_other_job_event": "Existing API tests assert 404 for expired job and for an event ID absent from the requested job; frontend request refuses absent screening job context.",
+    "stale_selection_or_response": "Existing frontend tests cover new accepted result reconciliation, unrelated job payload rejection, event change, aborted request and late response suppression.",
+    "malformed_or_mismatched_vectors": "Existing maneuver tests cover missing, non-finite, non-numeric, wrong-unit/frame/epoch, mismatched event/object IDs, and unavailable reference miss distance. Submitted state edits do not replace job-stored authoritative inputs.",
+    "job_statuses": "Existing screening lifecycle tests preserve queued/running/partial/failed states and distinguish failures from valid empty results. UI context now shows accepted result separately from latest attempt; partial accepted results are explicitly qualified.",
+    "zero_burn_and_unavailable_values": "Existing maneuver research and baseline comparison tests verify warning status, zero-burn reference fields, unavailable times, null/blank behavior and no silent zero substitution.",
+    "inference_control": "The real-TLE screening regression helper in test_maneuver_research.py replaces all three hooks (predict_from_physics, predict_orbital_anomaly, compare_ml_and_physics), asserts replacements immediately before screen_tle_records, and asserts stub call counts. Screening-job lifecycle tests mock conjunctions; no network/service/live screen or inference was run in this phase."
+  },
+  "tests": {
+    "frontend_focused": {
+      "command": "node --test tests/maneuverScreeningContext.test.js tests/maneuverSelection.test.js tests/maneuverBaselineComparison.test.js tests/catalogLifecycle.test.js tests/reportDownloads.test.js",
+      "result": "58 passed, 0 failed, 0 skipped (Ran in 5.119 s)",
+      "notes": "Expected test diagnostics include malformed/blocked local watchlist and mocked screening lifecycle logs."
+    },
+    "backend_focused": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_screening_jobs",
+      "result": "22 passed, 0 failed (Ran 22 tests in 5.758 s)",
+      "notes": "Expected injected failure traceback is produced by the test that verifies failed jobs remain failed; Starlette/httpx deprecation warning. Screening job execution is mocked. Maneuver research screening fixtures patch and verify downstream hooks."
+    },
+    "production_build": {
+      "command": "npm run build",
+      "result": "passed; Vite 6.4.4 transformed 3,201 modules and built in 56.42 s",
+      "notes": "Existing large JavaScript chunk warning (1.75 MB minified); no package installation."
+    },
+    "report_validation": {
+      "command": "Python JSON parse plus required Phase 12.6 section and recorded-result assertions",
+      "result": "passed"
+    }
+  },
+  "no_inference_and_execution_controls": {
+    "network_accessed": false,
+    "packages_installed": false,
+    "services_or_live_jobs_started": false,
+    "actual_model_inference": false,
+    "screening_job_test_invocations": "main.conjunctions is stubbed; no trajectory screening runs occur.",
+    "maneuver_fixture_screening_invocations": "All three downstream hooks are patched and identity-asserted in the helper before every fixture screen call; stub use is asserted by tests.",
+    "model_artifacts_or_physics_changed": false,
+    "offline_fixture_screen_tle_records_calls": 5,
+    "offline_fixture_screen_calls_hook_status": "All five Phase 12.5 fixture screenings run inside the tested maneuver research module; all three hooks are patched and asserted immediately before each call, with stub call counts asserted. No inference occurred."
+  },
+  "browser_behavior": {
+    "status": "not verified",
+    "detail": "Frontend validation used node tests and server-rendered markup for the new context panel; no browser session or interactive visual test was run."
+  },
+  "limitations": [
+    "Fixtures and mocked jobs validate code paths, not an operational screening archive or live backend service.",
+    "A valid event from a partial job can still receive an event-specific two-body maneuver sweep; partial catalog coverage remains a limit and is now made visible.",
+    "The solver remains exploratory, with unvalidated baseline tolerances; no Pc reduction, maneuver effectiveness, collision-risk reduction, or operational safety is established.",
+    "No live browser behavior was inspected."
+  ],
+  "files_inspected": [
+    "backend/app/main.py",
+    "backend/app/models.py",
+    "backend/app/services/trajectory_screening.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/services/reports.py",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js",
+    "src/utils/screeningRefreshPolicy.js",
+    "src/components/UI/ManeuverBaselineComparison.js",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_screening_jobs.py",
+    "tests/maneuverSelection.test.js",
+    "tests/maneuverBaselineComparison.test.js",
+    "tests/catalogLifecycle.test.js",
+    "tests/reportDownloads.test.js"
+  ],
+  "files_changed": [
+    "src/App.jsx",
+    "src/components/UI/ManeuverScreeningContext.js",
+    "tests/maneuverScreeningContext.test.js",
+    "backend/tests/test_maneuver_research.py",
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json"
+  ]
+}

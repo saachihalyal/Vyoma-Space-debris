@@ -1,0 +1,658 @@
+{
+  "baseline": {
+    "definition": "mean final ESA log-risk across one closest eligible training forecast per event"
+  },
+  "created_utc": "2026-10-16T04:31:28.344264+00:00",
+  "dataset": {
+    "archive": "ml_data/train_data.zip",
+    "forecastable_events_ambiguous_mission": 0,
+    "forecastable_events_missing_mission": 0,
+    "reader_summary": {
+      "archive_csv_member": "train_data.csv",
+      "archive_path": "ml_data/train_data.zip",
+      "dataset_name": "ESA Collision Avoidance Challenge training dataset",
+      "dataset_source": "https://kelvins.esa.int/collision-avoidance-challenge/data/",
+      "event_ids_without_any_valid_time": 11,
+      "events_missing_final_target_excluded": 0,
+      "events_with_any_valid_time": 13143,
+      "events_with_nonmonotonic_time_order": 0,
+      "feature_missing_counts": {
+        "miss_distance_m": 0,
+        "relative_position_n_m": 0,
+        "relative_position_r_m": 0,
+        "relative_position_t_m": 0,
+        "relative_speed_m_s": 0,
+        "relative_velocity_n_m_s": 0,
+        "relative_velocity_r_m_s": 0,
+        "relative_velocity_t_m_s": 0,
+        "time_to_tca_days": 0
+      },
+      "final_event_target_selection": "minimum time_to_tca; last file occurrence breaks ties",
+      "final_target_definition": "final event risk in log10 space, selected from the latest CDM (minimum time_to_tca; last occurrence breaks ties)",
+      "forecast_examples": 149100,
+      "forecast_row_policy": "all rows before selected final CDM; final row is never an input example",
+      "forecastable_events": 12917,
+      "malformed_rows_excluded": 0,
+      "rows_read": 162634,
+      "rows_with_invalid_event_time_excluded": 391,
+      "single_row_events_excluded": 226,
+      "target_high_risk_events": 356,
+      "target_max_log10": -1.6846595233727115,
+      "target_min_log10": -30.0,
+      "unique_events": 13154
+    },
+    "sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc"
+  },
+  "experiment": "ORION Phase 11.2B mission-grouped ESA log-risk evaluation",
+  "features": {
+    "hgb": {
+      "early_stopping": false,
+      "l2_regularization": 1.0,
+      "learning_rate": 0.1,
+      "loss": "squared_error",
+      "max_iter": 200,
+      "max_leaf_nodes": 31,
+      "min_samples_leaf": 20,
+      "random_state": 42
+    },
+    "names": [
+      "time_to_tca_days",
+      "miss_distance_m",
+      "relative_speed_m_s",
+      "relative_position_r_m",
+      "relative_position_t_m",
+      "relative_position_n_m",
+      "relative_velocity_r_m_s",
+      "relative_velocity_t_m_s",
+      "relative_velocity_n_m_s"
+    ],
+    "preprocessing": "median imputer with missingness indicators fit on training eligible rows; Ridge additionally StandardScaler fit on training only",
+    "ridge": {
+      "alpha": 1.0,
+      "solver": "lsqr"
+    },
+    "training_weights": "each training event total weight 1 across its eligible rows"
+  },
+  "legacy_artifact_metrics_context_only": {
+    "hgb": {
+      "average_precision": 0.05351034282620575,
+      "fn": 55,
+      "fp": 0,
+      "mae_log10": 6.2264674259798705,
+      "r2": 0.2405477725989389,
+      "rmse_log10": 8.28673896780418,
+      "spearman_correlation": 0.528624088240082,
+      "tp": 0
+    },
+    "high_risk_support": 55,
+    "protocol": "legacy event-random split; trained with all pre-final rows including <2 days; metadata values not recomputed",
+    "ridge": {
+      "average_precision": 0.08823940153585486,
+      "fn": 55,
+      "fp": 0,
+      "mae_log10": 6.603779480089205,
+      "r2": 0.1858783330059567,
+      "rmse_log10": 8.579818194462636,
+      "spearman_correlation": 0.5224796684016364,
+      "tp": 0
+    },
+    "source": "saved metadata; protocol differs and values are not directly comparable",
+    "test_events": 1939
+  },
+  "limitations": [
+    "Only 19 missions; 13/2/4 grouped split yields uncertain estimates.",
+    "Mission independence only; object and chronological independence are not established.",
+    "ESA selected labels do not establish live ORION performance or Foster Pc.",
+    "No external reference corpus or maneuver outcomes.",
+    "Fixed -6 predicted-log-risk threshold may miss high-risk labels despite regression signal."
+  ],
+  "protocol": {
+    "allocation": {
+      "test": 0.15,
+      "train": 0.7,
+      "validation": 0.15
+    },
+    "candidate_selection": "lowest validation event-level MAE",
+    "eligibility_rule": "time_to_tca_days >= 2.0 inclusive",
+    "event_overlap": false,
+    "group": "mission_id",
+    "mission_overlap": false,
+    "seed": 42,
+    "split_algorithm": "sorted unique mission IDs; Python random.Random(seed).shuffle; floor 70%, floor 15%, remainder test",
+    "splits": {
+      "test": {
+        "eligible_events": 3832,
+        "eligible_input_rows": 38063,
+        "excluded_events_without_eligible_input": 530,
+        "excluded_input_rows_below_2_days": 15616,
+        "high_risk_eligible_events": 145,
+        "low_risk_eligible_events": 3687,
+        "mission_count": 4,
+        "mission_ids": [
+          "1",
+          "14",
+          "19",
+          "2"
+        ],
+        "total_events": 4362
+      },
+      "train": {
+        "eligible_events": 7683,
+        "eligible_input_rows": 66768,
+        "excluded_events_without_eligible_input": 454,
+        "excluded_input_rows_below_2_days": 23394,
+        "high_risk_eligible_events": 167,
+        "low_risk_eligible_events": 7516,
+        "mission_count": 13,
+        "mission_ids": [
+          "10",
+          "15",
+          "16",
+          "18",
+          "20",
+          "22",
+          "23",
+          "24",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "total_events": 8137
+      },
+      "validation": {
+        "eligible_events": 407,
+        "eligible_input_rows": 4055,
+        "excluded_events_without_eligible_input": 11,
+        "excluded_input_rows_below_2_days": 1204,
+        "high_risk_eligible_events": 10,
+        "low_risk_eligible_events": 397,
+        "mission_count": 2,
+        "mission_ids": [
+          "13",
+          "9"
+        ],
+        "total_events": 418
+      }
+    },
+    "total_missions": 19,
+    "training_rows": "all eligible pre-final rows for train missions",
+    "validation_test_rows": "closest-to-TCA eligible pre-final row per event"
+  },
+  "reproducibility": {
+    "candidate_models_fit_in_memory": true,
+    "code_version": "unavailable; no Git metadata at project root",
+    "joblib": "1.6.0",
+    "numpy": "2.5.1",
+    "production_artifact_loaded_or_scored": false,
+    "production_artifact_sha256_reference_only": "a13f2b125d4f0142872485bbae14ee7facfa8e688d21cd34fe44de97a9a462fc",
+    "python": "3.14.0",
+    "scikit_learn": "1.9.1",
+    "scipy": "1.18.1"
+  },
+  "target": {
+    "column": "risk",
+    "high_risk_label_threshold_log10": -6.0,
+    "meaning": "final event risk label in log10 space; not Foster Pc",
+    "prediction_threshold_log10": -6.0,
+    "threshold_policy": "predeclared fixed threshold on predicted ESA log-risk; no test tuning; not a Pc threshold"
+  },
+  "test": {
+    "metrics": {
+      "histogram_gradient_boosting": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.07935785644558951,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.848859453759289,
+        "predicted_high_risk_events": 0,
+        "r2": 0.13950914086438393,
+        "rmse_log10": 8.580070333065274,
+        "spearman_correlation": 0.35099389871848996,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.12709927579322158,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.8934832116469416,
+        "predicted_high_risk_events": 0,
+        "r2": 0.1745328133818187,
+        "rmse_log10": 8.403643575541269,
+        "spearman_correlation": 0.442401539139016,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "training_event_mean": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.037839248434238,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 8.782282154338473,
+        "predicted_high_risk_events": 0,
+        "r2": -0.032780505112528724,
+        "rmse_log10": 9.399867525639579,
+        "spearman_correlation": null,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      }
+    },
+    "per_mission": {
+      "1": {
+        "eligible_events": 1762,
+        "high_risk_events": 87,
+        "metrics": {
+          "histogram_gradient_boosting": {
+            "false_negative_high_risk_events": 87,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.10413066734896383,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 87,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.844427273110857,
+            "predicted_high_risk_events": 0,
+            "r2": 0.14963354191734812,
+            "rmse_log10": 8.690274894963776,
+            "spearman_correlation": 0.3492325621983017,
+            "test_event_count": 1762,
+            "true_positive_high_risk_events": 0
+          },
+          "ridge": {
+            "false_negative_high_risk_events": 87,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.15796890347512502,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 87,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.9658877329759274,
+            "predicted_high_risk_events": 0,
+            "r2": 0.1879497572751888,
+            "rmse_log10": 8.492233051827341,
+            "spearman_correlation": 0.47874482787948913,
+            "test_event_count": 1762,
+            "true_positive_high_risk_events": 0
+          },
+          "training_event_mean": {
+            "false_negative_high_risk_events": 87,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.04937570942111237,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 87,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 8.90784364170956,
+            "predicted_high_risk_events": 0,
+            "r2": -0.02534777190298243,
+            "rmse_log10": 9.542585277891632,
+            "spearman_correlation": null,
+            "test_event_count": 1762,
+            "true_positive_high_risk_events": 0
+          }
+        }
+      },
+      "14": {
+        "eligible_events": 10,
+        "high_risk_events": 3,
+        "metrics": {
+          "histogram_gradient_boosting": {
+            "false_negative_high_risk_events": 3,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.38888888888888884,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 3,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 10.886296341548183,
+            "predicted_high_risk_events": 0,
+            "r2": -0.21492647103770723,
+            "rmse_log10": 11.671304465514382,
+            "spearman_correlation": 0.3006361283785259,
+            "test_event_count": 10,
+            "true_positive_high_risk_events": 0
+          },
+          "ridge": {
+            "false_negative_high_risk_events": 3,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.7666666666666666,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 3,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 11.640385734682733,
+            "predicted_high_risk_events": 0,
+            "r2": -0.5690281099047712,
+            "rmse_log10": 13.263549523783373,
+            "spearman_correlation": 0.4846990641204805,
+            "test_event_count": 10,
+            "true_positive_high_risk_events": 0
+          },
+          "training_event_mean": {
+            "false_negative_high_risk_events": 3,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.3,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 3,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 12.119552821524579,
+            "predicted_high_risk_events": 0,
+            "r2": -0.526111343817562,
+            "rmse_log10": 13.080896561578761,
+            "spearman_correlation": null,
+            "test_event_count": 10,
+            "true_positive_high_risk_events": 0
+          }
+        }
+      },
+      "19": {
+        "eligible_events": 646,
+        "high_risk_events": 5,
+        "metrics": {
+          "histogram_gradient_boosting": {
+            "false_negative_high_risk_events": 5,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.03478954025723553,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 5,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.5355725198955685,
+            "predicted_high_risk_events": 0,
+            "r2": 0.14430714996111238,
+            "rmse_log10": 8.332859516837043,
+            "spearman_correlation": 0.40020264176512393,
+            "test_event_count": 646,
+            "true_positive_high_risk_events": 0
+          },
+          "ridge": {
+            "false_negative_high_risk_events": 5,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.024088614756048968,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 5,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.833346776728535,
+            "predicted_high_risk_events": 0,
+            "r2": 0.17023499017086707,
+            "rmse_log10": 8.205643922643851,
+            "spearman_correlation": 0.45500255823632363,
+            "test_event_count": 646,
+            "true_positive_high_risk_events": 0
+          },
+          "training_event_mean": {
+            "false_negative_high_risk_events": 5,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.007739938080495356,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 5,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 8.60398072143407,
+            "predicted_high_risk_events": 0,
+            "r2": -0.036834739105894965,
+            "rmse_log10": 9.172545578861458,
+            "spearman_correlation": null,
+            "test_event_count": 646,
+            "true_positive_high_risk_events": 0
+          }
+        }
+      },
+      "2": {
+        "eligible_events": 1414,
+        "high_risk_events": 50,
+        "metrics": {
+          "histogram_gradient_boosting": {
+            "false_negative_high_risk_events": 50,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.07184007112833049,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 50,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.968957397677682,
+            "predicted_high_risk_events": 0,
+            "r2": 0.11963991018671438,
+            "rmse_log10": 8.52721244366864,
+            "spearman_correlation": 0.3327016278683583,
+            "test_event_count": 1414,
+            "true_positive_high_risk_events": 0
+          },
+          "ridge": {
+            "false_negative_high_risk_events": 50,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.1545681920511107,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 50,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.797162380773716,
+            "predicted_high_risk_events": 0,
+            "r2": 0.15837778787368384,
+            "rmse_log10": 8.337493423833058,
+            "spearman_correlation": 0.38714951566624217,
+            "test_event_count": 1414,
+            "true_positive_high_risk_events": 0
+          },
+          "training_event_mean": {
+            "false_negative_high_risk_events": 50,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.03536067892503536,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 50,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 8.683675844746205,
+            "predicted_high_risk_events": 0,
+            "r2": -0.04524875950463669,
+            "rmse_log10": 9.291519449920044,
+            "spearman_correlation": null,
+            "test_event_count": 1414,
+            "true_positive_high_risk_events": 0
+          }
+        }
+      }
+    }
+  },
+  "validation": {
+    "metrics": {
+      "histogram_gradient_boosting": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.10976849334178633,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 7.058114462544394,
+        "predicted_high_risk_events": 0,
+        "r2": 0.08705189945459879,
+        "rmse_log10": 8.60433372221446,
+        "spearman_correlation": 0.267023414724342,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.17137424897133982,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.771915656714755,
+        "predicted_high_risk_events": 0,
+        "r2": 0.2113790383959554,
+        "rmse_log10": 7.997023272113595,
+        "spearman_correlation": 0.5307097126315508,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      },
+      "training_event_mean": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.02457002457002457,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 8.669070063139772,
+        "predicted_high_risk_events": 0,
+        "r2": -0.03661503704571767,
+        "rmse_log10": 9.168598473833306,
+        "spearman_correlation": null,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      }
+    },
+    "per_mission": {
+      "13": {
+        "eligible_events": 6,
+        "high_risk_events": 2,
+        "metrics": {
+          "histogram_gradient_boosting": {
+            "false_negative_high_risk_events": 2,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.5833333333333333,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 2,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 10.639545783268849,
+            "predicted_high_risk_events": 0,
+            "r2": -2.7077421699935904,
+            "rmse_log10": 11.684350888067781,
+            "spearman_correlation": 0.2,
+            "test_event_count": 6,
+            "true_positive_high_risk_events": 0
+          },
+          "ridge": {
+            "false_negative_high_risk_events": 2,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.5,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 2,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 14.068892907957299,
+            "predicted_high_risk_events": 0,
+            "r2": -5.275863901030098,
+            "rmse_log10": 15.20150497039582,
+            "spearman_correlation": 0.2571428571428572,
+            "test_event_count": 6,
+            "true_positive_high_risk_events": 0
+          },
+          "training_event_mean": {
+            "false_negative_high_risk_events": 2,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.3333333333333333,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 2,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 12.96960453163147,
+            "predicted_high_risk_events": 0,
+            "r2": -4.519646224076623,
+            "rmse_log10": 14.256254801524221,
+            "spearman_correlation": null,
+            "test_event_count": 6,
+            "true_positive_high_risk_events": 0
+          }
+        }
+      },
+      "9": {
+        "eligible_events": 401,
+        "high_risk_events": 8,
+        "metrics": {
+          "histogram_gradient_boosting": {
+            "false_negative_high_risk_events": 8,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.09731090882547502,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 8,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 7.004526961486171,
+            "predicted_high_risk_events": 0,
+            "r2": 0.06889971001013673,
+            "rmse_log10": 8.549827709521693,
+            "spearman_correlation": 0.24215576614257495,
+            "test_event_count": 401,
+            "true_positive_high_risk_events": 0
+          },
+          "ridge": {
+            "false_negative_high_risk_events": 8,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.1924469962810299,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 8,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 6.662733952207386,
+            "predicted_high_risk_events": 0,
+            "r2": 0.21726426740334115,
+            "rmse_log10": 7.839109165220815,
+            "spearman_correlation": 0.5262976961763082,
+            "test_event_count": 401,
+            "true_positive_high_risk_events": 0
+          },
+          "training_event_mean": {
+            "false_negative_high_risk_events": 8,
+            "false_positive_high_risk_events": 0,
+            "high_risk_f1": 0.0,
+            "high_risk_pr_auc_average_precision": 0.0199501246882793,
+            "high_risk_precision": 0.0,
+            "high_risk_recall": 0.0,
+            "high_risk_test_events": 8,
+            "high_risk_threshold_log10": -6.0,
+            "mae_log10": 8.604722913985283,
+            "predicted_high_risk_events": 0,
+            "r2": -0.04803545728966685,
+            "rmse_log10": 9.070831932330071,
+            "spearman_correlation": null,
+            "test_event_count": 401,
+            "true_positive_high_risk_events": 0
+          }
+        }
+      }
+    }
+  },
+  "validation_candidate_selected_by_mae": "ridge"
+}

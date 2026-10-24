@@ -1,0 +1,1684 @@
+{
+  "commands_run": [
+    "Get-ChildItem ml_data -Force",
+    "rg -n -i \"risk.*(floor|censor|sentinel|limit|log10)|(-30|censor|floor|sentinel|risk label|target definition|final.*risk)\" ..\\docs app tests",
+    "PowerShell here-string piped to .\\.venv\\Scripts\\python.exe -B - (streaming ZIP/CSV target inventory and report generation; no extraction)",
+    "PowerShell here-string piped to .\\.venv\\Scripts\\python.exe -B - (second independent streaming verification of archive, raw risk cells, event targets, mission/split counts and artifact hash)",
+    ".\\.venv\\Scripts\\python.exe -B -m json.tool exports/evaluations/phase_11_5_target_semantics.json > $null",
+    "Narrow authoritative source review: ESA Kelvins Collision Avoidance Challenge data, challenge and scoring pages (URLs recorded in source_references)"
+  ],
+  "created_utc": "2026-10-16T05:45:09.621682+00:00",
+  "dataset": {
+    "archive_hash_matches_model_metadata": true,
+    "archive_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+    "event_rows_with_valid_time": 13143,
+    "events_missing_final_target": 0,
+    "events_with_single_valid_time_row": 226,
+    "forecastable_event_targets": 12917,
+    "identity": "ESA Collision Avoidance Challenge training dataset; train_data.csv inside backend/ml_data/train_data.zip",
+    "raw_columns": 103,
+    "raw_rows": 162634,
+    "risk_cells_with_valid_numeric_value_all_archive_rows": 162634,
+    "source_metadata_archive_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+    "zip_member": "train_data.csv"
+  },
+  "evidence_assessment": {
+    "conclusion": "The meaning of -30 remains unresolved. ESA source documentation confirms log10 risk semantics, but does not define -30. The archive has no explicit censor/missing/below-limit indicator, and the project does not transform or specially handle -30.",
+    "documented": {
+      "risk_field_is_self_computed_log10_at_each_cdm_epoch": true,
+      "target_is_final_event_risk_from_last_cdm": true
+    },
+    "not_documented_or_not_established": {
+      "minus_30_is_floor": null,
+      "minus_30_is_literal_computed_log10_value": null,
+      "minus_30_is_sentinel_for_zero_or_missing": null,
+      "minus_30_means_censored_or_below_detection_limit": null,
+      "target_is_calibrated_collision_probability": false,
+      "target_is_foster_pc": false
+    }
+  },
+  "experiment": "ORION Phase 11.5 ESA target semantics and floor-value investigation",
+  "files_inspected": [
+    "backend/ml_data/train_data.zip",
+    "backend/app/ai/training.py",
+    "backend/app/ai/evaluation_audit.py",
+    "backend/app/ai/eligibility.py",
+    "backend/app/ai/features.py",
+    "backend/app/ai/model.py",
+    "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "backend/exports/evaluations/phase_11_2b_mission_grouped_esa_logrisk.json",
+    "backend/exports/evaluations/phase_11_3_high_risk_threshold_ranking.json",
+    "backend/exports/evaluations/phase_11_4_prediction_bias_diagnostics.json",
+    "docs/STAGE3_ML_MODEL_CARD.md",
+    "docs/HYBRID_SYSTEM_STATUS.md"
+  ],
+  "future_modeling_implications_without_recommendation": {
+    "censored_regression": "A censored-target method would require an authoritative statement that -30 encodes a lower limit/censoring, plus the censoring threshold and likelihood semantics; none was found.",
+    "classification_or_ranking": "High/low labels can reproduce the documented challenge split at log10 risk -6, but whether the -30 mass should count as observed exact values or censored negatives affects interpretation and calibration. Ranking/classification would still predict challenge labels, not Pc.",
+    "literal_regression": "Treating -30 as an ordinary numeric value is consistent with the current parser but would be scientifically justified only if it is a literal target value or the modeling objective intentionally reproduces the encoded challenge labels.",
+    "next_evidence_needed": "Obtain an authoritative ESA explanation or original target-generation/scoring convention for -30, including whether it is a numeric clipping boundary, why that bound was chosen, and treatment of invalid/zero estimates."
+  },
+  "limitations": [
+    "The data scan establishes the distribution of encoded values, not how the data producer generated -30.",
+    "Official ESA pages explain the risk scale and challenge task but provide no -30-specific rule.",
+    "No original source-code implementation or detailed numerical convention for ESA risk generation was available locally.",
+    "ESA risk is a historical challenge target and must not be interpreted as Foster Pc or a calibrated probability."
+  ],
+  "reproducibility": {
+    "code_sha256": {
+      "app/ai/eligibility.py": "644cf1c81880b8a95c396be0b8973aa8ee2c56cd5e96cc0f761995aa1372d27c",
+      "app/ai/evaluation_audit.py": "d73601d74c67554a60203d9d5e00bee90040472ddbcdbaf90f0428b95e236f35",
+      "app/ai/features.py": "826ac1fc5d7fc18a8715b81b0e12fcd8a0a7972a5f06959f8e2900d66bd49b5e",
+      "app/ai/model.py": "ce79f92b30aa1ac6cd17f1768b87cadf168fe0a37aef25347316aff4df71dd1d",
+      "app/ai/training.py": "c374569dcece411c52059fbef2b7ca2862206c5a040439026c1b90eb245b21b5"
+    },
+    "deployed_artifact_loaded_or_scored": false,
+    "eligibility_rule": "time_to_tca_days >= 2.0 inclusive",
+    "eligible_split_counts_match_phase_11_2b": true,
+    "mission_assignments_match_phase_11_2b": true,
+    "mission_split_seed": 42,
+    "model_metadata_sha256": "47923f6a2322390b722a1c0b97049d9e88e8b8fca698f52cc5e5e57906567450",
+    "phase_11_2b_report_sha256": "9b4392614a9a0e0e878d4efb2eb39cb1414899cc893233bfad485a489f62448c",
+    "phase_11_3_report_sha256": "4d43d926ba842f04675e3d569a6e675af83593fadb4c50a9e2df0acf5a013255",
+    "phase_11_4_report_sha256": "9683ba10f9661882a0729c2d85b520875447b7fb231ef399b93213a954f979aa",
+    "production_artifact_hash_matches_metadata": true,
+    "production_artifact_sha256_reference_only": "a13f2b125d4f0142872485bbae14ee7facfa8e688d21cd34fe44de97a9a462fc",
+    "production_code_modified": false,
+    "split_protocol": "same sorted mission IDs / random.Random(42) 70/15/15 floor/floor/remainder grouping used in Phase 11.2B"
+  },
+  "sentinel_and_missingness_assessment": {
+    "code_handling": "Training parser maps blank or non-finite risk to unavailable (None); if selected final target is unavailable, event target is skipped. It does not treat -30 specially.",
+    "interpretation": "Frequency at -30 alone cannot distinguish a valid exact log10 value from a floor, censoring boundary, or sentinel. Repository metadata repeats observed minimum -30 but does not define its semantics.",
+    "missing_and_nonfinite_risk_cells_detected_by_scan": {
+      "blank": 0,
+      "invalid_or_nonfinite": 0
+    },
+    "risk_related_archive_columns": [
+      "risk",
+      "max_risk_estimate",
+      "max_risk_scaling"
+    ],
+    "separate_censoring_or_below_limit_flag_found": false,
+    "separate_missing_or_unavailable_risk_flag_found": false
+  },
+  "target_definition": {
+    "model_target": "risk from final/latest CDM row per event; final row selected by minimum time_to_tca with last file occurrence resolving ties",
+    "official_documentation": "ESA describes risk as a self-computed value at each CDM epoch in base-10 log; challenge asks prediction of final/last-CDM risk. This documents log10 semantics but does not define the special meaning of -30.",
+    "official_source_references": [
+      {
+        "finding": "The risk column is a self-computed value at each CDM epoch [base 10 log]; final risk is the value in the last CDM row. The page separately defines max_risk_estimate as a maximum collision probability obtained by scaling combined covariance. It does not state that -30 is a floor, censoring code, or sentinel.",
+        "url": "https://kelvins.esa.int/collision-avoidance-challenge/data/"
+      },
+      {
+        "finding": "The challenge predicts final risk, described as the risk in the last available CDM; no -30 floor/censoring convention is stated.",
+        "url": "https://kelvins.esa.int/collision-avoidance-challenge/challenge/"
+      },
+      {
+        "finding": "The challenge scoring page defines high-risk event threshold as risk >= 10^-6 and uses continuous-risk scoring; it does not document the semantics of the dataset value -30.",
+        "url": "https://kelvins.esa.int/collision-avoidance-challenge/scoring/"
+      }
+    ],
+    "project_target_units": "log10 risk",
+    "source_column": "risk",
+    "training_transform": "CSV cell is parsed as finite float; no logarithm, clipping, floor conversion, or other numeric transformation is applied by ORION. Final-row value is repeated as y for each pre-final feature row; evaluation scores one selected row per event."
+  },
+  "target_value_distributions": {
+    "all_forecastable_final_event_targets": {
+      "count": 12917,
+      "count_below_minus_30": 0,
+      "count_equal_minus_30": 8165,
+      "max": -1.6846595233727115,
+      "mean": -23.24629223524321,
+      "median": -30.0,
+      "min": -30.0,
+      "proportion_equal_minus_30": 0.6321127196717504,
+      "quantiles": {
+        "0": -30.0,
+        "0.01": -30.0,
+        "0.05": -30.0,
+        "0.1": -30.0,
+        "0.25": -30.0,
+        "0.5": -30.0,
+        "0.75": -13.801342913045573,
+        "0.9": -7.4634713125363366,
+        "0.95": -6.541002808472795,
+        "0.975": -5.9020011812366295,
+        "0.99": -5.31173698559038,
+        "1": -1.6846595233727115
+      },
+      "unique_value_count": 4226
+    },
+    "by_mission": {
+      "test": {
+        "1": {
+          "all_forecastable_event_targets": {
+            "count": 2199,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1587,
+            "max": -3.470954829234232,
+            "mean": -24.67068695040496,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.7216916780354706,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -19.868828452008792,
+              "0.9": -7.463517108109307,
+              "0.95": -6.1061538705767955,
+              "0.975": -5.430544302250241,
+              "0.99": -4.793645604765076,
+              "1": -3.470954829234232
+            },
+            "unique_value_count": 611
+          },
+          "all_forecastable_events": 2199,
+          "eligible_evaluation_event_targets": {
+            "count": 1762,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1224,
+            "max": -3.470954829234232,
+            "mean": -24.101770969147378,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6946651532349603,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -14.495219779238006,
+              "0.9": -7.1012929379325005,
+              "0.95": -6.045638421297491,
+              "0.975": -5.481881837974901,
+              "0.99": -4.79636338057498,
+              "1": -3.470954829234232
+            },
+            "unique_value_count": 537
+          },
+          "eligible_events": 1762,
+          "excluded_for_no_eligible_input": 437
+        },
+        "14": {
+          "all_forecastable_event_targets": {
+            "count": 11,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 4,
+            "max": -1.6846595233727115,
+            "mean": -16.291822576356818,
+            "median": -13.457672617226025,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.36363636363636365,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -13.457672617226025,
+              "0.75": -6.708428248603202,
+              "0.9": -4.843450848668219,
+              "0.95": -3.2640551860204656,
+              "0.975": -2.4743573546965885,
+              "0.99": -2.000538655902261,
+              "1": -1.6846595233727115
+            },
+            "unique_value_count": 8
+          },
+          "all_forecastable_events": 11,
+          "eligible_evaluation_event_targets": {
+            "count": 10,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 3,
+            "max": -1.6846595233727115,
+            "mean": -14.921004833992502,
+            "median": -11.96631390509459,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.3,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -26.33311341512212,
+              "0.5": -11.96631390509459,
+              "0.75": -5.8900674181855,
+              "0.9": -4.527571716138669,
+              "0.95": -3.1061156197556934,
+              "0.975": -2.3953875715642,
+              "0.99": -1.9689507426493067,
+              "1": -1.6846595233727115
+            },
+            "unique_value_count": 8
+          },
+          "eligible_events": 10,
+          "excluded_for_no_eligible_input": 1
+        },
+        "19": {
+          "all_forecastable_event_targets": {
+            "count": 666,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 453,
+            "max": -4.713094647027625,
+            "mean": -24.287930687941934,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6801801801801802,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -15.674208608235428,
+              "0.9": -7.77114009975113,
+              "0.95": -7.002275415303591,
+              "0.975": -6.615317908784129,
+              "0.99": -6.160880600066148,
+              "1": -4.713094647027625
+            },
+            "unique_value_count": 213
+          },
+          "all_forecastable_events": 666,
+          "eligible_evaluation_event_targets": {
+            "count": 646,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 441,
+            "max": -4.713094647027625,
+            "mean": -24.330270386100874,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6826625386996904,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -16.724264319727148,
+              "0.9": -7.77114009975113,
+              "0.95": -6.9935441287400755,
+              "0.975": -6.612724808178076,
+              "0.99": -6.137637206018348,
+              "1": -4.713094647027625
+            },
+            "unique_value_count": 205
+          },
+          "eligible_events": 646,
+          "excluded_for_no_eligible_input": 20
+        },
+        "2": {
+          "all_forecastable_event_targets": {
+            "count": 1486,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1044,
+            "max": -3.499214827082544,
+            "mean": -24.500458410912024,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.702557200538358,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -17.423817307460393,
+              "0.9": -7.5500287701517745,
+              "0.95": -6.376592326137296,
+              "0.975": -5.69495524591089,
+              "0.99": -5.260088444711176,
+              "1": -3.499214827082544
+            },
+            "unique_value_count": 441
+          },
+          "all_forecastable_events": 1486,
+          "eligible_evaluation_event_targets": {
+            "count": 1414,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 998,
+            "max": -3.499214827082544,
+            "mean": -24.53460955047062,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.7057991513437057,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -18.10544811416142,
+              "0.9": -7.50562633967779,
+              "0.95": -6.368036230677859,
+              "0.975": -5.654409662981548,
+              "0.99": -5.236319833432577,
+              "1": -3.499214827082544
+            },
+            "unique_value_count": 415
+          },
+          "eligible_events": 1414,
+          "excluded_for_no_eligible_input": 72
+        }
+      },
+      "train": {
+        "10": {
+          "all_forecastable_event_targets": {
+            "count": 146,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 89,
+            "max": -5.055517327849831,
+            "mean": -23.109553987687477,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6095890410958904,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -13.959793372425287,
+              "0.9": -9.517707562210553,
+              "0.95": -6.265501193128225,
+              "0.975": -5.383599503711028,
+              "0.99": -5.074551812312775,
+              "1": -5.055517327849831
+            },
+            "unique_value_count": 43
+          },
+          "all_forecastable_events": 146,
+          "eligible_evaluation_event_targets": {
+            "count": 116,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 67,
+            "max": -5.055517327849831,
+            "mean": -22.504133883786064,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.5775862068965517,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -13.94701623939466,
+              "0.9": -8.741973721905149,
+              "0.95": -5.820446663748416,
+              "0.975": -5.148856249998133,
+              "0.99": -5.068754062909274,
+              "1": -5.055517327849831
+            },
+            "unique_value_count": 40
+          },
+          "eligible_events": 116,
+          "excluded_for_no_eligible_input": 30
+        },
+        "15": {
+          "all_forecastable_event_targets": {
+            "count": 1747,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1217,
+            "max": -2.688034339631633,
+            "mean": -24.426029215650253,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6966227819118489,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -15.847844370932265,
+              "0.9": -7.989706282373831,
+              "0.95": -7.068491340663876,
+              "0.975": -6.578609136657984,
+              "0.99": -6.108014397727364,
+              "1": -2.688034339631633
+            },
+            "unique_value_count": 531
+          },
+          "all_forecastable_events": 1747,
+          "eligible_evaluation_event_targets": {
+            "count": 1655,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1147,
+            "max": -2.688034339631633,
+            "mean": -24.37059186686865,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6930513595166163,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -15.179220015313515,
+              "0.9": -8.00539452432049,
+              "0.95": -7.06869478112835,
+              "0.975": -6.586594508128128,
+              "0.99": -6.109205569170083,
+              "1": -2.688034339631633
+            },
+            "unique_value_count": 509
+          },
+          "eligible_events": 1655,
+          "excluded_for_no_eligible_input": 92
+        },
+        "16": {
+          "all_forecastable_event_targets": {
+            "count": 115,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 24,
+            "max": -4.394479476562531,
+            "mean": -14.236008841531007,
+            "median": -9.752763450493237,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.20869565217391303,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -20.455802946476886,
+              "0.5": -9.752763450493237,
+              "0.75": -6.819836992565959,
+              "0.9": -6.104512717264003,
+              "0.95": -5.697280388154182,
+              "0.975": -4.916735657505618,
+              "0.99": -4.731078442595023,
+              "1": -4.394479476562531
+            },
+            "unique_value_count": 92
+          },
+          "all_forecastable_events": 115,
+          "eligible_evaluation_event_targets": {
+            "count": 109,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 24,
+            "max": -4.394479476562531,
+            "mean": -14.394183195766876,
+            "median": -10.027936083991976,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.22018348623853212,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -21.89279003035213,
+              "0.5": -10.027936083991976,
+              "0.75": -6.863596551866009,
+              "0.9": -6.135846276232626,
+              "0.95": -5.771624441337117,
+              "0.975": -5.401733184622611,
+              "0.99": -4.741192516755353,
+              "1": -4.394479476562531
+            },
+            "unique_value_count": 86
+          },
+          "eligible_events": 109,
+          "excluded_for_no_eligible_input": 6
+        },
+        "18": {
+          "all_forecastable_event_targets": {
+            "count": 120,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 73,
+            "max": -3.913996294381618,
+            "mean": -22.353878932088037,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6083333333333333,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -9.521332406889487,
+              "0.9": -5.343715453423484,
+              "0.95": -4.8131420903340585,
+              "0.975": -4.504477092937752,
+              "0.99": -3.9447624325225554,
+              "1": -3.913996294381618
+            },
+            "unique_value_count": 48
+          },
+          "all_forecastable_events": 120,
+          "eligible_evaluation_event_targets": {
+            "count": 117,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 71,
+            "max": -3.913996294381618,
+            "mean": -22.358298511276438,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6068376068376068,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -9.619607839942972,
+              "0.9": -5.296306124605206,
+              "0.95": -4.802377892384647,
+              "0.975": -4.464813673421324,
+              "0.99": -3.943129461903976,
+              "1": -3.913996294381618
+            },
+            "unique_value_count": 47
+          },
+          "eligible_events": 117,
+          "excluded_for_no_eligible_input": 3
+        },
+        "20": {
+          "all_forecastable_event_targets": {
+            "count": 70,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 10,
+            "max": -3.871600731282194,
+            "mean": -12.294828795176759,
+            "median": -8.228748582903734,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.14285714285714285,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -13.107869882480713,
+              "0.5": -8.228748582903734,
+              "0.75": -7.10027509101634,
+              "0.9": -6.169410189509976,
+              "0.95": -5.676256796970601,
+              "0.975": -5.071811668992926,
+              "0.99": -4.439355470371918,
+              "1": -3.871600731282194
+            },
+            "unique_value_count": 61
+          },
+          "all_forecastable_events": 70,
+          "eligible_evaluation_event_targets": {
+            "count": 67,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 10,
+            "max": -3.871600731282194,
+            "mean": -12.491364846870358,
+            "median": -8.237021509132259,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.14925373134328357,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -13.769615909379826,
+              "0.5": -8.237021509132259,
+              "0.75": -7.144044697938783,
+              "0.9": -6.135482698957346,
+              "0.95": -5.649340658727506,
+              "0.975": -5.032772567354143,
+              "0.99": -4.414670481715842,
+              "1": -3.871600731282194
+            },
+            "unique_value_count": 58
+          },
+          "eligible_events": 67,
+          "excluded_for_no_eligible_input": 3
+        },
+        "22": {
+          "all_forecastable_event_targets": {
+            "count": 43,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 5,
+            "max": -5.044264157722334,
+            "mean": -13.12576596807439,
+            "median": -9.44057220024051,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.11627906976744186,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -29.506804526342833,
+              "0.25": -16.03751319903588,
+              "0.5": -9.44057220024051,
+              "0.75": -7.592686847063645,
+              "0.9": -6.425665337679363,
+              "0.95": -5.997783842697015,
+              "0.975": -5.875243849806318,
+              "0.99": -5.391068192616755,
+              "1": -5.044264157722334
+            },
+            "unique_value_count": 39
+          },
+          "all_forecastable_events": 43,
+          "eligible_evaluation_event_targets": {
+            "count": 41,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 5,
+            "max": -5.044264157722334,
+            "mean": -13.384938636303998,
+            "median": -10.318487413361037,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.12195121951219512,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -16.26954073995423,
+              "0.5": -10.318487413361037,
+              "0.75": -7.752517739322946,
+              "0.9": -6.387852161673512,
+              "0.95": -5.975104039892515,
+              "0.975": -5.869988050328097,
+              "0.99": -5.374553714764637,
+              "1": -5.044264157722334
+            },
+            "unique_value_count": 37
+          },
+          "eligible_events": 41,
+          "excluded_for_no_eligible_input": 2
+        },
+        "23": {
+          "all_forecastable_event_targets": {
+            "count": 38,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 5,
+            "max": -4.9730583720409705,
+            "mean": -13.993042462422924,
+            "median": -10.500691258171667,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.13157894736842105,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -20.614698850392394,
+              "0.5": -10.500691258171667,
+              "0.75": -7.592626058938365,
+              "0.9": -6.348857206037485,
+              "0.95": -6.150358312634881,
+              "0.975": -5.572961319526048,
+              "0.99": -5.213019551034999,
+              "1": -4.9730583720409705
+            },
+            "unique_value_count": 34
+          },
+          "all_forecastable_events": 38,
+          "eligible_evaluation_event_targets": {
+            "count": 36,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 5,
+            "max": -4.9730583720409705,
+            "mean": -14.094469911833098,
+            "median": -10.500691258171667,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.1388888888888889,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -21.279302412393708,
+              "0.5": -10.500691258171667,
+              "0.75": -7.610493350934863,
+              "0.9": -6.411602471889516,
+              "0.95": -6.258022576141183,
+              "0.975": -6.084842000099195,
+              "0.99": -5.417771823264262,
+              "1": -4.9730583720409705
+            },
+            "unique_value_count": 32
+          },
+          "eligible_events": 36,
+          "excluded_for_no_eligible_input": 2
+        },
+        "24": {
+          "all_forecastable_event_targets": {
+            "count": 40,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 9,
+            "max": -5.295592072613159,
+            "mean": -15.744806101326933,
+            "median": -12.310795679968077,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.225,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -27.66989506934312,
+              "0.5": -12.310795679968077,
+              "0.75": -7.399058891364872,
+              "0.9": -6.02547805455885,
+              "0.95": -5.767386914477481,
+              "0.975": -5.5529639548622,
+              "0.99": -5.398540825512775,
+              "1": -5.295592072613159
+            },
+            "unique_value_count": 32
+          },
+          "all_forecastable_events": 40,
+          "eligible_evaluation_event_targets": {
+            "count": 36,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 9,
+            "max": -5.5595632338942265,
+            "mean": -16.812967048081344,
+            "median": -14.12882250064742,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.25,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -28.25494096532601,
+              "0.5": -14.12882250064742,
+              "0.75": -7.95585104373854,
+              "0.9": -6.369249993944004,
+              "0.95": -5.947723276975275,
+              "0.975": -5.750979781799855,
+              "0.99": -5.636129853056478,
+              "1": -5.5595632338942265
+            },
+            "unique_value_count": 28
+          },
+          "eligible_events": 36,
+          "excluded_for_no_eligible_input": 4
+        },
+        "3": {
+          "all_forecastable_event_targets": {
+            "count": 482,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 278,
+            "max": -4.303818412831476,
+            "mean": -21.87392469596081,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.5767634854771784,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -9.878046154419444,
+              "0.9": -6.285064181570882,
+              "0.95": -5.818758536214456,
+              "0.975": -5.478365537538333,
+              "0.99": -5.324832135340253,
+              "1": -4.303818412831476
+            },
+            "unique_value_count": 205
+          },
+          "all_forecastable_events": 482,
+          "eligible_evaluation_event_targets": {
+            "count": 456,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 265,
+            "max": -4.407601153884436,
+            "mean": -21.991040716247696,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.581140350877193,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -10.314119985232772,
+              "0.9": -6.287997477458373,
+              "0.95": -5.847155854776087,
+              "0.975": -5.495476523041666,
+              "0.99": -5.3427442782741315,
+              "1": -4.407601153884436
+            },
+            "unique_value_count": 192
+          },
+          "eligible_events": 456,
+          "excluded_for_no_eligible_input": 26
+        },
+        "4": {
+          "all_forecastable_event_targets": {
+            "count": 265,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 167,
+            "max": -4.674895017028591,
+            "mean": -23.709353026557025,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.630188679245283,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -15.566390156676277,
+              "0.9": -8.10448581550223,
+              "0.95": -6.293815294044362,
+              "0.975": -5.833936999339249,
+              "0.99": -5.187778430825557,
+              "1": -4.674895017028591
+            },
+            "unique_value_count": 99
+          },
+          "all_forecastable_events": 265,
+          "eligible_evaluation_event_targets": {
+            "count": 256,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 162,
+            "max": -4.674895017028591,
+            "mean": -23.77801064338768,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6328125,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -15.591972043183112,
+              "0.9": -7.90608706970355,
+              "0.95": -6.278291392677212,
+              "0.975": -5.832472559338195,
+              "0.99": -5.18754974855228,
+              "1": -4.674895017028591
+            },
+            "unique_value_count": 95
+          },
+          "eligible_events": 256,
+          "excluded_for_no_eligible_input": 9
+        },
+        "5": {
+          "all_forecastable_event_targets": {
+            "count": 2227,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1236,
+            "max": -3.3466909870615216,
+            "mean": -21.803985720286803,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.5550067355186349,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -10.636012332746061,
+              "0.9": -7.402745796624743,
+              "0.95": -6.778641164891007,
+              "0.975": -6.344465031532748,
+              "0.99": -5.840902966634937,
+              "1": -3.3466909870615216
+            },
+            "unique_value_count": 970
+          },
+          "all_forecastable_events": 2227,
+          "eligible_evaluation_event_targets": {
+            "count": 2106,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1172,
+            "max": -5.03147035562516,
+            "mean": -21.828736011694883,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.5565052231718899,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -10.528345830409052,
+              "0.9": -7.419646553767379,
+              "0.95": -6.8364838325632595,
+              "0.975": -6.391518771251741,
+              "0.99": -5.8869256933898,
+              "1": -5.03147035562516
+            },
+            "unique_value_count": 920
+          },
+          "eligible_events": 2106,
+          "excluded_for_no_eligible_input": 121
+        },
+        "6": {
+          "all_forecastable_event_targets": {
+            "count": 1100,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 584,
+            "max": -4.490528647897452,
+            "mean": -21.652928442541633,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.5309090909090909,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -11.523351878231859,
+              "0.9": -7.568170238024541,
+              "0.95": -6.6356085114255565,
+              "0.975": -6.025391299257008,
+              "0.99": -5.437580720045965,
+              "1": -4.490528647897452
+            },
+            "unique_value_count": 415
+          },
+          "all_forecastable_events": 1100,
+          "eligible_evaluation_event_targets": {
+            "count": 1039,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 554,
+            "max": -4.490528647897452,
+            "mean": -21.684263812213285,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.5332050048123196,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -12.179660673344927,
+              "0.9": -7.5039506569114485,
+              "0.95": -6.634478267911261,
+              "0.975": -5.85157768264909,
+              "0.99": -5.393554134743324,
+              "1": -4.490528647897452
+            },
+            "unique_value_count": 387
+          },
+          "eligible_events": 1039,
+          "excluded_for_no_eligible_input": 61
+        },
+        "7": {
+          "all_forecastable_event_targets": {
+            "count": 1744,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1093,
+            "max": -4.875821944525326,
+            "mean": -23.51723351200139,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6267201834862385,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -14.346401618156712,
+              "0.9": -8.777266204610779,
+              "0.95": -7.098090692946923,
+              "0.975": -6.552221990705379,
+              "0.99": -6.073641096433623,
+              "1": -4.875821944525326
+            },
+            "unique_value_count": 371
+          },
+          "all_forecastable_events": 1744,
+          "eligible_evaluation_event_targets": {
+            "count": 1649,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 1074,
+            "max": -4.875821944525326,
+            "mean": -23.895142578398225,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.6513038204972711,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -14.346401618156712,
+              "0.9": -8.678146699153308,
+              "0.95": -7.06145115233941,
+              "0.975": -6.5449873197237975,
+              "0.99": -6.076607684057107,
+              "1": -4.875821944525326
+            },
+            "unique_value_count": 358
+          },
+          "eligible_events": 1649,
+          "excluded_for_no_eligible_input": 95
+        }
+      },
+      "validation": {
+        "13": {
+          "all_forecastable_event_targets": {
+            "count": 8,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 0,
+            "max": -5.3125602254541056,
+            "mean": -9.197958033849321,
+            "median": -7.546430079067552,
+            "min": -22.809108283077826,
+            "proportion_equal_minus_30": 0.0,
+            "quantiles": {
+              "0": -22.809108283077826,
+              "0.01": -21.905955711816055,
+              "0.05": -18.293345426768965,
+              "0.1": -13.777582570460101,
+              "0.25": -9.656239333638048,
+              "0.5": -7.546430079067552,
+              "0.75": -5.457667497031718,
+              "0.9": -5.387040803495715,
+              "0.95": -5.34980051447491,
+              "0.975": -5.331180369964508,
+              "0.99": -5.320008283258266,
+              "1": -5.3125602254541056
+            },
+            "unique_value_count": 8
+          },
+          "all_forecastable_events": 8,
+          "eligible_evaluation_event_targets": {
+            "count": 6,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 0,
+            "max": -5.3125602254541056,
+            "mean": -9.70102765525627,
+            "median": -7.546430079067552,
+            "min": -22.809108283077826,
+            "proportion_equal_minus_30": 0.0,
+            "quantiles": {
+              "0": -22.809108283077826,
+              "0.01": -22.147286679606072,
+              "0.05": -19.50000026571906,
+              "0.1": -16.19089224836029,
+              "0.25": -9.328941814618394,
+              "0.5": -7.546430079067552,
+              "0.75": -5.6880011735683205,
+              "0.9": -5.365760638340969,
+              "0.95": -5.339160431897538,
+              "0.975": -5.325860328675821,
+              "0.99": -5.317880266742792,
+              "1": -5.3125602254541056
+            },
+            "unique_value_count": 6
+          },
+          "eligible_events": 6,
+          "excluded_for_no_eligible_input": 2
+        },
+        "9": {
+          "all_forecastable_event_targets": {
+            "count": 410,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 287,
+            "max": -4.659159450187668,
+            "mean": -24.431385957366658,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.7,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -14.532478451220115,
+              "0.9": -8.6673049207779,
+              "0.95": -6.789512891266067,
+              "0.975": -6.248364390947075,
+              "0.99": -5.629045964295428,
+              "1": -4.659159450187668
+            },
+            "unique_value_count": 118
+          },
+          "all_forecastable_events": 410,
+          "eligible_evaluation_event_targets": {
+            "count": 401,
+            "count_below_minus_30": 0,
+            "count_equal_minus_30": 283,
+            "max": -4.659159450187668,
+            "mean": -24.54335331963085,
+            "median": -30.0,
+            "min": -30.0,
+            "proportion_equal_minus_30": 0.7057356608478803,
+            "quantiles": {
+              "0": -30.0,
+              "0.01": -30.0,
+              "0.05": -30.0,
+              "0.1": -30.0,
+              "0.25": -30.0,
+              "0.5": -30.0,
+              "0.75": -14.790753151246625,
+              "0.9": -8.738261452647462,
+              "0.95": -6.803823814960028,
+              "0.975": -6.255863547598753,
+              "0.99": -5.619426996933114,
+              "1": -4.659159450187668
+            },
+            "unique_value_count": 116
+          },
+          "eligible_events": 401,
+          "excluded_for_no_eligible_input": 9
+        }
+      }
+    },
+    "eligible_evaluation_targets_by_split": {
+      "test": {
+        "eligible_event_count": 3832,
+        "excluded_events_no_eligible_input": 530,
+        "mission_ids": [
+          "1",
+          "14",
+          "19",
+          "2"
+        ],
+        "missions": 4,
+        "target_distribution": {
+          "count": 3832,
+          "count_below_minus_30": 0,
+          "count_equal_minus_30": 2666,
+          "max": -1.6846595233727115,
+          "mean": -24.276049861629495,
+          "median": -30.0,
+          "min": -30.0,
+          "proportion_equal_minus_30": 0.6957202505219207,
+          "quantiles": {
+            "0": -30.0,
+            "0.01": -30.0,
+            "0.05": -30.0,
+            "0.1": -30.0,
+            "0.25": -30.0,
+            "0.5": -30.0,
+            "0.75": -15.610089124720579,
+            "0.9": -7.4046202503375715,
+            "0.95": -6.268135556382317,
+            "0.975": -5.606941952842192,
+            "0.99": -5.056208656908499,
+            "1": -1.6846595233727115
+          },
+          "unique_value_count": 1160
+        }
+      },
+      "train": {
+        "eligible_event_count": 7683,
+        "excluded_events_no_eligible_input": 454,
+        "mission_ids": [
+          "10",
+          "15",
+          "16",
+          "18",
+          "20",
+          "22",
+          "23",
+          "24",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "missions": 13,
+        "target_distribution": {
+          "count": 7683,
+          "count_below_minus_30": 0,
+          "count_equal_minus_30": 4565,
+          "max": -2.688034339631633,
+          "mean": -22.6013941387927,
+          "median": -30.0,
+          "min": -30.0,
+          "proportion_equal_minus_30": 0.5941689444227515,
+          "quantiles": {
+            "0": -30.0,
+            "0.01": -30.0,
+            "0.05": -30.0,
+            "0.1": -30.0,
+            "0.25": -30.0,
+            "0.5": -30.0,
+            "0.75": -12.849093404708576,
+            "0.9": -7.431798339414296,
+            "0.95": -6.6337267351176274,
+            "0.975": -6.096592849745443,
+            "0.99": -5.516521830278658,
+            "1": -2.688034339631633
+          },
+          "unique_value_count": 2736
+        }
+      },
+      "validation": {
+        "eligible_event_count": 407,
+        "excluded_events_no_eligible_input": 11,
+        "mission_ids": [
+          "13",
+          "9"
+        ],
+        "missions": 2,
+        "target_distribution": {
+          "count": 407,
+          "count_below_minus_30": 0,
+          "count_equal_minus_30": 283,
+          "max": -4.659159450187668,
+          "mean": -24.324547535880853,
+          "median": -30.0,
+          "min": -30.0,
+          "proportion_equal_minus_30": 0.6953316953316954,
+          "quantiles": {
+            "0": -30.0,
+            "0.01": -30.0,
+            "0.05": -30.0,
+            "0.1": -30.0,
+            "0.25": -30.0,
+            "0.5": -30.0,
+            "0.75": -14.388825988611973,
+            "0.9": -8.557443024520639,
+            "0.95": -6.741251384141804,
+            "0.975": -6.193010277025788,
+            "0.99": -5.525584772437444,
+            "1": -4.659159450187668
+          },
+          "unique_value_count": 122
+        }
+      }
+    },
+    "most_frequent_final_event_target_values": [
+      {
+        "event_count": 8165,
+        "proportion_of_forecastable_event_targets": 0.6321127196717504,
+        "value": -30.0
+      },
+      {
+        "event_count": 84,
+        "proportion_of_forecastable_event_targets": 0.006503057985600372,
+        "value": -14.418050341626682
+      },
+      {
+        "event_count": 77,
+        "proportion_of_forecastable_event_targets": 0.005961136486800341,
+        "value": -13.971428747307463
+      },
+      {
+        "event_count": 42,
+        "proportion_of_forecastable_event_targets": 0.003251528992800186,
+        "value": -14.187621488845807
+      },
+      {
+        "event_count": 41,
+        "proportion_of_forecastable_event_targets": 0.003174111635828753,
+        "value": -13.940815382368626
+      },
+      {
+        "event_count": 29,
+        "proportion_of_forecastable_event_targets": 0.0022451033521715567,
+        "value": -14.546834607474144
+      },
+      {
+        "event_count": 29,
+        "proportion_of_forecastable_event_targets": 0.0022451033521715567,
+        "value": -14.295592072613161
+      },
+      {
+        "event_count": 20,
+        "proportion_of_forecastable_event_targets": 0.0015483471394286599,
+        "value": -14.517841304588725
+      },
+      {
+        "event_count": 15,
+        "proportion_of_forecastable_event_targets": 0.0011612603545714949,
+        "value": -14.310158590862493
+      },
+      {
+        "event_count": 15,
+        "proportion_of_forecastable_event_targets": 0.0011612603545714949,
+        "value": -14.134126471792186
+      },
+      {
+        "event_count": 12,
+        "proportion_of_forecastable_event_targets": 0.000929008283657196,
+        "value": -15.532096053477199
+      },
+      {
+        "event_count": 8,
+        "proportion_of_forecastable_event_targets": 0.000619338855771464,
+        "value": -14.24572813131654
+      },
+      {
+        "event_count": 8,
+        "proportion_of_forecastable_event_targets": 0.000619338855771464,
+        "value": -13.996539467890491
+      },
+      {
+        "event_count": 8,
+        "proportion_of_forecastable_event_targets": 0.000619338855771464,
+        "value": -14.403952992454562
+      },
+      {
+        "event_count": 8,
+        "proportion_of_forecastable_event_targets": 0.000619338855771464,
+        "value": -14.346401618156712
+      },
+      {
+        "event_count": 7,
+        "proportion_of_forecastable_event_targets": 0.000541921498800031,
+        "value": -14.418164075942352
+      },
+      {
+        "event_count": 7,
+        "proportion_of_forecastable_event_targets": 0.000541921498800031,
+        "value": -14.429340329978466
+      },
+      {
+        "event_count": 6,
+        "proportion_of_forecastable_event_targets": 0.000464504141828598,
+        "value": -13.959793372425287
+      },
+      {
+        "event_count": 6,
+        "proportion_of_forecastable_event_targets": 0.000464504141828598,
+        "value": -13.81616096294358
+      },
+      {
+        "event_count": 5,
+        "proportion_of_forecastable_event_targets": 0.00038708678485716496,
+        "value": -14.504039605118294
+      }
+    ],
+    "raw_risk_cell_invalid_or_nonfinite_count": 0,
+    "raw_risk_cell_invalid_or_nonfinite_count_all_archive_rows": 0,
+    "raw_risk_cell_missing_count": 0,
+    "raw_risk_cell_missing_count_all_archive_rows": 0,
+    "raw_risk_cells_all_archive_rows": {
+      "count": 162634,
+      "count_below_minus_30": 0,
+      "count_equal_minus_30": 67240,
+      "max": -1.4428538576816372,
+      "mean": -19.34060305846492,
+      "median": -17.870632404277014,
+      "min": -30.0,
+      "proportion_equal_minus_30": 0.4134436833626425,
+      "quantiles": {
+        "0": -30.0,
+        "0.01": -30.0,
+        "0.05": -30.0,
+        "0.1": -30.0,
+        "0.25": -30.0,
+        "0.5": -17.870632404277014,
+        "0.75": -9.173293661904289,
+        "0.9": -6.576148182035406,
+        "0.95": -5.733063088840827,
+        "0.975": -5.133198911322174,
+        "0.99": -4.480783878258306,
+        "1": -1.4428538576816372
+      },
+      "unique_value_count": 62063
+    },
+    "raw_risk_cells_all_valid_time_CDMs": {
+      "count": 162243,
+      "count_below_minus_30": 0,
+      "count_equal_minus_30": 66917,
+      "max": -1.4428538576816372,
+      "mean": -19.322444646504184,
+      "median": -17.7956086680807,
+      "min": -30.0,
+      "proportion_equal_minus_30": 0.41244922739347767,
+      "quantiles": {
+        "0": -30.0,
+        "0.01": -30.0,
+        "0.05": -30.0,
+        "0.1": -30.0,
+        "0.25": -30.0,
+        "0.5": -17.7956086680807,
+        "0.75": -9.160176442719612,
+        "0.9": -6.573521276150835,
+        "0.95": -5.7295540919820365,
+        "0.975": -5.13159069668504,
+        "0.99": -4.4783655954720745,
+        "1": -1.4428538576816372
+      },
+      "unique_value_count": 62036
+    },
+    "raw_risk_cells_below_minus_30": 0,
+    "raw_risk_cells_most_frequent_values": [
+      {
+        "count": 66917,
+        "proportion_of_valid_numeric_risk_cells": 0.41244922739347767,
+        "value": -30.0
+      },
+      {
+        "count": 1161,
+        "proportion_of_valid_numeric_risk_cells": 0.0071559327675153935,
+        "value": -14.418050341626682
+      },
+      {
+        "count": 867,
+        "proportion_of_valid_numeric_risk_cells": 0.005343836097705294,
+        "value": -13.940815382368626
+      },
+      {
+        "count": 668,
+        "proportion_of_valid_numeric_risk_cells": 0.004117280868820227,
+        "value": -14.546834607474144
+      },
+      {
+        "count": 371,
+        "proportion_of_valid_numeric_risk_cells": 0.002286693416665126,
+        "value": -14.295592072613161
+      },
+      {
+        "count": 220,
+        "proportion_of_valid_numeric_risk_cells": 0.0013559907053000745,
+        "value": -14.187621488845807
+      },
+      {
+        "count": 204,
+        "proportion_of_valid_numeric_risk_cells": 0.0012573731994600691,
+        "value": -14.517841304588725
+      },
+      {
+        "count": 165,
+        "proportion_of_valid_numeric_risk_cells": 0.001016993028975056,
+        "value": -15.532096053477199
+      },
+      {
+        "count": 142,
+        "proportion_of_valid_numeric_risk_cells": 0.0008752303643300482,
+        "value": -14.134126471792186
+      },
+      {
+        "count": 122,
+        "proportion_of_valid_numeric_risk_cells": 0.0007519584820300414,
+        "value": -14.310158590862493
+      },
+      {
+        "count": 106,
+        "proportion_of_valid_numeric_risk_cells": 0.0006533409761900359,
+        "value": -14.24572813131654
+      },
+      {
+        "count": 101,
+        "proportion_of_valid_numeric_risk_cells": 0.0006225230056150342,
+        "value": -13.664742743565466
+      },
+      {
+        "count": 78,
+        "proportion_of_valid_numeric_risk_cells": 0.00048076034097002646,
+        "value": -13.971428747307463
+      },
+      {
+        "count": 68,
+        "proportion_of_valid_numeric_risk_cells": 0.00041912439982002306,
+        "value": -14.03147035562516
+      },
+      {
+        "count": 63,
+        "proportion_of_valid_numeric_risk_cells": 0.00038830642924502136,
+        "value": -14.403952992454562
+      },
+      {
+        "count": 62,
+        "proportion_of_valid_numeric_risk_cells": 0.000382142835130021,
+        "value": -13.81616096294358
+      },
+      {
+        "count": 53,
+        "proportion_of_valid_numeric_risk_cells": 0.00032667048809501795,
+        "value": -13.996539467890491
+      },
+      {
+        "count": 52,
+        "proportion_of_valid_numeric_risk_cells": 0.00032050689398001764,
+        "value": -14.253287977483339
+      },
+      {
+        "count": 50,
+        "proportion_of_valid_numeric_risk_cells": 0.00030817970575001697,
+        "value": -14.301638433944891
+      },
+      {
+        "count": 50,
+        "proportion_of_valid_numeric_risk_cells": 0.00030817970575001697,
+        "value": -14.429340329978466
+      }
+    ],
+    "raw_risk_cells_most_frequent_values_all_archive_rows": [
+      {
+        "count": 67240,
+        "proportion_of_numeric_risk_cells": 0.4134436833626425,
+        "value": -30.0
+      },
+      {
+        "count": 1166,
+        "proportion_of_numeric_risk_cells": 0.007169472558013699,
+        "value": -14.418050341626682
+      },
+      {
+        "count": 867,
+        "proportion_of_numeric_risk_cells": 0.0053309886001697065,
+        "value": -13.940815382368626
+      },
+      {
+        "count": 671,
+        "proportion_of_numeric_risk_cells": 0.0041258285475361854,
+        "value": -14.546834607474144
+      },
+      {
+        "count": 372,
+        "proportion_of_numeric_risk_cells": 0.0022873445896921924,
+        "value": -14.295592072613161
+      },
+      {
+        "count": 220,
+        "proportion_of_numeric_risk_cells": 0.0013527306713233395,
+        "value": -14.187621488845807
+      },
+      {
+        "count": 205,
+        "proportion_of_numeric_risk_cells": 0.0012604990346422027,
+        "value": -14.517841304588725
+      },
+      {
+        "count": 165,
+        "proportion_of_numeric_risk_cells": 0.0010145480034925046,
+        "value": -15.532096053477199
+      },
+      {
+        "count": 143,
+        "proportion_of_numeric_risk_cells": 0.0008792749363601707,
+        "value": -14.134126471792186
+      },
+      {
+        "count": 122,
+        "proportion_of_numeric_risk_cells": 0.0007501506450065792,
+        "value": -14.310158590862493
+      },
+      {
+        "count": 106,
+        "proportion_of_numeric_risk_cells": 0.0006517702325467,
+        "value": -14.24572813131654
+      },
+      {
+        "count": 101,
+        "proportion_of_numeric_risk_cells": 0.0006210263536529876,
+        "value": -13.664742743565466
+      },
+      {
+        "count": 80,
+        "proportion_of_numeric_risk_cells": 0.0004919020622993962,
+        "value": -13.971428747307463
+      },
+      {
+        "count": 68,
+        "proportion_of_numeric_risk_cells": 0.00041811675295448674,
+        "value": -14.03147035562516
+      },
+      {
+        "count": 63,
+        "proportion_of_numeric_risk_cells": 0.0003873728740607745,
+        "value": -14.403952992454562
+      },
+      {
+        "count": 62,
+        "proportion_of_numeric_risk_cells": 0.00038122409828203203,
+        "value": -13.81616096294358
+      },
+      {
+        "count": 53,
+        "proportion_of_numeric_risk_cells": 0.00032588511627335,
+        "value": -13.996539467890491
+      },
+      {
+        "count": 52,
+        "proportion_of_numeric_risk_cells": 0.00031973634049460754,
+        "value": -14.253287977483339
+      },
+      {
+        "count": 51,
+        "proportion_of_numeric_risk_cells": 0.00031358756471586504,
+        "value": -14.301638433944891
+      },
+      {
+        "count": 50,
+        "proportion_of_numeric_risk_cells": 0.0003074387889371226,
+        "value": -14.429340329978466
+      }
+    ],
+    "raw_risk_cells_valid_time_only_scope": "raw_risk_cells_all_valid_time_CDMs and raw_risk_cell_* validity counts below are scoped to rows with parseable nonnegative time_to_tca, matching the model reader"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "artifact_filename": "orbital_anomaly_iforest.joblib",
+  "artifact_sha256": "bf643f2922a8570b647cdb071cd7cedd14273046dc8427e9b6b09831a9429992",
+  "dataset_archive": "train_data.zip",
+  "dataset_name": "ESA Collision Avoidance Challenge training dataset",
+  "dataset_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+  "dataset_source": "https://kelvins.esa.int/collision-avoidance-challenge/data/",
+  "estimator": "sklearn.ensemble.IsolationForest",
+  "estimator_parameters": {
+    "contamination": "auto",
+    "n_estimators": 200,
+    "n_jobs": 1,
+    "random_state": 42
+  },
+  "feature_names": [
+    "time_to_tca_days",
+    "miss_distance_m",
+    "relative_speed_m_s",
+    "relative_position_r_m",
+    "relative_position_t_m",
+    "relative_position_n_m",
+    "relative_velocity_r_m_s",
+    "relative_velocity_t_m_s",
+    "relative_velocity_n_m_s"
+  ],
+  "feature_row_policy": "one latest pre-final CDM feature row per forecastable event; final CDM is excluded",
+  "feature_schema_version": "1.0.0",
+  "feature_units": {
+    "miss_distance_m": "m",
+    "relative_position_n_m": "m",
+    "relative_position_r_m": "m",
+    "relative_position_t_m": "m",
+    "relative_speed_m_s": "m/s",
+    "relative_velocity_n_m_s": "m/s",
+    "relative_velocity_r_m_s": "m/s",
+    "relative_velocity_t_m_s": "m/s",
+    "time_to_tca_days": "day"
+  },
+  "incomplete_training_events_excluded": 0,
+  "limitations": [
+    "ESA challenge events are a historical curated dataset and may not represent live TLE-derived conjunctions.",
+    "No labelled anomaly ground truth exists in this training process; no accuracy or danger prediction is claimed.",
+    "An unusual event is not necessarily dangerous, and a typical event is not necessarily safe."
+  ],
+  "minimum_training_events": 100,
+  "model_name": "ORION orbital feature Isolation Forest",
+  "model_version": "1.0.0",
+  "package_versions": {
+    "joblib": "1.6.0",
+    "numpy": "2.5.1",
+    "python": "3.14.0",
+    "scikit_learn": "1.9.1"
+  },
+  "score_definition": "1 minus empirical percentile rank of Isolation Forest decision_function among training rows; unitless unusualness rank, not probability or danger",
+  "target_usage": "risk target and ESA model predictions are not estimator inputs or labels",
+  "training_date_utc": "2026-10-12T12:47:23.669622+00:00",
+  "training_event_ids_sha256": "13ecc5d87f4366cd475d26dca73cf995999e91b8ed22850135b705a6d601ccfa",
+  "training_reference_event_count": 9041,
+  "training_split": "existing deterministic 70/15/15 ESA event split; training IDs only"
+}

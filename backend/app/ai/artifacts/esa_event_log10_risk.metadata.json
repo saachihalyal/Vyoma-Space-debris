@@ -1,0 +1,269 @@
+{
+  "artifact_filename": "esa_event_log10_risk.joblib",
+  "artifact_sha256": "63f4ad9e73facac25ae03900ebc996cc24bd56d2e245fc74a80c0467e340c9f0",
+  "baseline_estimator": "sklearn.linear_model.Ridge",
+  "dataset_archive": "ml_data/train_data.zip",
+  "dataset_name": "ESA Collision Avoidance Challenge training dataset",
+  "dataset_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+  "dataset_source": "https://kelvins.esa.int/collision-avoidance-challenge/data/",
+  "dataset_summary": {
+    "archive_csv_member": "train_data.csv",
+    "archive_path": "ml_data/train_data.zip",
+    "dataset_name": "ESA Collision Avoidance Challenge training dataset",
+    "dataset_source": "https://kelvins.esa.int/collision-avoidance-challenge/data/",
+    "event_ids_without_any_valid_time": 11,
+    "events_missing_final_target_excluded": 0,
+    "events_with_any_valid_time": 13143,
+    "events_with_nonmonotonic_time_order": 0,
+    "feature_missing_counts": {
+      "miss_distance_m": 0,
+      "relative_position_n_m": 0,
+      "relative_position_r_m": 0,
+      "relative_position_t_m": 0,
+      "relative_speed_m_s": 0,
+      "relative_velocity_n_m_s": 0,
+      "relative_velocity_r_m_s": 0,
+      "relative_velocity_t_m_s": 0,
+      "time_to_tca_days": 0
+    },
+    "final_event_target_selection": "minimum time_to_tca; last file occurrence breaks ties",
+    "final_target_definition": "final event risk in log10 space, selected from the latest CDM (minimum time_to_tca; last occurrence breaks ties)",
+    "forecast_examples": 149100,
+    "forecast_row_policy": "all rows before selected final CDM; final row is never an input example",
+    "forecastable_events": 12917,
+    "malformed_rows_excluded": 0,
+    "rows_read": 162634,
+    "rows_with_invalid_event_time_excluded": 391,
+    "single_row_events_excluded": 226,
+    "target_high_risk_events": 356,
+    "target_max_log10": -1.6846595233727115,
+    "target_min_log10": -30.0,
+    "unique_events": 13154
+  },
+  "domain_shift_warning": "ESA hand-selected challenge training data over-represents high-risk events; model estimates may be miscalibrated or biased on live ORION catalogs.",
+  "eligible_input_protocol": {
+    "minimum_time_to_tca_days_inclusive": 2.0,
+    "split_population_counts": {
+      "test": {
+        "eligible_event_count": 3832,
+        "eligible_row_count": 38063,
+        "excluded_event_count": 530,
+        "high_risk_event_count": 145,
+        "low_risk_event_count": 3687,
+        "total_event_count": 4362
+      },
+      "train": {
+        "eligible_event_count": 7683,
+        "eligible_row_count": 66768,
+        "excluded_event_count": 454,
+        "high_risk_event_count": 167,
+        "low_risk_event_count": 7516,
+        "total_event_count": 8137
+      },
+      "validation": {
+        "eligible_event_count": 407,
+        "eligible_row_count": 4055,
+        "excluded_event_count": 11,
+        "high_risk_event_count": 10,
+        "low_risk_event_count": 397,
+        "total_event_count": 418
+      }
+    },
+    "training_rows": "all eligible pre-final CDMs within each training event",
+    "validation_test_rows": "closest-to-TCA eligible pre-final CDM per event"
+  },
+  "event_leakage_check": "pairwise disjoint event and mission ID sets; evaluated before fitting",
+  "event_split_hashes_sha256": {
+    "test": "8d6745dedf657f125c4c5e7b7d31033918192eb02abb41ab5e113fc88258cc98",
+    "train": "92f1ba5a1d9ff9cdfd6875e3cffe87675a41fce9a02147b8ba7ee33ba4fbada7",
+    "validation": "832610c13fd76f73e3616220cb4a4e293254b59971119205ed1bf7a48a332546"
+  },
+  "event_split_overlap": false,
+  "event_time_semantics": "CDM rows in each event are ordered latest-to-earliest by decreasing time_to_tca; forecasting examples exclude the final/latest row.",
+  "excluded_inputs": [
+    "risk (target only)",
+    "max_risk_estimate",
+    "max_risk_scaling",
+    "mission_id",
+    "event_id",
+    "covariance determinant, sigma, Mahalanobis distance, and all other covariance-derived columns"
+  ],
+  "feature_names": [
+    "time_to_tca_days",
+    "miss_distance_m",
+    "relative_speed_m_s",
+    "relative_position_r_m",
+    "relative_position_t_m",
+    "relative_position_n_m",
+    "relative_velocity_r_m_s",
+    "relative_velocity_t_m_s",
+    "relative_velocity_n_m_s"
+  ],
+  "feature_schema_version": "1.0.0",
+  "feature_units": {
+    "miss_distance_m": "m",
+    "relative_position_n_m": "m",
+    "relative_position_r_m": "m",
+    "relative_position_t_m": "m",
+    "relative_speed_m_s": "m/s",
+    "relative_velocity_n_m_s": "m/s",
+    "relative_velocity_r_m_s": "m/s",
+    "relative_velocity_t_m_s": "m/s",
+    "time_to_tca_days": "day"
+  },
+  "high_risk_threshold_log10": -6.0,
+  "limitations": [
+    "Historical ESA CDM domain differs from live CelesTrak TLE-derived encounters.",
+    "Live ORION normally has no covariance or explicit hard-body radius.",
+    "ESA log10 risk is not equivalent to validated physics collision probability Pc.",
+    "TLE-derived state uncertainty is not represented by this ML model.",
+    "Research prototype only; not operational collision-avoidance capability."
+  ],
+  "metric_evaluation_unit": "one closest-to-TCA eligible pre-final CDM forecast per held-out event",
+  "metrics": {
+    "test": {
+      "hist_gradient_boosting": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.07935785644558951,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.848859453759289,
+        "predicted_high_risk_events": 0,
+        "r2": 0.13950914086438393,
+        "rmse_log10": 8.580070333065274,
+        "spearman_correlation": 0.35099389871848996,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge_baseline": {
+        "false_negative_high_risk_events": 145,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.12709927579322158,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 145,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.8934832116469416,
+        "predicted_high_risk_events": 0,
+        "r2": 0.1745328133818187,
+        "rmse_log10": 8.403643575541269,
+        "spearman_correlation": 0.442401539139016,
+        "test_event_count": 3832,
+        "true_positive_high_risk_events": 0
+      }
+    },
+    "validation": {
+      "hist_gradient_boosting": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.10976849334178633,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 7.058114462544394,
+        "predicted_high_risk_events": 0,
+        "r2": 0.08705189945459879,
+        "rmse_log10": 8.60433372221446,
+        "spearman_correlation": 0.267023414724342,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      },
+      "ridge_baseline": {
+        "false_negative_high_risk_events": 10,
+        "false_positive_high_risk_events": 0,
+        "high_risk_f1": 0.0,
+        "high_risk_pr_auc_average_precision": 0.17137424897133982,
+        "high_risk_precision": 0.0,
+        "high_risk_recall": 0.0,
+        "high_risk_test_events": 10,
+        "high_risk_threshold_log10": -6.0,
+        "mae_log10": 6.771915656714755,
+        "predicted_high_risk_events": 0,
+        "r2": 0.2113790383959554,
+        "rmse_log10": 7.997023272113595,
+        "spearman_correlation": 0.5307097126315508,
+        "test_event_count": 407,
+        "true_positive_high_risk_events": 0
+      }
+    }
+  },
+  "mission_split_overlap": false,
+  "model_name": "ORION ESA event final log10-risk estimator",
+  "model_version": "2.0.0",
+  "package_versions": {
+    "joblib": "1.6.0",
+    "numpy": "2.5.1",
+    "python": "3.14.0",
+    "scikit_learn": "1.9.1",
+    "scipy": "1.18.1"
+  },
+  "preprocessing": {
+    "event_balanced_sample_weight": "each training event has total weight 1 across its earlier CDM rows",
+    "hgb_scaling": "none; tree estimator",
+    "imputer_medians_in_feature_order": [
+      4.447187586805556,
+      12072.0,
+      12397.0,
+      -28.1,
+      7.35,
+      59.6,
+      -0.1,
+      -10110.6,
+      186.4
+    ],
+    "live_inference_imputation": "none; missing required Stage 2A feature returns unavailable",
+    "numeric_imputation": "median per feature, fitted on training forecast rows only; add missingness indicators",
+    "ridge_scaling": "StandardScaler fitted on imputed training rows only",
+    "training_missing_counts": {
+      "miss_distance_m": 0,
+      "relative_position_n_m": 0,
+      "relative_position_r_m": 0,
+      "relative_position_t_m": 0,
+      "relative_speed_m_s": 0,
+      "relative_velocity_n_m_s": 0,
+      "relative_velocity_r_m_s": 0,
+      "relative_velocity_t_m_s": 0,
+      "time_to_tca_days": 0
+    },
+    "training_only_fit": true
+  },
+  "primary_estimator": "sklearn.linear_model.Ridge",
+  "seed": 42,
+  "split_algorithm": "sorted unique mission IDs, Python random.Random(seed).shuffle, floor(70%) then floor(15%), remainder test",
+  "split_event_counts": {
+    "test": 4362,
+    "train": 8137,
+    "validation": 418
+  },
+  "split_group": "mission_id; events with missing or ambiguous mission assignment excluded",
+  "split_mission_counts": {
+    "test": 4,
+    "train": 13,
+    "validation": 2
+  },
+  "split_mission_hashes_sha256": {
+    "test": "9f391a4a83d48f78edd231b896736358f3ea8a5fd657e7e222d68b39d77f08cc",
+    "train": "ff05d8835b83f2f4bec1e109bd93e41864428ad547a0e4aa366dba9218307f7b",
+    "validation": "c745880081053e7ef1764c9428d76943a823ab154ceafc825dd36021e7578274"
+  },
+  "split_ratios": {
+    "test": 0.15,
+    "train": 0.7,
+    "validation": 0.15
+  },
+  "target_column": "risk",
+  "target_definition": "final event risk in log10 space, selected from the latest CDM (minimum time_to_tca; last occurrence breaks ties)",
+  "target_units": "log10 risk",
+  "test_event_count": 3832,
+  "train_forecast_example_count": 66768,
+  "training_date_utc": "2026-10-17T10:00:40.960607+00:00",
+  "validation_candidate_selected": "ridge",
+  "validation_event_count": 407
+}

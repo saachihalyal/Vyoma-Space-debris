@@ -1,0 +1,54 @@
+import React from "react";
+
+const number = (value, digits = 6) => Number.isFinite(value) ? value.toFixed(digits) : "Unavailable";
+const vector = (value) => Array.isArray(value) && value.length === 3 ? value.map((x) => number(x, 6)).join(", ") : "Unavailable";
+
+function geometryRow(row, label, baseline = false) {
+  const fuel = row?.fuel?.status === "estimated"
+    ? `${number(row.fuel.propellant_consumption_kg, 8)} kg`
+    : "Not calculated";
+  return React.createElement("tr", { key: label },
+    React.createElement("td", null, label),
+    React.createElement("td", null, baseline ? "Zero burn" : `${row?.direction || "Unavailable"} RTN · ${number(row?.delta_v_m_s, 5)} m/s`),
+    React.createElement("td", null, row?.maneuver_epoch_utc || "—"),
+    React.createElement("td", null, row?.closest_approach_utc || row?.tca_utc || "Unavailable"),
+    React.createElement("td", null, number(row?.predicted_miss_distance_km ?? row?.miss_distance_km)),
+    React.createElement("td", null, baseline ? "0.000000" : number(row?.change_from_zero_burn_km)),
+    React.createElement("td", null, baseline ? "0, 0, 0" : vector(row?.delta_v_rtn_m_s)),
+    React.createElement("td", null, row?.relative_velocity_km_s?.map?.((x) => number(x)).join(", ") || "Unavailable"),
+    React.createElement("td", null, fuel),
+    React.createElement("td", null, "Not established · geometry-only"));
+}
+
+export function ManeuverBaselineComparison({ comparison, stage2aReference, zeroBurnBaseline, candidates = [], stage2aPhysics, probabilityBefore, probabilityAfter, probabilityComparison }) {
+  const ref = stage2aReference || {};
+  const baseline = zeroBurnBaseline?.candidate || zeroBurnBaseline || {};
+  const baselineEvaluated = zeroBurnBaseline?.status === "evaluated" && Number.isFinite(zeroBurnBaseline?.miss_distance_km);
+  const pcBefore = probabilityBefore?.status === "available" && Number.isFinite(probabilityBefore.pc)
+    ? `${probabilityBefore.pc.toExponential(6)} · event-specific Foster`
+    : `Unavailable · ${probabilityBefore?.reason_code || "event-matched inputs unavailable"}`;
+  const pcAfter = probabilityAfter?.status === "available" && Number.isFinite(probabilityAfter.pc)
+    ? `${probabilityAfter.pc.toExponential(6)} · ${probabilityAfter.method || "validated method"}`
+    : `Unavailable · ${probabilityAfter?.reason_code || "post-burn covariance not propagated"}`;
+  const rows = candidates.filter((row) => row?.direction !== "zero-burn baseline");
+  const baselineStatus = comparison?.status === "within_comparison_tolerance"
+    ? "Within configured diagnostic thresholds; not scientific validation"
+    : comparison?.status === "discrepancy"
+      ? "Discrepancy against original SGP4 event; interpret simulated candidate geometry cautiously"
+      : "SGP4-to-two-body baseline comparison unavailable";
+  const comparisonTable = React.createElement("div", { className: "table-scroll" }, React.createElement("table", null,
+    React.createElement("thead", null, React.createElement("tr", null, ...["Scenario", "RTN burn", "Burn UTC", "Predicted TCA", "Miss (km)", "Δ miss vs baseline (km)", "RTN Δv (m/s)", "Relative velocity (km/s)", "Fuel", "Pc outcome"].map((heading) => React.createElement("th", { key: heading }, heading)))),
+    React.createElement("tbody", null,
+      ...(baselineEvaluated ? [geometryRow({ ...baseline, predicted_miss_distance_km: baseline.miss_distance_km ?? baseline.predicted_miss_distance_km }, "Zero-burn baseline", true)] : []),
+      ...rows.map((row, index) => geometryRow(row, `Candidate ${index + 1}`)))));
+  return React.createElement("section", { className: "panel maneuver-baseline-comparison", "aria-live": "polite" },
+    React.createElement("div", { className: "panel-heading" }, React.createElement("h2", null, "Zero-Burn and Candidate Comparison")),
+    React.createElement("p", { className: "muted" }, `Selected event Stage 2A SGP4 reference: TCA ${ref.tca?.value || comparison?.reference_tca_utc || "Unavailable"}; miss ${number(ref.miss_distance?.value ?? comparison?.reference_miss_distance_km)} km; relative speed ${stage2aPhysics?.relative_speed_at_tca?.status === "available" ? `${number(stage2aPhysics.relative_speed_at_tca.value)} km/s` : "Unavailable"}.`),
+    React.createElement("p", { className: "muted" }, `Zero-burn comparison: ${baselineStatus}.`),
+    React.createElement("div", { className: "maneuver-pc-comparison" },
+      React.createElement("span", null, "Original-event Pc", React.createElement("strong", null, pcBefore)),
+      React.createElement("span", null, "Candidate Pc", React.createElement("strong", null, pcAfter)),
+      React.createElement("span", null, "Pc reduction", React.createElement("strong", null, probabilityComparison?.status === "available" && Number.isFinite(probabilityComparison.risk_reduction_pct) ? `${probabilityComparison.risk_reduction_pct}%` : "Not established"))),
+    React.createElement("p", { className: "muted" }, "Geometry-only comparison: miss-distance change does not establish collision-probability reduction. Candidate Pc is withheld because compatible covariance is not propagated through each burn. Fuel is calculated only when both valid spacecraft mass and specific impulse are supplied."),
+    baselineEvaluated || rows.length ? comparisonTable : React.createElement("p", { className: "muted" }, "Run the bounded search to generate a zero-burn baseline and compare candidate geometries."));
+}

@@ -1,0 +1,278 @@
+{
+  "phase": "17",
+  "title": "Browser demonstration verification and fresh Collision AI inference",
+  "assessment_timestamp_utc": "2026-10-17T16:13:22Z",
+  "repository_path": "C:/Users/NARSINH K/Documents/Codex/2026-10-04/you-are-modifying-an-existing-research/outputs/space-debris-ssa-platform",
+  "overall_status": "BLOCKED",
+  "status_vocabulary": [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "NOT_TESTED"
+  ],
+  "capability_status": {
+    "backend_inference": {
+      "status": "PASS",
+      "scope": "Direct call to the shipped production inference service predict_from_physics using the loaded v2 artifact; no mock estimator and no screening/provider request.",
+      "limitations": "This proves technical inference for a synthetic contract fixture. It does not prove model validity, current orbital applicability, or the browser workflow."
+    },
+    "frontend_rendering": {
+      "status": "PASS",
+      "scope": "React server-side component rendering with the actual fresh v2 inference payload and actual maneuver API model payload.",
+      "limitations": "Component markup checks are not browser rendering or page-level interaction."
+    },
+    "browser_interaction": {
+      "status": "BLOCKED",
+      "scope": "No desktop browser executable or CUA browser/app surface was available; no screenshots, navigation, clicks, browser console, or browser-managed downloads were captured."
+    },
+    "maneuver_workflow": {
+      "status": "PASS",
+      "scope": "In-process FastAPI TestClient exercised archived-job restore, the real maneuver API/model, job/event identity, physical candidate results, zero-burn comparison, and PDF responses.",
+      "limitations": "API-level only; the accepted archive is partial and its TLE source is stale."
+    },
+    "reporting": {
+      "status": "PASS",
+      "scope": "Both job-bound PDF responses were saved and inspected for PDF signature, event/job IDs, maneuver model identity/version, and report provenance strings.",
+      "limitations": "Downloads were made by TestClient, not a browser."
+    }
+  },
+  "environment_and_startup": {
+    "repository_instructions": "README.md documents FastAPI at 127.0.0.1:8000 and Vite at 127.0.0.1:5173; package.json scripts are npm run dev, npm test, and npm run build.",
+    "backend_startup_command": ".\\.venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    "frontend_startup_command": "npm run dev",
+    "ports": {
+      "backend": 8000,
+      "frontend": 5173,
+      "production_preview": 4173
+    },
+    "startup_result": "Both documented services started successfully while binding to loopback. Frontend GET / returned HTTP 200 and the root HTML. Backend GET /openapi.json returned the ORION SSA Research API schema and included the maneuver and job-bound report routes. Provider-backed health/catalog routes were not called.",
+    "service_lifecycle": "Only processes started for this check were stopped after the startup smoke check. No existing unrelated process was terminated. No live screening job was created.",
+    "browser_inventory": {
+      "cua_getState": "apps=[]; browsers=[]",
+      "desktop_browser_commands": "Get-Command found no msedge.exe, chrome.exe, or firefox.exe on PATH.",
+      "automation_dependencies": "No Playwright, @playwright/test, Puppeteer, Cypress, or selenium-webdriver package was found in node_modules.",
+      "browser_available": false
+    },
+    "captured_logs": [
+      "%TEMP%/orion_phase17_backend_stdout.log",
+      "%TEMP%/orion_phase17_backend_stderr.log",
+      "%TEMP%/orion_phase17_frontend_stdout.log",
+      "%TEMP%/orion_phase17_frontend_stderr.log"
+    ],
+    "screenshots": []
+  },
+  "fresh_collision_ai_inference": {
+    "status": "PASS",
+    "invocation": "backend/app/ai/inference.py::predict_from_physics; this is the shipped inference service called by trajectory screening. No dedicated HTTP inference route exists. Screening itself was not invoked.",
+    "fixture": {
+      "event_id": "SYNTH-ELIGIBLE",
+      "provenance": "Derived from existing backend/tests/test_ai_stage3.py::_physics fixture with an explicit synthetic source tag and is_synthetic=true. It is a deterministic model-contract fixture, not a screened orbital encounter or observed event.",
+      "screening_window_start_utc": "2024-12-30T12:00:00+00:00",
+      "tca_utc": "2025-01-01T12:00:00+00:00",
+      "time_to_tca_days": 2.0,
+      "time_reference": "TCA minus screening horizon start, UTC",
+      "state_frame": "TEME at TCA; relative features projected to instantaneous primary RTN at TCA",
+      "input_position_units": "km",
+      "input_velocity_units": "km/s",
+      "consistency_checks": "Primary TCA state epoch equals TCA. Relative position [1,2,2] km has norm 3 km, matching miss distance. Relative velocity [0,3,4] km/s has norm 5 km/s, matching relative speed. All required vector components are finite."
+    },
+    "loaded_model": {
+      "name": "ORION ESA event final log10-risk estimator",
+      "version": "2.0.0",
+      "artifact_path": "backend/app/ai/artifacts/esa_event_log10_risk.joblib",
+      "artifact_sha256": "63f4ad9e73facac25ae03900ebc996cc24bd56d2e245fc74a80c0467e340c9f0",
+      "status": "available"
+    },
+    "fresh_result": {
+      "inference_timestamp_utc": "2026-10-17T16:08:13.199517+00:00",
+      "status": "available",
+      "reason_code": "prediction_available",
+      "source_physics_event_id": "SYNTH-ELIGIBLE",
+      "artifact_sha256_matches_loaded_artifact": true,
+      "feature_schema_version": "1.0.0",
+      "feature_frame": "instantaneous primary RTN at TCA",
+      "predicted_log10_event_risk": -22.109618825513788,
+      "threshold_log10": -6.0,
+      "threshold_flag": false,
+      "semantics": "Historical ESA event-risk target estimate, not a calibrated probability or Foster Pc. No high-risk alert was generated."
+    },
+    "features_returned": {
+      "time_to_tca_days": {
+        "value": 2.0,
+        "units": "day"
+      },
+      "miss_distance_m": {
+        "value": 3000.0,
+        "units": "m"
+      },
+      "relative_speed_m_s": {
+        "value": 5000.0,
+        "units": "m/s"
+      },
+      "relative_position_r_m": {
+        "value": 1000.0,
+        "units": "m"
+      },
+      "relative_position_t_m": {
+        "value": 2000.0,
+        "units": "m"
+      },
+      "relative_position_n_m": {
+        "value": 2000.0,
+        "units": "m"
+      },
+      "relative_velocity_r_m_s": {
+        "value": 0.0,
+        "units": "m/s"
+      },
+      "relative_velocity_t_m_s": {
+        "value": 3000.0,
+        "units": "m/s"
+      },
+      "relative_velocity_n_m_s": {
+        "value": 4000.0,
+        "units": "m/s"
+      }
+    },
+    "ineligible_case": {
+      "status": "PASS",
+      "fixture_time_to_tca_days": 1.999,
+      "result_status": "unavailable",
+      "reason_code": "ESA_INPUT_TIME_TO_TCA_BELOW_MINIMUM",
+      "prediction_returned": false
+    },
+    "frontend_component_render": {
+      "status": "PASS",
+      "component": "src/components/UI/EventRiskEstimate.js",
+      "checks": "Rendered the fresh v2 model name/version, synthetic event-bound output, target-not-Pc label, RTN frame, all nine feature names with the exact values/units above, and the limitation that the fixed threshold missed all 145 held-out high-risk labels. Rendered the 1.999-day result as unavailable with no prediction. This is static React markup, not browser verification."
+    },
+    "scientific_limitations_preserved": "Phase 14.1 found zero of 145 held-out high-risk labels detected at log10 threshold -6. This fixture verifies technical inference only and does not establish accuracy or real-world predictive performance."
+  },
+  "maneuver_workflow_and_reports": {
+    "status": "PASS",
+    "job_id": "2a50f67a597442279de1d5178468953d",
+    "event_id": "CA-0E45D17A7FD97444E98C",
+    "job_status": "partial",
+    "job_archive_created_utc": "2026-10-14T06:13:37.450524+00:00",
+    "tle_source": "Archived CelesTrak GP/TLE pair; retrieval timestamps 2026-10-14T06:01:29Z and 2026-10-14T06:01:30Z. At the assessment time, both were about 82.19 hours old. This archive is historical and does not represent current orbital conditions.",
+    "api_result": {
+      "maneuver_status": "available_with_warning",
+      "model_name": "ORION simulated two-body maneuver miss-distance ranker",
+      "model_version": "1.0.0",
+      "model_status": "available",
+      "ranked_nonzero_candidates": 12,
+      "physical_candidate_count_including_zero_burn": 13,
+      "zero_burn_reference_status": "within_comparison_tolerance",
+      "event_identity_matches": true,
+      "job_identity_matches": true,
+      "physics_and_ml_outputs_are_separate": true,
+      "probability_before": null,
+      "probability_after": null
+    },
+    "frontend_component_render": {
+      "status": "PASS",
+      "component": "src/components/UI/ManeuverAiSummary.js",
+      "checks": "Rendered the real API model name/version, score meaning and units, warning that the surrogate is not Pc/safety/verified improvement, and the matching screening-job ID. This is component markup only."
+    },
+    "pdf_checks": {
+      "status": "PASS",
+      "download_method": "FastAPI TestClient API responses; not a browser-managed download",
+      "saved_directory": "%TEMP%/orion_phase17_reports",
+      "event_report": {
+        "route": "/api/conjunction-jobs/{job_id}/events/{event_id}/report.pdf",
+        "http_status": 200,
+        "bytes": 14749,
+        "pdf_signature": true,
+        "event_id_in_content": true,
+        "job_id_in_content": true,
+        "maneuver_model_and_version_in_content": true,
+        "maneuver_provenance_in_content": true
+      },
+      "maneuver_assessment": {
+        "route": "/api/conjunction-jobs/{job_id}/events/{event_id}/assessment.pdf",
+        "http_status": 200,
+        "bytes": 14749,
+        "pdf_signature": true,
+        "event_id_in_content": true,
+        "job_id_in_content": true,
+        "maneuver_model_and_version_in_content": true,
+        "maneuver_provenance_in_content": true
+      }
+    },
+    "stale_selection_and_model_failure": "Not exercised in a browser. Existing frontend selection and backend injected-failure regressions ran in the automated suites; those tests are not browser evidence."
+  },
+  "data_source_and_fixture_provenance": {
+    "collision_ai_fixture": "Synthetic deterministic test fixture from the existing Stage 3 test helper; run-only, no archived inference and no orbital provider.",
+    "maneuver_event": "Historical archived partial screening result derived from CelesTrak TLEs fetched on 2026-10-14; approximately 82.19 hours old at this assessment. The partial reason and limited coverage remain visible in the API data; it is not current orbital data.",
+    "fallback_data": "The bundled fallback source was not accessed during this phase; no provider-backed endpoint or screening run was called.",
+    "network_activity": "No outbound request was intentionally made. Local runtime checks used loopback only."
+  },
+  "automated_checks": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_ai_stage3 tests.test_maneuver_research tests.test_screening_jobs tests.test_archived_job_restore tests.test_report_status (from backend)",
+      "result": "75 passed; 0 failed. Expected injected screening failure traceback in failure-path test; Starlette/httpx deprecation warning emitted."
+    },
+    {
+      "command": "npm test",
+      "result": "105 passed; 0 failed."
+    },
+    {
+      "command": "npm run build",
+      "result": "Passed; Vite 6.4.4 transformed 3,203 modules in 42.24 seconds. Existing main-bundle advisory: 1,756.66 kB minified."
+    },
+    {
+      "command": "PowerShell here-string piped to backend/.venv/Scripts/python.exe -B -",
+      "result": "Loaded the actual v2 artifact, called predict_from_physics on the synthetic fixture, checked artifact hash/event provenance/nine features, and checked unavailable handling at 1.999 days."
+    },
+    {
+      "command": "PowerShell here-string piped to node --input-type=module -",
+      "result": "Rendered actual Collision AI and ManeuverAiSummary components using inference/API outputs; asserted visible names, units, warnings, and job identity. Static markup only."
+    },
+    {
+      "command": "PowerShell here-string piped to backend/.venv/Scripts/python.exe -B - (FastAPI TestClient harness)",
+      "result": "Restored the archived partial job, called the actual maneuver endpoint/model, checked event/job identity and physical outputs, downloaded both PDFs, and checked file signatures/content. No screening endpoint was called."
+    },
+    {
+      "command": "Start-Process documented Uvicorn command and npm run dev; GET http://127.0.0.1:5173/ and GET http://127.0.0.1:8000/openapi.json",
+      "result": "Both services started; frontend root returned HTTP 200; backend OpenAPI exposed expected routes. No health/catalog route was called. Own started service processes were stopped."
+    },
+    {
+      "command": "await cua.getState(); Get-Command msedge.exe,chrome.exe,firefox.exe -ErrorAction SilentlyContinue",
+      "result": "No app/browser surface and no browser executable found."
+    }
+  ],
+  "browser_manual_checks_outstanding": {
+    "status": "BLOCKED",
+    "frontend_url": "http://127.0.0.1:5173/",
+    "backend_url": "http://127.0.0.1:8000/",
+    "checklist_for_a_user_with_a_browser": [
+      "Start backend with the documented Uvicorn command and frontend with npm run dev; do not invoke provider-backed health/catalog routes unless outbound access is allowed.",
+      "In Collision Analysis, verify a fresh eligible v2 result is labelled synthetic/test data, displays its event ID, model v2.0.0, all nine values/units, not-Pc wording, and the threshold limitation.",
+      "Select an ineligible event and verify the unavailable status/reason replaces any earlier prediction.",
+      "Open Maneuver Assessment for the partial archived job and verify the selected event/job IDs, model score meaning, warning, physical candidate values, zero-burn reference, and unavailable Pc.",
+      "Change event/job selection and confirm old rankings disappear; download both reports from the UI and verify IDs and model provenance."
+    ],
+    "not_claimed_as_passed": "No manual browser checks have been performed."
+  },
+  "production_changes": {
+    "made": false,
+    "statement": "No production changes, model artifact changes, retraining, threshold changes, physics changes, or new features. No concrete production defect was established in these checks.",
+    "regression_tests": "No new tests added; existing backend/frontend suites were run."
+  },
+  "overall_decision": "BLOCKED",
+  "report_validation": {
+    "status": "PASS",
+    "checks": [
+      "JSON parsed after write",
+      "assessment and verification status fields use PASS/FAIL/BLOCKED/NOT_TESTED; domain inference statuses available/unavailable remain explicitly separate",
+      "loaded and returned Collision AI artifact version/hash match",
+      "fresh result event ID and nine feature records are present",
+      "ineligible case is explicitly unavailable",
+      "maneuver event/job identity values are consistent",
+      "both PDF checks record signature and embedded event/job IDs plus model provenance",
+      "browser limitation and absence of screenshots are explicit",
+      "test and build results are recorded",
+      "no production changes are recorded"
+    ]
+  }
+}

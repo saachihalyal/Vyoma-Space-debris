@@ -1,0 +1,368 @@
+{
+  "report_id": "phase_12_1_collision_maneuver_flow_audit",
+  "project": "ORION SSA",
+  "task_type": "read_only_architecture_scientific_validity_and_test_coverage_audit",
+  "scope": {
+    "source_reviewed": true,
+    "application_code_changed": false,
+    "tests_changed": false,
+    "models_or_artifacts_changed": false,
+    "live_screening_or_maneuver_jobs_started": false,
+    "model_inference_run": false,
+    "browser_verification_performed": false,
+    "git_metadata_present": false
+  },
+  "workflow": [
+    {
+      "step": 1,
+      "name": "Physical event generation",
+      "evidence": [
+        {
+          "file": "backend/app/main.py",
+          "function": "create_conjunction_job",
+          "route": "POST /api/conjunction-jobs",
+          "detail": "Creates a job ID and schedules _execute_screening_job; the audit did not call this route."
+        },
+        {
+          "file": "backend/app/main.py",
+          "function": "_execute_screening_job",
+          "detail": "Runs the conjunctions handler and stores its returned result in the job record."
+        },
+        {
+          "file": "backend/app/main.py",
+          "function": "conjunctions",
+          "route": "GET /api/conjunctions",
+          "detail": "Calls build_trajectory_context and serializes physical trajectory assessments; heuristic risk filtering is rejected on this path."
+        },
+        {
+          "file": "backend/app/services/trajectory_screening.py",
+          "function": "screen_tle_records",
+          "detail": "Propagates common-time SGP4/SDP4 tracks in TEME, detects and refines close approaches, then constructs events through _valid_assessment or _invalid_assessment."
+        },
+        {
+          "file": "backend/app/services/trajectory_screening.py",
+          "function": "_event_id",
+          "detail": "Builds CA IDs from pair-input hash, canonical UTC event time, and screening method version."
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Frontend acceptance and selection",
+      "evidence": [
+        {
+          "file": "src/App.jsx",
+          "function": "load / screening completion handler",
+          "detail": "Accepts a result only when its run/job identities match; accepted events and conjunctionStatus.job_id are updated together. Reconciles selection after acceptance."
+        },
+        {
+          "file": "src/utils/screeningRefreshPolicy.js",
+          "function": "resolvePhysicalEventSelection / reconcilePhysicalEventSelection",
+          "detail": "Restricts assessment selection to physical events, but its matching helper identifies a physical event by unordered primary/secondary object pair rather than event ID/TCA."
+        },
+        {
+          "file": "src/utils/maneuverSelection.js",
+          "function": "eligibleManeuverEvents / selectManeuverEvent / resolveManeuverEvent",
+          "detail": "Allows only valid physics_assessment events. resolveManeuverEvent re-resolves the selection against the current event list by event ID."
+        },
+        {
+          "file": "src/App.jsx",
+          "function": "ManeuverPage",
+          "detail": "Receives the selected event, current accepted event list, current accepted screening job ID, and matching assessment state."
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Request construction and backend authority",
+      "evidence": [
+        {
+          "file": "src/api/ssaClient.js",
+          "function": "getManeuver",
+          "route": "POST /api/conjunctions/{event_id}/maneuver?screening_job_id=...&lead_seconds=...&burn_magnitudes_m_s=...",
+          "detail": "Sends the selected event JSON and selected ID; defaults are 300 s lead and 0.01/0.05 m/s magnitudes."
+        },
+        {
+          "file": "backend/app/main.py",
+          "function": "maneuver",
+          "detail": "Checks body/path ID and physical result kind, locates the event by ID in the requested completed/partial job, validates the stored event, and passes that stored event to optimize_maneuver. Client-supplied state fields are not used as solver inputs."
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Solver inputs and propagation",
+      "evidence": [
+        {
+          "file": "backend/app/services/conjunction.py",
+          "function": "optimize_maneuver",
+          "detail": "Requires matching event/object IDs; valid interior TCA; available UTC TCA; both TEME TCA state vectors at that epoch; finite km/km/s vectors; and a valid reference miss distance in km consistent with state separation."
+        },
+        {
+          "file": "backend/app/services/conjunction.py",
+          "function": "_rk4 / _propagate_samples / _refine_sampled_minimum",
+          "detail": "Reconstructs the burn epoch by backward two-body integration from Stage 2A TCA states; applies the candidate impulse to the primary; evaluates zero-burn and candidate trajectories over a bounded interval."
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Response, UI and report",
+      "evidence": [
+        {
+          "file": "backend/app/main.py",
+          "function": "maneuver",
+          "detail": "Returns {success,timestamp,data,message}; computed sweeps are available_with_warning and stored under the requested job/event only."
+        },
+        {
+          "file": "src/App.jsx",
+          "function": "ManeuverPage",
+          "detail": "Renders warning status, baseline comparison and candidates; assessment visibility is gated by matching event ID and current job ID."
+        },
+        {
+          "file": "backend/app/main.py",
+          "function": "selected_event_assessment_pdf / selected_event_report_pdf",
+          "routes": "GET /api/conjunction-jobs/{job_id}/events/{event_id}/assessment.pdf and /report.pdf",
+          "detail": "Resolve both event and stored assessment from the requested job. The report route does not start a new screen; the assessment route returns conflict if no successful stored assessment exists."
+        },
+        {
+          "file": "backend/app/services/reports.py",
+          "function": "_trajectory_event_report_pdf",
+          "detail": "Prints original Stage 2A reference and zero-burn baseline comparison, warning interpretation, candidate UTC TCA/offset and baseline-relative miss change; says no post-maneuver Pc or recommendation is inferred."
+        }
+      ]
+    }
+  ],
+  "identity_and_event_flow": {
+    "physical_vs_proxy": "Maneuver eligibility and backend route require result_kind=physics_assessment; heuristic screening proxies are not accepted for physical maneuver assessment.",
+    "event_passed_unchanged": "Not end-to-end unchanged: the frontend can reconcile a prior selection to an event in the newly accepted result by object pair; for the request, the server then resolves the selected ID from the current requested job and uses the stored record. The POST body is not authoritative for the solver.",
+    "job_event_validation": "Confirmed: route requires a completed/partial job, exact event membership, matching path/body ID, physical type, and valid stored event/TCA status. Missing job/event returns 404; malformed stored event returns 409; invalid type/TCA returns 422.",
+    "stale_assessment": "Confirmed protection: a fresh unavailable/invalid request removes any previous stored result for that event; frontend request-generation and AbortController guards suppress stale asynchronous responses; display additionally checks event and job identity.",
+    "frontend_rebinding_risk": "Potential, not observed in a live run: resolvePhysicalEventSelection/reconcilePhysicalEventSelection match an unordered object pair, while _event_id includes pair input hash and UTC TCA. If multiple events for the same pair exist or a replacement job changes that pair's TCA, selection may resolve to a different event. The accepted job and event list move together, so this does not by itself establish a cross-job request mismatch. Existing tests cover changed event identity with a different pair and accepted-job replacement, but not same-pair/different-TCA selection preservation."
+  },
+  "scientific_input_consistency": {
+    "stage_2a_reference": {
+      "method": "python-sgp4 SGP4/SDP4 with WGS72, common UTC epochs, TEME frame; TCA refined from sampled trajectories using bounded subdivisions and golden-section refinement.",
+      "state_contract": "Primary/secondary state payloads are at the refined event TCA, TEME, position km, velocity km/s; relative vector convention is secondary minus primary. TCA is ISO UTC.",
+      "horizon": "The event TCA is inside the configured screening interval for valid events; horizon boundary events are marked boundary and are rejected for maneuver solver evaluation."
+    },
+    "maneuver_simulation": {
+      "method": "Simplified Earth point-mass two-body RK4, mu=398600.4418 km^3/s^2; 5 s search sampling and 2.5 s convergence comparison; candidate impulse applies to primary only.",
+      "epoch_and_frames": "Uses Stage 2A TEME Cartesian states at UTC TCA and treats TEME as inertial over the propagation interval; it performs no general frame conversion.",
+      "search_window": "Begins at burn epoch (TCA minus lead_seconds) and ends 1800 seconds after original TCA; sample-grid minima are locally refined. Boundary minima are marked search_boundary_minimum.",
+      "comparison": "Original Stage 2A SGP4 miss distance/TCA is the reference; zero-burn two-body trajectory is the simulated baseline. Candidate changes are measured against zero-burn, not against SGP4."
+    },
+    "confirmed_baseline_difference": {
+      "classification": "C limitation / known model inconsistency, correctly warning-qualified; not a newly established universal discrepancy or an invalidation of Stage 2A.",
+      "fixture_evidence": "test_maneuver_research.py::test_zero_burn_baseline_is_repeatable_and_flagged_against_known_event_reference expects about 1.0 km reference miss, 0.8154 km zero-burn two-body miss and 781.1 s TCA offset for that fixture. Solver returns available_with_warning and states candidates are not verified improvements.",
+      "criteria": "Configured comparison thresholds are explicitly diagnostic and not scientifically validated. Even a within-threshold fixture remains available_with_warning."
+    }
+  },
+  "collision_probability": {
+    "stage_2a_behavior": "_valid_assessment calls calculate_foster_2d with TCA geometry but no covariance or HBR arguments. With those required inputs absent, Pc is unavailable/null with machine-readable reasons; no zero is substituted.",
+    "source_inputs": "POST /api/conjunction-jobs/{job_id}/events/{event_id}/cdm parses user-supplied CDM XML, binds object IDs/TCA/frame, and calculates source Pc. The importer accepts TEME only, records that source identity is user-declared and unauthenticated, rotates the RTN position covariance 3x3 block into declared CDM frame using the CDM TCA state, and does not propagate covariance or perform general state-frame conversion. Imported CDM state may be used for the Pc mean state; it does not replace Stage 2A PhysicsResult states used by optimize_maneuver.",
+    "scenario_inputs": "POST /api/conjunction-jobs/{job_id}/events/{event_id}/scenario-pc records explicitly user-entered synthetic covariance/HBR assumptions separately as scenario_collision_probability; scenario assumptions remain distinct from source Pc.",
+    "independence": "calculate_foster_2d requires explicit authorization to treat covariances as independent; otherwise correlation-unknown result is unsupported.",
+    "maneuver_pc": "No before/after Pc is computed by optimize_maneuver. probability_before, probability_after and risk_reduction_pct remain null; UI labels Pc reduction unavailable.",
+    "heuristic_and_ai_boundary": "Proxy risk/priority values are catalog heuristics. ESA output is historical log-risk and anomaly output is an anomaly rank. Neither participates in solver candidate geometry or becomes Pc in this workflow. Stage 2A event construction contains calls to ESA inference and anomaly assessment, but none were executed during this audit."
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "classification": "B_potential_edge_case",
+      "impact": "A physical event selection can be rebound by object pair during accepted-job reconciliation, despite deterministic event identity also incorporating TCA. This could select a different encounter for the same pair.",
+      "evidence": [
+        "src/utils/screeningRefreshPolicy.js::physicalMatchFor",
+        "src/utils/screeningRefreshPolicy.js::resolvePhysicalEventSelection",
+        "backend/app/services/trajectory_screening.py::_event_id",
+        "tests/catalogLifecycle.test.js::a physical selection with changed identity is not rebound to a similar event"
+      ],
+      "limitation": "No evidence was found that a particular stored job contains multiple close approaches for the same pair or that this occurs in use. Current accepted job/event state remains paired and backend membership checks remain authoritative."
+    },
+    {
+      "id": "F2",
+      "classification": "C_disclosed_limitation",
+      "impact": "Zero-burn two-body simulation can disagree with original SGP4 reference, so candidate changes are conditional on a simplified model.",
+      "evidence": [
+        "backend/app/services/conjunction.py::optimize_maneuver",
+        "backend/tests/test_maneuver_research.py::test_zero_burn_baseline_is_repeatable_and_flagged_against_known_event_reference",
+        "src/components/UI/ManeuverBaselineComparison.js",
+        "backend/app/services/reports.py::_trajectory_event_report_pdf"
+      ],
+      "limitation": "The fixture establishes behavior for one synthetic case, not a universal error or acceptable tolerance. Current output is warning-qualified."
+    },
+    {
+      "id": "F3",
+      "classification": "C_disclosed_limitation",
+      "impact": "There is no covariance propagation or post-maneuver Pc in the maneuver solver, so candidate miss-distance changes are not collision-probability or safety changes.",
+      "evidence": [
+        "backend/app/services/conjunction.py::optimize_maneuver",
+        "backend/app/models.py::CollisionProbabilityResult",
+        "backend/app/services/reports.py::_trajectory_event_report_pdf",
+        "backend/tests/test_maneuver_research.py::test_candidates_include_zero_burn_and_are_repeatable"
+      ]
+    },
+    {
+      "id": "F4",
+      "classification": "C_existing_protection",
+      "impact": "The HTTP request cannot substitute client-provided state for the event stored in the named screening job; membership, event identity, object identity, state epoch/frame/units and reference miss are checked.",
+      "evidence": [
+        "backend/app/main.py::maneuver",
+        "backend/app/services/conjunction.py::optimize_maneuver",
+        "backend/tests/test_maneuver_research.py::test_maneuver_api_uses_valid_event_and_bounded_configuration",
+        "backend/tests/test_maneuver_research.py::test_service_rejects_invalid_tca_identity_state_units_and_event_object_mismatch"
+      ]
+    },
+    {
+      "id": "F5",
+      "classification": "C_existing_protection",
+      "impact": "Job-scoped report routes retrieve event and assessment from the requested job; they do not launch fresh screening. The legacy unscoped physical report route remains a separate compatibility route and can construct a fresh context.",
+      "evidence": [
+        "backend/app/main.py::selected_event_assessment_pdf",
+        "backend/app/main.py::selected_event_report_pdf",
+        "backend/app/main.py::event_pdf (GET /api/reports/{event_id}.pdf)",
+        "backend/tests/test_report_status.py::test_selected_event_pdf_uses_stored_job_event_without_rescreening",
+        "tests/reportDownloads.test.js"
+      ]
+    }
+  ],
+  "test_coverage": {
+    "frontend": [
+      {
+        "area": "Selection and physical/proxy separation",
+        "tests": "tests/maneuverSelection.test.js; tests/catalogLifecycle.test.js",
+        "coverage": "Valid physical only, proxy rejection, current event/job assessment visibility, late/aborted response suppression, accepted job reconciliation."
+      },
+      {
+        "area": "API request and report paths",
+        "tests": "tests/reportDownloads.test.js; tests/catalogLifecycle.test.js",
+        "coverage": "Job-scoped physical reports, proxy legacy report route, missing physical job error, selected event POST shape, mocked request lifecycle."
+      },
+      {
+        "area": "Browser-level integration",
+        "coverage": "Not established; no Playwright/Cypress/E2E/browser test files were found, and no browser or application was started."
+      }
+    ],
+    "backend": [
+      {
+        "area": "Solver validity, baseline and candidate interpretation",
+        "tests": "backend/tests/test_maneuver_research.py",
+        "coverage": "Fixture propagation, TCA state validation, identity, units, miss consistency, bounded search, baseline disagreement/warning, stale stored assessment clearing, stored-job request membership and PDF fields. Read but not executed because its tests call optimize_maneuver or the maneuver route."
+      },
+      {
+        "area": "Job-scoped PDF/report status",
+        "tests": "backend/tests/test_report_status.py",
+        "coverage": "Stored event/assessment provenance, no fresh screening, job membership and missing/incomplete job responses."
+      },
+      {
+        "area": "Pc failure and numerical contracts",
+        "tests": "backend/tests/test_collision_probability.py; backend/tests/test_cdm_ingestion.py",
+        "coverage": "Independent numerical references, failure/unavailable reasons, covariance/HBR/frame/epoch and independence handling, CDM source/scenario separation."
+      }
+    ],
+    "coverage_gaps": [
+      "No browser-level assertion verifies that the event visibly rendered in Maneuver Assessment and the job/event IDs used for its request are one immutable selection object.",
+      "No explicit selection test covers same object pair with distinct event IDs/TCA during accepted-job reconciliation.",
+      "Current unit/API tests do not establish physical accuracy of the simplified maneuver model or a valid baseline-comparison tolerance."
+    ]
+  },
+  "test_execution": {
+    "commands": [
+      {
+        "working_directory": "outputs/space-debris-ssa-platform/backend",
+        "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_report_status",
+        "result": "PASS: 20 tests in 0.483 s",
+        "warnings": [
+          "StarletteDeprecationWarning: using httpx with starlette.testclient is deprecated; install httpx2 instead. No package was installed."
+        ]
+      },
+      {
+        "working_directory": "outputs/space-debris-ssa-platform/backend",
+        "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_collision_probability",
+        "result": "PASS: 23 tests in 1.085 s",
+        "warnings": []
+      },
+      {
+        "working_directory": "outputs/space-debris-ssa-platform/backend",
+        "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_cdm_ingestion",
+        "result": "PASS: 15 tests in 0.259 s",
+        "warnings": [
+          "StarletteDeprecationWarning: using httpx with starlette.testclient is deprecated; install httpx2 instead. No package was installed."
+        ]
+      },
+      {
+        "working_directory": "outputs/space-debris-ssa-platform",
+        "command": "node --test tests/maneuverSelection.test.js tests/reportDownloads.test.js tests/catalogLifecycle.test.js",
+        "result": "PASS: 49 tests, 0 failures",
+        "warnings": [
+          "Expected test console output includes malformed/blocked watchlist diagnostics and mocked screening lifecycle logs; no real service was started."
+        ]
+      },
+      {
+        "working_directory": "workspace root",
+        "command": "rg --files outputs/space-debris-ssa-platform | rg -i '(playwright|cypress|\\.spec\\.|e2e|browser)'",
+        "result": "No browser/E2E test files found."
+      }
+    ],
+    "not_run": [
+      "backend/tests/test_maneuver_research.py: inspected but not executed because its tests invoke the maneuver solver/route; the user asked tests not initiate maneuver jobs.",
+      "No Stage 2A screening job, collision-probability job, maneuver job, model inference, training, application startup or browser session was run."
+    ],
+    "total_tests_passed": 107
+  },
+  "ranked_priorities": [
+    {
+      "rank": 1,
+      "task": "Make accepted-job event selection exact by deterministic event ID (including TCA), or explicitly clear/confirm selection when that identity is absent; add same-pair/different-TCA regression coverage.",
+      "evidence": "Current reconciliation matches physical events by object pair, while backend _event_id includes pair input hash plus canonical UTC TCA. This can substitute a different encounter for the same pair; actual occurrence remains unverified."
+    },
+    {
+      "rank": 2,
+      "task": "Add an in-process integration test that asserts displayed event identity, requested screening_job_id/event_id, stored event resolution, returned warning-qualified result and report all refer to one selected job/event pair, without starting an application service.",
+      "evidence": "Current coverage is divided among frontend helper tests and backend synthetic TestClient tests; no browser/E2E coverage exists."
+    },
+    {
+      "rank": 3,
+      "task": "Before making candidate safety or effectiveness claims, establish an independently justified reference comparison and validate the two-body approximation against appropriate propagation/real conjunction cases; retain warning status until then.",
+      "evidence": "Existing discrepancy fixture shows 0.1846 km and about 781 s difference; current thresholds are expressly unvalidated and no real reference corpus is established by this audit."
+    },
+    {
+      "rank": 4,
+      "task": "Keep maneuver Pc unavailable until a separately justified post-burn covariance and HBR pathway exists; future evaluation must identify whether its mean state comes from Stage 2A TLE or imported CDM.",
+      "evidence": "Solver sets probability_before/after and risk_reduction_pct to null; CDM Pc mean-state inputs are not used to replace the Stage 2A states used by the maneuver solver."
+    }
+  ],
+  "limitations_and_unknowns": [
+    "No live archive or stored operational job was inspected, so actual repeated same-pair encounter frequency is unknown.",
+    "Tests exercise mocked or fixture-backed code paths; no browser behavior was verified.",
+    "No operationally qualified real conjunction/Pc corpus or maneuver outcome dataset was evaluated.",
+    "This audit did not recompute the fixture's maneuver discrepancy; it inspected the existing test assertion and solver path.",
+    "The installed Starlette/httpx TestClient deprecation warning remains; dependencies were not changed."
+  ],
+  "files_inspected": [
+    "backend/app/main.py",
+    "backend/app/models.py",
+    "backend/app/services/trajectory_screening.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/services/event_pc_inputs.py",
+    "backend/app/services/collision_probability.py",
+    "backend/app/services/cdm_ingestion.py",
+    "backend/app/services/reports.py",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js",
+    "src/utils/screeningRefreshPolicy.js",
+    "src/utils/globeEventReport.js",
+    "src/components/UI/ManeuverBaselineComparison.js",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_report_status.py",
+    "backend/tests/test_collision_probability.py",
+    "backend/tests/test_cdm_ingestion.py",
+    "tests/maneuverSelection.test.js",
+    "tests/reportDownloads.test.js",
+    "tests/catalogLifecycle.test.js"
+  ],
+  "files_changed": [
+    "backend/exports/evaluations/phase_12_1_collision_maneuver_flow_audit.json"
+  ]
+}

@@ -1,0 +1,369 @@
+{
+  "phase": "14.1",
+  "title": "Collision AI model performance diagnosis",
+  "assessment_date": "2026-10-17",
+  "repository_path": "C:/Users/NARSINH K/Documents/Codex/2026-10-04/you-are-modifying-an-existing-research/outputs/space-debris-ssa-platform",
+  "scope": "Offline diagnosis of the served Ridge v2.0.0 model on the existing held-out mission test set. No training, threshold tuning, production code, UI, or production artifact changes.",
+  "files_inspected": [
+    "backend/exports/evaluations/phase_14_collision_ai_implementation.json",
+    "backend/exports/evaluations/phase_11_2b_mission_grouped_esa_logrisk.json",
+    "backend/exports/evaluations/phase_11_5_target_semantics.json",
+    "backend/app/ai/training.py",
+    "backend/app/ai/eligibility.py",
+    "backend/app/ai/validation.py",
+    "backend/app/ai/model.py",
+    "backend/app/ai/features.py",
+    "backend/app/ai/inference.py",
+    "backend/app/ai/__init__.py",
+    "backend/app/ai/artifacts/esa_event_log10_risk.joblib",
+    "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "backend/ml_data/train_data.zip",
+    "docs/STAGE3_ML_MODEL_CARD.md"
+  ],
+  "original_phase_14_results": {
+    "model": "Ridge v2.0.0",
+    "selected_by": "Lowest event-level MAE on validation missions; test missions were held out after candidate selection.",
+    "test_event_count": 3832,
+    "mae_log10": 6.8934832116469416,
+    "rmse_log10": 8.403643575541269,
+    "r2": 0.1745328133818187,
+    "spearman_correlation": 0.442401539139016,
+    "average_precision": 0.12709927579322158,
+    "positive_labels": 145,
+    "predicted_positive_labels": 0,
+    "true_positive": 0,
+    "false_negative": 145,
+    "threshold_log10": -6.0
+  },
+  "target_and_threshold": {
+    "source_column": "ESA challenge CSV risk field",
+    "target_definition": "The finite risk value from the final/latest CDM for an event, selected by minimum time_to_tca; last file occurrence breaks ties. That final value is repeated as the target for earlier forecast rows.",
+    "target_units": "Base-10 logarithmic ESA event risk (log10 risk); the ORION parser does not apply another logarithm or numeric transform.",
+    "semantics": "Historical ESA challenge target, not an observed collision outcome, calibrated probability, or Foster collision probability Pc.",
+    "high_risk_label_definition": "Target >= -6.0 in log10 risk, matching the ESA challenge high-risk convention of risk >= 10^-6 documented in Phase 11.5 source review.",
+    "prediction_decision_definition": "Prediction >= -6.0; the threshold is a fixed project constant and was not tuned on this test set.",
+    "threshold_location": "backend/app/ai/__init__.py::HIGH_RISK_THRESHOLD_LOG10; also recorded in model metadata and used by backend/app/ai/validation.py.",
+    "threshold_rationale_limit": "The repository/source review establishes the challenge cutoff, but does not establish it as an operational alert threshold or a validated decision rule.",
+    "minus_30_semantics": "Unresolved. Phase 11.5 found 8,165 of 12,917 forecastable event targets equal -30 and no local or ESA documentation explaining whether -30 is literal, clipped, censored, or a sentinel. The current parser treats it as a numeric target. This diagnosis does not reinterpret it."
+  },
+  "evaluation_reconstruction": {
+    "method": "Read the bundled archive through the existing training data reader; recreated the exact deterministic mission split with seed 42; selected one closest-to-TCA pre-final CDM forecast per event with time_to_tca_days >= 2.0; loaded the saved artifact and ran its primary_model.predict on only those test rows; recomputed metrics through the existing calculate_metrics implementation. No estimator fitting was performed.",
+    "dataset_archive_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+    "model_artifact_sha256": "63f4ad9e73facac25ae03900ebc996cc24bd56d2e245fc74a80c0467e340c9f0",
+    "runtime_scikit_learn": "1.9.1",
+    "test_missions": [
+      "1",
+      "14",
+      "19",
+      "2"
+    ],
+    "mission_split_hashes_match_saved_metadata": true,
+    "event_split_hashes_match_saved_metadata": true,
+    "split_counts": {
+      "train": {
+        "missions": 13,
+        "events": 8137,
+        "eligible_events": 7683,
+        "eligible_rows": 66768
+      },
+      "validation": {
+        "missions": 2,
+        "events": 418,
+        "eligible_events": 407,
+        "eligible_rows": 4055
+      },
+      "test": {
+        "missions": 4,
+        "events": 4362,
+        "eligible_events": 3832,
+        "eligible_rows": 38063
+      }
+    },
+    "test_metric_denominators": {
+      "mae_rmse_r2_spearman": "All 3,832 eligible test events, one closest-to-TCA eligible pre-final input per event.",
+      "confusion_matrix_and_recall": "All 3,832 test event labels, with 145 positive labels and 3,687 negative labels.",
+      "average_precision": "All 3,832 test labels ranked by continuous predicted log10 risk; the positive class contains 145 events.",
+      "mae_scale": "Same log10-risk target scale as the target and predictions; reported in log10 risk units."
+    },
+    "reproduced_phase_14_metrics_match": true,
+    "reproducibility": "Exact aggregate metrics are reproducible offline from the bundled dataset, saved artifact, and existing scripts without retraining. Per-event prediction vectors were not saved by Phase 14; they were regenerated here only for this held-out evaluation."
+  },
+  "recomputed_test_behavior": {
+    "target_distribution_log10_risk": {
+      "count": 3832,
+      "min": -30.0,
+      "max": -1.6846595233727115,
+      "mean": -24.276049861629495,
+      "population_standard_deviation": 9.249488510698496,
+      "quantiles": {
+        "0": -30.0,
+        "0.01": -30.0,
+        "0.05": -30.0,
+        "0.25": -30.0,
+        "0.5": -30.0,
+        "0.75": -15.610089124720579,
+        "0.95": -6.268135556382317,
+        "0.99": -5.05620865690838,
+        "1": -1.6846595233727115
+      }
+    },
+    "prediction_distribution_log10_risk": {
+      "count": 3832,
+      "min": -28.868441117676884,
+      "max": -17.548350852058206,
+      "mean": -24.97656854890196,
+      "population_standard_deviation": 1.7855736470807129,
+      "quantiles": {
+        "0": -28.868441117676884,
+        "0.01": -27.591218494304762,
+        "0.05": -26.889456385094796,
+        "0.25": -26.102231836228885,
+        "0.5": -25.420184806153067,
+        "0.75": -24.65884268223692,
+        "0.95": -20.68021707972461,
+        "0.99": -19.274154781279556,
+        "1": -17.548350852058206
+      }
+    },
+    "metrics": {
+      "mae_log10": 6.8934832116469416,
+      "rmse_log10": 8.403643575541269,
+      "r2": 0.1745328133818187,
+      "spearman_correlation": 0.442401539139016,
+      "average_precision": 0.12709927579322158,
+      "positive_label_prevalence": 0.037839248434238
+    },
+    "confusion_matrix_at_log10_minus_6": {
+      "positive_rule": ">= -6.0",
+      "true_positive": 0,
+      "false_positive": 0,
+      "false_negative": 145,
+      "true_negative": 3687,
+      "recall": 0.0,
+      "precision": null,
+      "precision_note": "No positive predictions were made, so empirical precision is undefined. The existing metric implementation reports 0 by its zero_division=0 convention.",
+      "false_positive_rate": 0.0
+    },
+    "per_test_mission": {
+      "1": {
+        "event_count": 1762,
+        "positive_labels": 87,
+        "predicted_positive": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 87,
+        "tn": 1675,
+        "mae_log10": 6.9658877329759274,
+        "spearman_correlation": 0.47874482787948913,
+        "average_precision": 0.15796890347512502
+      },
+      "14": {
+        "event_count": 10,
+        "positive_labels": 3,
+        "predicted_positive": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 3,
+        "tn": 7,
+        "mae_log10": 11.640385734682733,
+        "spearman_correlation": 0.4846990641204805,
+        "average_precision": 0.7666666666666666
+      },
+      "19": {
+        "event_count": 646,
+        "positive_labels": 5,
+        "predicted_positive": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 5,
+        "tn": 641,
+        "mae_log10": 6.833346776728535,
+        "spearman_correlation": 0.45500255823632363,
+        "average_precision": 0.024088614756048968
+      },
+      "2": {
+        "event_count": 1414,
+        "positive_labels": 50,
+        "predicted_positive": 0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 50,
+        "tn": 1364,
+        "mae_log10": 6.797162380773716,
+        "spearman_correlation": 0.38714951566624217,
+        "average_precision": 0.1545681920511107
+      }
+    },
+    "per_mission_caution": "Mission 14 has only 10 eligible test events; its metrics are descriptive and unstable. The four held-out missions do not support broad mission-to-mission generalization claims."
+  },
+  "preprocessing_and_feature_review": {
+    "training_pipeline": "SimpleImputer(median, add_indicator=true) followed by StandardScaler and Ridge(alpha=1, solver=lsqr); imputer/scaler were fitted on training rows only.",
+    "training_row_weights": "Each training event has total weight 1 across its eligible pre-final CDMs.",
+    "inference_pipeline": "The saved primary_model pipeline applies its own fitted imputer/scaler in the same order; live inference builds a row in FEATURE_NAMES order and does not impute missing physics features.",
+    "feature_order": "The saved artifact feature_names exactly matches FEATURE_NAMES and model metadata; exact order is validated by the runtime artifact loader.",
+    "units_and_frame": "Metadata records the nine feature units and live adapter explicitly converts Stage 2A TEME states to SI values in instantaneous primary RTN at TCA. The archive reader uses the ordered ESA feature columns directly. The inspected local files do not independently prove complete semantic equivalence of the upstream ESA frame/time convention and live TLE-derived features; this remains a domain/feature comparability limitation, not a demonstrated ordering or scaling bug.",
+    "temporal_reference": "Evaluation uses the closest-to-TCA pre-final CDM with at least 2 days to TCA. Live eligibility also uses a minimum 2-day horizon. Exact equivalence between historical CDM timestamp semantics and the live screening horizon is not established by local code alone."
+  },
+  "leakage_and_reproducibility": {
+    "mission_split": "Reconstructed sorted mission IDs shuffled with Python random.Random(42), floor 70% train, floor 15% validation, remainder test.",
+    "mission_overlap": false,
+    "event_overlap": false,
+    "mission_and_event_split_hashes_match_saved_metadata": true,
+    "exact_duplicate_record_check": {
+      "signature": "Exact equality of all nine model input feature values plus final target across CDM forecast rows assigned to mission partitions.",
+      "cross_partition_duplicate_signatures": {
+        "train_validation": 0,
+        "train_test": 0,
+        "validation_test": 0
+      },
+      "within_partition_repeated_rows": {
+        "train": 0,
+        "validation": 0,
+        "test": 0
+      },
+      "limitation": "This exact-value check cannot detect semantically duplicate encounters with different event IDs or numerically different representations."
+    },
+    "saved_event_level_prediction_vectors": false,
+    "evaluation_reproduction": "Succeeded using the matching local archive, artifact, and evaluation/training utilities. Only evaluation-specific prediction on the held-out rows was run; no live inference/service or screening path was invoked."
+  },
+  "investigated_explanations": [
+    {
+      "finding": "Target-scale or threshold mismatch",
+      "status": "NOT_SUPPORTED",
+      "evidence": "Both target and predictions are on the same log10-risk scale; MAE is computed directly on that scale. The fixed -6 threshold is applied to both labels and predictions and matches the documented challenge high-risk cutoff.",
+      "qualification": "This does not validate -6 as an operational alert threshold."
+    },
+    {
+      "finding": "Incorrect high-risk label interpretation",
+      "status": "NOT_INDICATED_FOR_REPRODUCING_THE_REPORTED_LABELS; SCIENTIFIC_SEMANTICS_LIMITED",
+      "evidence": "The phase reports and validation code consistently define high risk as final target >= -6. ESA challenge documentation reviewed in Phase 11.5 describes the same 10^-6 cutoff.",
+      "qualification": "ESA log-risk is not validated Pc or an observed collision outcome; -30 target semantics remain unknown."
+    },
+    {
+      "finding": "Train/inference preprocessing or feature-order mismatch",
+      "status": "NO_MISMATCH_FOUND_IN_INSPECTED_IMPLEMENTATION",
+      "evidence": "Saved pipeline contains fitted imputation and scaling; serving calls its primary_model with FEATURE_NAMES-ordered values; artifact and runtime schema names match.",
+      "qualification": "This verifies software order/pipeline wiring, not semantic equality of the historical and live data domains."
+    },
+    {
+      "finding": "Prediction range is wholly below the alert cutoff",
+      "status": "VERIFIED_DIRECT_CAUSE_OF_ZERO_FLAGS_AT_FIXED_CUTOFF",
+      "evidence": "Maximum test prediction is -17.5484, well below -6; all 3,832 predictions are below the cutoff, so there are no true or false positive flags and recall is zero."
+    },
+    {
+      "finding": "Target imbalance and unresolved mass at -30",
+      "status": "VERIFIED_DATA_CHARACTERISTICS; CAUSAL_CONTRIBUTION_UNQUANTIFIED",
+      "evidence": "Only 145/3,832 (3.78%) test events meet the -6 label cutoff. Target quantiles show a large mass at -30; the Phase 11.5 archive audit found 8,165/12,917 final targets equal -30, with no established meaning for that value.",
+      "qualification": "These characteristics plausibly affect regression behavior but do not alone prove why the fitted model predicts this range."
+    },
+    {
+      "finding": "Distribution shift across held-out missions",
+      "status": "MISSION_VARIATION_OBSERVED; COVARIATE_SHIFT_NOT_ESTABLISHED",
+      "evidence": "Mission-specific sample sizes and AP/MAE vary; mission 14 has only 10 eligible events. No dedicated feature-distribution shift test was performed in this diagnostic.",
+      "qualification": "The archive is curated ESA challenge data and the Phase 14 report warns that it may differ from live TLE-derived encounters."
+    },
+    {
+      "finding": "Poor calibration or unsuitable operational threshold",
+      "status": "CALIBRATION_NOT_ASSESSED; FIXED_THRESHOLD_FAILURE_VERIFIED",
+      "evidence": "No calibration curve or operational threshold study was found or run. At the recorded threshold, the model misses all 145 positive test labels.",
+      "qualification": "Average precision measures ranking against these challenge labels; it does not establish calibrated probabilities or an actionable alert."
+    },
+    {
+      "finding": "Genuine predictive performance is weak for high-risk alerting",
+      "status": "VERIFIED_FOR_THIS_HELD_OUT_TEST_PROTOCOL",
+      "evidence": "High-risk recall is 0 at the fixed cutoff; MAE is 6.8935 log10 units; R2 is 0.1745 and Spearman is 0.4424. Average precision is 0.1271, above the 0.03784 prevalence baseline but insufficient to change the zero detections at the fixed cutoff.",
+      "qualification": "Limited to this dataset, split, artifact, and target; not an operational performance estimate."
+    }
+  ],
+  "recommended_actions_ranked": [
+    {
+      "rank": 1,
+      "action": "Do not present the current model or its -6 flag as a useful high-risk alert. Keep it explicitly research-only and preserve the no-alert result and limitations in demonstrations.",
+      "basis": "Direct held-out result: 0/145 positive labels detected; all predictions are below -6.",
+      "requires_new_phase_or_authoritative_input": false
+    },
+    {
+      "rank": 2,
+      "action": "Obtain authoritative ESA documentation for the meaning and treatment of -30 before changing the target or interpreting regression error around that value.",
+      "basis": "Phase 11.5 found the value in 63.2% of forecastable event targets and could not establish whether it is literal, clipped, censored, or a sentinel.",
+      "requires_new_phase_or_authoritative_input": true
+    },
+    {
+      "rank": 3,
+      "action": "If alerting remains a research objective, design a separately approved evaluation using more independent missions and explicit ranking/calibration and operating-point criteria; select any operating point on validation data and reserve untouched test data for final evaluation.",
+      "basis": "Four test missions, a small 10-event mission subgroup, rare high-risk labels, and unassessed calibration limit the present evidence.",
+      "requires_new_phase_or_authoritative_input": true
+    },
+    {
+      "rank": 4,
+      "action": "Document and assess historical-CDM versus live TLE-derived feature comparability before making claims about deployment behavior.",
+      "basis": "Feature name/order and units are checked in code, but upstream coordinate and time-reference equivalence is not fully established by inspected local files; Phase 14 also documents domain shift and absent live covariance inputs.",
+      "requires_new_phase_or_authoritative_input": true
+    }
+  ],
+  "conclusion": {
+    "supports_useful_high_risk_alerting": false,
+    "reason": "On the existing mission-held-out test set, the fixed -6 threshold produces zero positive predictions and misses all 145 high-risk labels. The model output range never reaches the threshold.",
+    "permitted_interpretation": "The saved Ridge model has modest ranking association with the historical ESA target on this test set, but does not provide useful high-risk alerting at the evaluated threshold.",
+    "prohibited_interpretations": [
+      "Operational collision-risk prediction or validated alerting",
+      "Foster collision probability Pc or calibrated probability",
+      "Observed collision outcomes",
+      "Maneuver effectiveness, Pc reduction, or operational safety"
+    ]
+  },
+  "commands_executed": [
+    {
+      "command": "Get-Content -Raw on the Phase 14 report, model metadata, Phase 11.5 semantics report, and Phase 11.2B evaluation report",
+      "result": "Read report and metadata definitions, recorded aggregate metrics, artifact/dataset hashes, and target semantics; no files changed."
+    },
+    {
+      "command": "rg -n on backend/app/ai and Phase 14 report for split, prediction, threshold, metric, and artifact references",
+      "result": "Located mission split, preprocessing, metric definitions, threshold constant, inference feature order, and in-memory-only prediction handling."
+    },
+    {
+      "command": "PowerShell here-string piped to backend .venv\\Scripts\\python.exe - (evaluation-only local reconstruction)",
+      "result": "Loaded matching local artifact and dataset; recomputed 3,832 held-out event predictions and aggregate/per-mission metrics; all Phase 14 aggregate metrics matched exactly within 1e-10. No training or live screening/inference path ran."
+    },
+    {
+      "command": "PowerShell here-string piped to backend .venv\\Scripts\\python.exe - (mission/event split hash verification)",
+      "result": "Recreated train/validation/test mission and event split hashes; all hashes matched metadata; no mission or event overlap."
+    },
+    {
+      "command": "PowerShell here-string piped to backend .venv\\Scripts\\python.exe - (exact duplicate feature-target signature scan)",
+      "result": "Found zero exact duplicate feature-target signatures across split pairs and zero repeated signatures within partitions. Semantic duplicates with different IDs or values are not ruled out."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m json.tool exports\\evaluations\\phase_14_1_collision_ai_diagnosis.json (from backend)",
+      "result": "Passed; report parsed as valid JSON."
+    }
+  ],
+  "checks": {
+    "dataset_archive_sha256_matches_metadata": true,
+    "model_artifact_sha256_matches_metadata": true,
+    "runtime_version_matches_metadata": true,
+    "artifact_feature_order_matches_runtime_schema": true,
+    "recomputed_metrics_match_phase_14": true,
+    "mission_and_event_split_hashes_match_metadata": true,
+    "no_cross_split_mission_or_event_overlap": true,
+    "exact_duplicate_signature_cross_split_count": 0,
+    "report_json_validation": "Passed with Python json.tool and Phase 14 metadata consistency assertions."
+  },
+  "production_changes": {
+    "production_code_modified": false,
+    "production_model_artifact_modified": false,
+    "threshold_modified": false,
+    "ui_modified": false,
+    "files_created": [
+      "backend/exports/evaluations/phase_14_1_collision_ai_diagnosis.json"
+    ]
+  },
+  "limitations": [
+    "Per-event test predictions were not persisted by the Phase 14 training run; they were regenerated from the saved artifact for this evaluation.",
+    "No new training, model selection, threshold tuning, calibration, or validation on additional data was performed.",
+    "The exact semantics of target value -30 remain unknown.",
+    "Only four held-out missions were available; one has only 10 eligible events.",
+    "Exact semantic equivalence of historical ESA CDM features and live TLE-derived features remains unverified.",
+    "The Phase 14 browser behavior remains outside this diagnostic and is still unverified as reported previously."
+  ]
+}

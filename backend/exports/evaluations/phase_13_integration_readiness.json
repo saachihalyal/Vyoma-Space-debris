@@ -1,0 +1,201 @@
+{
+  "phase": "13",
+  "title": "Final integration readiness and demonstration preparation",
+  "assessment_date": "2026-10-17",
+  "repository_path": "C:\\Users\\NARSINH K\\Documents\\Codex\\2026-10-04\\you-are-modifying-an-existing-research\\outputs\\space-debris-ssa-platform",
+  "overall_readiness": "READY_WITH_WARNINGS",
+  "decision_summary": "The project is suitable for a carefully qualified research demonstration based on offline code, API, report, and component-rendering evidence. No release-blocking correctness defect was established. Actual local service startup and browser-visible interaction were not verified in this assessment; those remain manual demonstration checks. The outputs are not operationally validated collision-risk or maneuver products.",
+  "reports_and_material_inspected": [
+    "backend/exports/evaluations/phase_12_1_collision_maneuver_flow_audit.json",
+    "backend/exports/evaluations/phase_12_5_real_tle_baseline_validation.json",
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json",
+    "backend/exports/evaluations/phase_12_8_scientific_provenance_integration.json",
+    "backend/exports/evaluations/phase_12_9_browser_workflow_validation.json",
+    "README.md",
+    "package.json",
+    "vite.config.js",
+    "backend/requirements.txt",
+    "backend/app/main.py",
+    "backend/app/services/tle_provider.py",
+    "backend/app/services/trajectory_screening.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/services/event_pc_inputs.py",
+    "backend/app/services/collision_probability.py",
+    "backend/app/services/reports.py",
+    "backend/app/ai/inference.py",
+    "backend/app/ai/anomaly.py",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js",
+    "src/utils/screeningRefreshPolicy.js",
+    "src/components/UI/ManeuverScreeningContext.js",
+    "src/components/UI/ManeuverBaselineComparison.js",
+    "src/components/UI/CollisionPcSummary.js",
+    "src/components/UI/OrbitalAnomalySummary.js",
+    "docs/STAGE3_ML_MODEL_CARD.md",
+    "docs/PHYSICS_DATA_MODEL.md",
+    "docs/COLLISION_PROBABILITY_METHODS.md"
+  ],
+  "findings": [
+    {
+      "id": "local_configuration_alignment",
+      "severity": "READY",
+      "area": "Application startup and configuration",
+      "evidence": "README documents Vite at 127.0.0.1:5173 and FastAPI at 127.0.0.1:8000. vite.config.js binds Vite and preview to those loopback addresses. src/api/ssaClient.js defaults to http://127.0.0.1:8000 and honors VITE_API_BASE. Backend import check passed. Frontend API-base tests cover the default and override.",
+      "recommended_action": "Use the documented local startup commands and confirm both service health and the active catalog source before presenting. Service startup itself was not run under this assessment's no-live-services constraint."
+    },
+    {
+      "id": "api_startup_documentation_route",
+      "severity": "READY",
+      "area": "Demonstration instructions",
+      "evidence": "README previously listed GET /api/conjunctions/{event_id}/maneuver, while backend implements a job-bound POST requiring screening_job_id. README API list was corrected to show POST /api/conjunction-jobs, GET job status, job-bound maneuver POST, Pc input POSTs, and job-bound PDFs. Route signatures were checked against backend/app/main.py.",
+      "recommended_action": "Use the corrected API route list when manually diagnosing the demonstration."
+    },
+    {
+      "id": "event_selection_and_job_identity",
+      "severity": "READY",
+      "area": "Collision Analysis and Maneuver Assessment integration",
+      "evidence": "Existing Node and Python regression suites cover accepted job/event binding, physical-event-only selection, proxies that cannot substitute for physical events, missing/cross-job events, stale response suppression, and client verification of response event/job IDs. Backend resolves authoritative stored event states from the requested job. Phase 12.8 report records 83 backend and 65 frontend focused tests; this assessment reran those backend suites and an expanded frontend selection suite.",
+      "recommended_action": "Keep the selected event ID and accepted screening job ID visible during the live demonstration; do not select a proxy for maneuver assessment."
+    },
+    {
+      "id": "partial_failed_status_handling",
+      "severity": "READY",
+      "area": "Screening coverage and replacement attempts",
+      "evidence": "Frontend lifecycle/component tests and backend mocked lifecycle tests distinguish complete, partial, failed, running, and valid-empty outcomes. A valid event from a partial job is explicitly marked as partial with incomplete-coverage context. A later failed attempt is kept separate from the prior accepted result.",
+      "recommended_action": "State the coverage and status displayed for the selected accepted job; do not describe partial coverage as a complete catalog screen."
+    },
+    {
+      "id": "maneuver_scientific_status",
+      "severity": "WARNING",
+      "area": "Maneuver Assessment",
+      "evidence": "Existing regression tests assert warning-qualified available_with_warning results, zero-burn two-body baseline fields, discrepancy labels, event/job association, and unavailable Pc comparison. The UI says candidate miss change is relative to a simulated zero-burn two-body baseline and explicitly says post-maneuver Pc is not calculated.",
+      "recommended_action": "Describe the output only as an exploratory two-body candidate sweep. Do not claim maneuver effectiveness, risk reduction, or operational safety."
+    },
+    {
+      "id": "collision_probability_inputs_and_provenance",
+      "severity": "READY",
+      "area": "Collision Analysis Pc",
+      "evidence": "Backend Pc/CDM tests cover covariance shape/validity, frame, epoch, units, HBR, explicit independence assumptions, event identity, and input failures. Phase 12.7 regression prevents mismatched TCA state metadata/geometry from producing scenario Pc. UI/report regressions keep source-reported Pc and synthetic scenario Pc separate and suppress unavailable, invalid, or out-of-range values instead of converting them to zero.",
+      "recommended_action": "Explain that TLE-only events lack covariance and measured HBR, so ordinary source Pc is unavailable. Label any scenario Pc as user-assumed sensitivity output, not observed collision probability."
+    },
+    {
+      "id": "report_event_job_identity",
+      "severity": "READY",
+      "area": "PDF/CSV reports",
+      "evidence": "Job-bound report API tests verify the event and maneuver data come from the requested job. Phase 12.8 added screening_job_id to maneuver responses and PDFs; regression tests verify the report event key/job ID. CSV export metadata includes screening_job_id.",
+      "recommended_action": "Use job-bound report routes for physical events and confirm report event/job identifiers match the selection."
+    },
+    {
+      "id": "heuristic_esa_and_anomaly_semantics",
+      "severity": "WARNING",
+      "area": "Smart Filter and AI presentation",
+      "evidence": "Current labels/docs call catalog scores heuristic indices, describe the anomaly score as historical feature unusualness rather than danger/collision risk, and label the exponentiated ESA output as an uncalibrated ESA-scale event-risk estimate rather than Pc. The model card reports the fixed threshold flags 0/55 legacy high-risk test events and states no corrected-protocol model has been validated. Anomaly metadata says no labelled anomaly ground truth exists.",
+      "recommended_action": "Present these outputs as experimental research context only. Do not call them validated collision-risk classifiers, probabilities of collision, or operational alerts. No inference was run for this assessment."
+    },
+    {
+      "id": "browser_and_interactive_demonstration",
+      "severity": "UNVERIFIED",
+      "area": "Browser-visible workflow",
+      "evidence": "Phase 12.9 and current computer-use inventory report no available browser or tabs. No Playwright, Puppeteer, Cypress, or Selenium dependency is installed. Component rendering/API tests are substitutes, not browser interaction. Running the documented Vite/FastAPI services was prohibited, so no interactive application session was started.",
+      "recommended_action": "Before the presentation, manually start the documented local services and verify one selected physical event, job ID, partial/failed status presentation if applicable, maneuver warning state, unavailable Pc labels, and the event/job IDs in a downloaded report. Record this as a manual smoke check; do not treat it as scientific validation."
+    },
+    {
+      "id": "data_and_workflow_reproducibility",
+      "severity": "WARNING",
+      "area": "Demonstration reproducibility",
+      "evidence": "Phase 12.5 provides five deterministic stored TLE encounter fixtures with recorded inputs and repeatability checks. Runtime TleProvider requests CelesTrak groups and can fall back to a bundled TLE sample; live catalog contents and current screening event lists can change with source data and request time. No live feed or job was exercised here.",
+      "recommended_action": "For repeatable results, present the recorded offline fixture evidence or document the actual source, retrieval time, job ID, horizon, and threshold for a live run. Do not imply the five-case convenience sample is representative."
+    }
+  ],
+  "verified_demonstration_capabilities": [
+    "The frontend API base and documented local service addresses align; frontend tests cover API base default and override, and backend module import succeeds.",
+    "Physical event and screening job identities are bound through the maneuver request/response and job-bound report workflows in focused tests.",
+    "Heuristic proxy records remain separate from physical events and cannot be used as maneuver inputs in tested selection/API paths.",
+    "Partial, failed, valid-empty, and accepted results have distinct tested statuses; partial coverage and later failed attempts remain distinguishable in tested markup/state.",
+    "Source Pc, scenario Pc, unavailable inputs, provenance, warnings, and reason codes remain separate in tested component/report paths; unavailable Pc is not substituted with zero.",
+    "Warning-qualified maneuver results and simulated zero-burn comparisons preserve limitations; no post-maneuver Pc result is claimed.",
+    "Selected event/job identifiers are retained in tested PDF/CSV paths."
+  ],
+  "presentation_limitations_to_disclose": [
+    "Browser-visible layout, navigation, interactions, and actual file download were not verified in this environment.",
+    "Actual local application startup and end-to-end service connectivity were not tested; only configuration inspection, backend import, build, and mocked/offline tests were run.",
+    "Live TLE data are time-dependent; the provider may use a bundled fallback when live retrieval is unavailable. Record the source status and retrieval metadata shown for the demo.",
+    "Normal TLE-only events lack the covariance and measured hard-body radius required for source Pc; missing Pc is unavailable, not zero.",
+    "Research scenario Pc depends on user-entered assumptions and is not an observed collision probability.",
+    "Maneuver assessment is a warning-qualified exploratory two-body simulation; it does not calculate post-maneuver Pc or establish effectiveness, collision-risk reduction, or operational safety.",
+    "Partial screening has incomplete coverage and a small selected fixture set is not representative of the catalog.",
+    "Heuristic ranking, anomaly unusualness, and ESA historical log-risk estimation are distinct research outputs, not validated collision-risk classifications; ESA log-risk is not Foster Pc and is not calibrated for operational alerts."
+  ],
+  "automated_evidence_vs_browser_verification": {
+    "automated_tests_and_build": "Executed locally. These checks verify deterministic code paths, API contracts, component-generated markup, report contents, module import, and bundle compilation.",
+    "actual_browser_verification": "Not performed. No browser or browser automation framework was available. No browser-level pass is claimed.",
+    "live_application_verification": "Not performed. No service, screening job, network access, or model inference was used."
+  },
+  "commands_executed": [
+    {
+      "command": "node --test tests/maneuverScreeningContext.test.js tests/maneuverSelection.test.js tests/maneuverBaselineComparison.test.js tests/catalogLifecycle.test.js tests/reportDownloads.test.js tests/collisionPcRendering.test.js tests/smartFilterRendering.test.js tests/smartFilterEvaluation.test.js tests/orbitalAnomalyPresentation.test.js tests/analyticsPresentation.test.js tests/apiBase.test.js",
+      "working_directory": "repository root",
+      "result": "89 passed, 0 failed, 0 skipped (Ran in 4.882 s)",
+      "notes": "Offline/mocked frontend suite; no browser session. Expected diagnostic output from malformed/unavailable watchlist fixtures."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_screening_jobs tests.test_collision_probability tests.test_cdm_ingestion tests.test_report_status",
+      "working_directory": "backend",
+      "result": "83 passed, 0 failed (Ran in 8.144 s)",
+      "notes": "The expected injected screening failure traceback and Starlette/httpx deprecation warning were emitted. The fixture screening helper asserts all downstream assessment hooks are stubbed before fixture screening calls; lifecycle jobs mock the screening handler."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -c \"import fastapi, uvicorn, numpy, sgp4; import app.main; print('backend imports ok')\"",
+      "working_directory": "backend",
+      "result": "backend imports ok",
+      "notes": "Import check only; no application service started."
+    },
+    {
+      "command": "npm run build",
+      "working_directory": "repository root",
+      "result": "passed; Vite 6.4.4 transformed 3,201 modules and built in 52.24 s",
+      "notes": "Existing large chunk warning: 1,755.16 kB minified. No packages installed."
+    },
+    {
+      "command": "node --input-type=module -e \"for (const name of ['playwright','@playwright/test','puppeteer','cypress','selenium-webdriver']) { try { console.log(name + ': ' + import.meta.resolve(name)); } catch { console.log(name + ': not installed'); } }\"",
+      "working_directory": "repository root",
+      "result": "All five browser automation packages reported not installed.",
+      "notes": "Confirmed package resolution for the browser automation dependencies named in this report."
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -c \"import json; from pathlib import Path; p=Path('exports/evaluations/phase_13_integration_readiness.json'); d=json.loads(p.read_text(encoding='utf-8')); assert d['assessment_date']=='2026-10-17'; assert d['overall_readiness']=='READY_WITH_WARNINGS'; assert d['production_code_changes']['changed'] is False; assert d['execution_constraints']['network_accessed'] is False; assert d['execution_constraints']['ai_model_inference_performed'] is False; assert len(d['findings'])==10; assert {f['severity'] for f in d['findings']} >= {'READY','WARNING','UNVERIFIED'}; assert d['commands_executed'][0]['result'].startswith('89 passed'); assert d['commands_executed'][1]['result'].startswith('83 passed'); assert d['commands_executed'][-1]['result'].startswith('passed'); assert next(f for f in d['findings'] if f['id']=='browser_and_interactive_demonstration')['severity']=='UNVERIFIED'; print('JSON valid; 10 findings, readiness decision, test results, browser limitation, and execution constraints verified')\"",
+      "working_directory": "backend",
+      "result": "passed; JSON parsed and readiness, constraints, finding categories, and command records verified"
+    }
+  ],
+  "production_code_changes": {
+    "changed": false,
+    "details": "No production code changes were needed or made. README.md was corrected to list the actual job-bound maneuver HTTP method and routes; no algorithm or runtime behavior changed.",
+    "regression_tests": "No new test was required for the documentation-only route-list correction. Existing focused tests passed as listed."
+  },
+  "execution_constraints": {
+    "network_accessed": false,
+    "packages_installed": false,
+    "services_started": false,
+    "live_screening_jobs_started": false,
+    "ai_model_inference_performed": false,
+    "orbital_propagation_or_scientific_algorithms_changed": false,
+    "model_artifacts_or_thresholds_changed": false
+  },
+  "non_productive_command_attempts": [
+    {
+      "command": ".\\node_modules\\.bin\\node.cmd --test [focused frontend test files]",
+      "result": "failed because the expected node.cmd shim was not present; rerunning the same test files with node --test succeeded (89 passed)."
+    },
+    {
+      "command": "Report JSON validation with an assertion expecting exactly 9 findings",
+      "result": "failed because the report contains 10 findings. The corrected final validation asserted the actual count of 10 and passed."
+    }
+  ],
+  "files_changed": [
+    "README.md",
+    "backend/exports/evaluations/phase_13_integration_readiness.json"
+  ]
+}

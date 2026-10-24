@@ -1,0 +1,206 @@
+{
+  "phase": "14",
+  "title": "Collision Analysis AI implementation and integration",
+  "assessment_date": "2026-10-17",
+  "repository_path": "C:/Users/NARSINH K/Documents/Codex/2026-10-04/you-are-modifying-an-existing-research/outputs/space-debris-ssa-platform",
+  "prior_reports_reviewed": [
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json",
+    "backend/exports/evaluations/phase_12_8_scientific_provenance_integration.json",
+    "backend/exports/evaluations/phase_12_9_browser_workflow_validation.json",
+    "backend/exports/evaluations/phase_13_integration_readiness.json",
+    "backend/exports/evaluations/phase_11_2b_mission_grouped_esa_logrisk.json",
+    "backend/exports/evaluations/phase_11_5_target_semantics.json"
+  ],
+  "files_inspected": [
+    "src/App.jsx",
+    "src/components/UI/EventRiskEstimate.js",
+    "src/utils/mlPrediction.js",
+    "src/api/ssaClient.js",
+    "backend/app/services/trajectory_screening.py",
+    "backend/app/main.py",
+    "backend/app/ai/training.py",
+    "backend/app/ai/inference.py",
+    "backend/app/ai/features.py",
+    "backend/app/ai/eligibility.py",
+    "backend/app/ai/model.py",
+    "backend/app/ai/comparison.py",
+    "backend/app/models.py",
+    "backend/app/services/reports.py",
+    "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "backend/tests/test_ai_stage3.py",
+    "backend/tests/test_ai_evaluation_audit.py",
+    "backend/tests/test_trajectory_screening.py",
+    "backend/tests/test_orbital_anomaly.py",
+    "backend/tests/test_maneuver_research.py",
+    "tests/smartFilterRendering.test.js",
+    "tests/maneuverSelection.test.js",
+    "package.json",
+    "docs/STAGE3_ML_MODEL_CARD.md",
+    "docs/HYBRID_SYSTEM_STATUS.md",
+    "README.md"
+  ],
+  "implementation_summary": "Updated the existing ESA historical event-log-risk regression pipeline to train and serve the validation-selected Ridge estimator using mission-grouped held-out evaluation. Collision Analysis now receives and displays the exact nine feature values, units, and frame supplied to inference. Existing trajectory physics, collision probability, and maneuver calculations were not changed.",
+  "scientific_task": {
+    "architecture": "scikit-learn Pipeline(SimpleImputer(strategy=median, add_indicator=true), StandardScaler, Ridge(alpha=1.0, solver=lsqr))",
+    "candidate_models": [
+      "Ridge(alpha=1.0, solver=lsqr)",
+      "HistGradientBoostingRegressor(loss=squared_error, learning_rate=0.1, max_iter=200, max_leaf_nodes=31, min_samples_leaf=20, l2_regularization=1.0, early_stopping=false, random_state=42)"
+    ],
+    "selected_candidate": "Ridge selected by lowest validation event-level MAE; untouched test missions were evaluated after selection.",
+    "target": "Final ESA event risk label in log10 space, taken from the event's latest CDM; this is a historical proxy target, not observed collision outcome, Foster Pc, or calibrated probability.",
+    "dataset": {
+      "name": "ESA Collision Avoidance Challenge training dataset",
+      "archive": "backend/ml_data/train_data.zip",
+      "archive_sha256": "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+      "source_recorded_in_artifact_metadata": "https://kelvins.esa.int/collision-avoidance-challenge/data/",
+      "rows_read": 162634,
+      "unique_events": 13154,
+      "forecastable_events": 12917,
+      "forecast_examples_before_eligibility": 149100,
+      "target_rows_used_as_inputs": false
+    },
+    "features": {
+      "time_to_tca_days": "day",
+      "miss_distance_m": "m",
+      "relative_speed_m_s": "m/s",
+      "relative_position_r_m": "m",
+      "relative_position_t_m": "m",
+      "relative_position_n_m": "m",
+      "relative_velocity_r_m_s": "m/s",
+      "relative_velocity_t_m_s": "m/s",
+      "relative_velocity_n_m_s": "m/s"
+    },
+    "live_feature_semantics": "Features are derived from the existing Stage 2A TEME state and projected onto instantaneous primary-object RTN at TCA; explicit SI conversions and geometry consistency checks apply. Live inference requires all features, makes no missing-value imputation, and is gated at time_to_tca_days >= 2.0. The API now returns the actual model inputs and units for an available prediction.",
+    "preprocessing_and_weights": "Training-only median imputation with missingness indicators; Ridge StandardScaler fitted on training rows only. Training row weights give each event total weight 1 across its eligible earlier CDMs. Online inference does not impute missing physics features.",
+    "split_method": {
+      "group": "mission_id; events with missing or ambiguous mission assignment excluded",
+      "algorithm": "Sort unique mission IDs, shuffle with Python random.Random(42), allocate floor 70% to train, floor 15% to validation, remainder to test.",
+      "eligibility": "Training uses all pre-final CDMs with time_to_tca_days >= 2.0; validation and test use the closest-to-TCA eligible pre-final CDM per event.",
+      "mission_counts": {
+        "train": 13,
+        "validation": 2,
+        "test": 4
+      },
+      "eligible_event_counts": {
+        "train": 7683,
+        "validation": 407,
+        "test": 3832
+      },
+      "mission_and_event_overlap": false,
+      "validation_candidate_selection": "Lowest event-level MAE on validation.",
+      "test_use": "One held-out mission test evaluation after candidate selection; no fitting or selection on test metrics."
+    },
+    "test_metrics": {
+      "selected_ridge": {
+        "event_count": 3832,
+        "mae_log10": 6.8934832116469416,
+        "rmse_log10": 8.403643575541269,
+        "r2": 0.1745328133818187,
+        "spearman_correlation": 0.442401539139016,
+        "average_precision_at_log10_threshold_minus_6": 0.12709927579322158,
+        "true_high_risk_labels": 145,
+        "predicted_high_risk_labels": 0,
+        "false_negative_high_risk_labels": 145,
+        "high_risk_recall": 0.0
+      },
+      "hgb_candidate": {
+        "mae_log10": 6.848859453759289,
+        "rmse_log10": 8.580070333065274,
+        "r2": 0.13950914086438393,
+        "spearman_correlation": 0.35099389871848996,
+        "average_precision_at_log10_threshold_minus_6": 0.07935785644558951,
+        "true_high_risk_labels": 145,
+        "predicted_high_risk_labels": 0
+      },
+      "interpretation": "The regression/ranking signal is modest. At the fixed -6 log10 threshold the selected model failed to flag every high-risk target in the held-out test set; the threshold is not a useful validated alert. The model is not a collision-risk classifier."
+    }
+  },
+  "model_artifact": {
+    "path": "backend/app/ai/artifacts/esa_event_log10_risk.joblib",
+    "metadata_path": "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "model_name": "ORION ESA event final log10-risk estimator",
+    "version": "2.0.0",
+    "feature_schema_version": "1.0.0",
+    "sha256": "63f4ad9e73facac25ae03900ebc996cc24bd56d2e245fc74a80c0467e340c9f0",
+    "scikit_learn_runtime_version_checked": "1.9.1",
+    "artifact_hash_and_feature_schema_checked_at_load": true
+  },
+  "integration": {
+    "backend_inference": "backend/app/ai/inference.py::predict_from_physics validates artifact hash/runtime/schema, extracts Stage 2A features, gates eligibility, and runs the selected saved estimator.",
+    "screening_call_sites": "backend/app/services/trajectory_screening.py calls predict_from_physics for physical assessment events; physics result and Pc remain separate.",
+    "api": "GET /api/conjunctions event payloads include ml_result; asynchronous screening job responses retain their existing screening_job_id and event identity envelope.",
+    "frontend": "src/App.jsx::CollisionPage consumes event.ml_result, validates event-bound provenance, shows target/status/prediction/model/version and displays actual input values with units/frame when available.",
+    "identity": "MLResult provenance retains source_physics_event_id; existing job/event identity and stale response safeguards remain in place. No separate model request or substitute event is used."
+  },
+  "validation": {
+    "backend_command": ".venv\\Scripts\\python.exe -m pytest tests/test_trajectory_screening.py tests/test_ai_stage3.py tests/test_orbital_anomaly.py tests/test_ai_evaluation_audit.py tests/test_maneuver_research.py -q -p no:cacheprovider (from backend)",
+    "backend_result": "90 passed, 48 subtests passed; one Starlette TestClient/httpx deprecation warning.",
+    "frontend_command": "npm test (from repository root)",
+    "frontend_result": "103 passed, 0 failed; includes two Collision Analysis event-risk panel rendering regressions.",
+    "build_command": "npm run build (from repository root)",
+    "build_result": "Passed on the final frontend state; Vite reported the existing large-chunk advisory (main bundle 1,755.24 kB).",
+    "training_command": ".venv\\Scripts\\python.exe -m app.ai.training (from backend)",
+    "training_result": "Completed offline from the bundled archive; mission-grouped metrics and v2 model/artifact metadata written. Metrics match the Phase 11.2B mission-grouped evaluation values.",
+    "api_integration_test": "Deterministic bundled TLE fixture via a local PairProvider. ESA prediction, anomaly, and comparison hooks were patched before the API screening call; the test asserts all stubs were called and verifies serialized model/version, log-risk output, feature inputs/units/frame, and source physics event ID. It does not invoke the shipped models through screening.",
+    "real_artifact_inference_test": "Shipped-artifact integration test loads the local hash/version-checked artifact and runs one prediction on a deterministic PhysicsResult unit fixture. This is test-only local inference, not live screening or live operational inference.",
+    "browser_verification": "Not performed. No browser automation was run and no frontend/backend services were started; npm component/API-contract tests and the production build are not browser interaction evidence.",
+    "report_json_validation_command": ".venv\\Scripts\\python.exe -m json.tool exports\\evaluations\\phase_14_collision_ai_implementation.json (from backend)",
+    "report_json_validation_result": "Passed; parsed as valid JSON. A follow-up consistency check matched the report's artifact SHA-256, version, Ridge selection, 3,832-event test count, and recorded test/build summaries against the generated artifact metadata.",
+    "repository_status_command": "git status --short (from repository root)",
+    "repository_status_result": "Unavailable: this checkout has no .git repository metadata, so a Git diff/status could not be obtained. The files_changed list reflects the files edited during this task."
+  },
+  "files_changed": [
+    "backend/app/ai/__init__.py",
+    "backend/app/ai/training.py",
+    "backend/app/ai/inference.py",
+    "backend/app/models.py",
+    "backend/app/ai/artifacts/esa_event_log10_risk.joblib",
+    "backend/app/ai/artifacts/esa_event_log10_risk.metadata.json",
+    "backend/tests/test_ai_stage3.py",
+    "backend/tests/test_trajectory_screening.py",
+    "src/App.jsx",
+    "src/components/UI/EventRiskEstimate.js",
+    "tests/eventRiskEstimate.test.js",
+    "README.md",
+    "docs/STAGE3_ML_MODEL_CARD.md",
+    "docs/HYBRID_SYSTEM_STATUS.md",
+    "backend/exports/evaluations/phase_14_collision_ai_implementation.json"
+  ],
+  "reproduced_defects_and_fixes": [
+    {
+      "defect": "Mission-grouped evaluation had selected Ridge, but live inference still served the legacy v1 event-split HGB artifact; the grouped test metrics therefore did not describe the served model.",
+      "fix": "Training now creates deterministic disjoint mission splits, applies the existing two-day eligibility protocol, selects Ridge/HGB by validation MAE, stores the selected model as the serving estimator, and records the untouched test results in metadata. The served artifact was retrained as version 2.0.0.",
+      "regression_test": "ShippedArtifactIntegrationTests verifies v2.0.0 loads, Ridge was selected, mission splits do not overlap, held-out metrics are present, and inference returns all nine features without changing physics."
+    },
+    {
+      "defect": "The live ML response omitted the actual feature values used for its estimate, preventing Collision Analysis from showing what the model saw.",
+      "fix": "Available MLResult now carries input_features, feature_units and feature_frame; Collision Analysis displays them and states feature attribution is unavailable.",
+      "regression_test": "The feature adapter inference test compares returned input values/frame/units with the adapter; API contract integration verifies serialization of feature inputs, units and frame."
+    },
+    {
+      "defect": "Trajectory screening API fixture tests called actual ESA and anomaly inference hooks implicitly.",
+      "fix": "All trajectory pipeline fixture screens now install deterministic hook stubs. The API integration test uses and asserts explicit stubs for ESA prediction, anomaly detection and comparison before its local screening call.",
+      "regression_test": "The API integration test asserts nonzero calls for each patched hook and validates the stubbed ML event provenance in the returned response."
+    }
+  ],
+  "scientific_limitations_and_unresolved_items": [
+    "The ESA challenge is curated and over-represents high-risk examples; the target is a historical ESA event log-risk proxy and is not an observed collision outcome.",
+    "Historical CDM feature distributions may not match live TLE-derived features. Live covariance, TLE uncertainty, hard-body radius and maneuver outcomes are not model inputs.",
+    "Only 19 missions exist in the source data; the held-out evaluation has two validation and four test missions, with uncertain between-mission generalization.",
+    "Threshold -6 yields zero true positives among 145 high-risk held-out events; the UI must not present it as a validated alert or classifier.",
+    "The exponentiated output is an ESA-scale event-risk estimate, not calibrated probability or Foster Pc. No maneuver effectiveness or collision-risk reduction claim is supported.",
+    "Actual browser-visible Collision Analysis behavior remains unverified; manual presentation smoke-check is still required."
+  ],
+  "completion_assessment": {
+    "defensible_scoped_ml_task_implemented": true,
+    "held_out_evaluation_result_available": true,
+    "saved_model_used_by_backend_inference": true,
+    "collision_analysis_consumes_and_displays_model_output": true,
+    "event_and_job_provenance_regressions_preserved": true,
+    "physical_calculations_changed": false,
+    "browser_verified": false,
+    "remaining_limitation": "Research-only historical proxy with weak threshold classification utility and no browser smoke test.",
+    "phase_14_complete": true
+  }
+}

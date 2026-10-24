@@ -1,0 +1,67 @@
+{
+  "registry_version": "1.0.0",
+  "updated_utc": "2026-10-19",
+  "sources": [
+    {
+      "id": "celestrak_gp",
+      "name": "CelesTrak General Perturbations catalog",
+      "purpose": "Live orbital-element acquisition and SGP4 screening input",
+      "formats": ["OMM XML", "TLE"],
+      "provenance": "Acquisition response URL, group, timestamp, HTTP status, raw-response hash, and parser status are retained by the backend provider.",
+      "access_status": "Live endpoint configured; current primary backend reports CelesTrak OMM XML.",
+      "supports": ["Orbital elements", "Object identifiers", "Epoch"],
+      "does_not_support": ["Event covariance", "HBR", "Physical Pc"]
+    },
+    {
+      "id": "nasa_cara_reference",
+      "name": "NASA CARA Analysis Tools and reference CDM",
+      "purpose": "Foster 2D implementation reference and independent deterministic comparison",
+      "formats": ["NASA CARA KVN CDM", "MATLAB SDK/reference cases"],
+      "local_reference_file": "backend/tests/fixtures/nasa_cara_pc_reference.cdm",
+      "provenance": "The local fixture records the exact NASA CARA Analysis Tools source path and URL in backend/tests/fixtures/README.md; source identity is not authenticated by ORION at runtime.",
+      "access_status": "The reference CDM fixture is present locally.",
+      "supports": ["Historical TCA states", "RTN covariance", "Combined HBR comment", "Source-reported Foster Pc"],
+      "limitations": ["Standalone historical reference only", "Does not populate or validate a live TLE event", "Not NASA operational software"]
+    },
+    {
+      "id": "tracss_cdm_spec",
+      "name": "TraCSS CDM Specification 001 Release 2.1",
+      "purpose": "Documented external CDM schema and provenance contract",
+      "formats": ["KVN", "XML", "JSON-ST", "JSON-TraCSS", "CSV"],
+      "reference": "https://space.commerce.gov/wp-content/uploads/2026/01/TraCSS-Spec-001-v2.1_CDM.pdf",
+      "implementation_status": "TraCSS JSON-TraCSS CDM 2.0 with EME2000 frame is supported by the standalone reference importer. ITRF-frame formats fail closed because no validated Earth-orientation velocity transform is implemented.",
+      "covariance_semantics": "Complete 6x6 RTN covariance components; positional block is rotated into EME2000 using the documented Object 1 RTN basis.",
+      "hbr_semantics": "Per-object HBR values are summed to the combined HBR; both supplied values and the combined value are reported.",
+      "access_status": "Schema inspected; no operational TraCSS account or dataset credentials were used."
+    },
+    {
+      "id": "tracss_ivv_dataset",
+      "name": "TraCSS Conjunction Assessment Verification Dataset",
+      "purpose": "Conjunction-screening implementation verification",
+      "formats": ["OCM ephemerides (tar.gz)", "screening-result CDM CSV (csv.gz)", "screen-volume mapping CSV (csv.gz)", "PDF user guide"],
+      "reference": "https://space.commerce.gov/dataset-for-conjunction-assessment-verification/",
+      "license": "CC0-1.0",
+      "access_status": "Not downloaded. Official page requires Google-account access request for hosted files.",
+      "limitations": ["The 20.73 GB ephemeris archive was not requested", "Official page says dataset is not for live operations or formal certification", "Screening outputs depend on the documented spherical or SFSH volume configuration"]
+    },
+    {
+      "id": "esa_kelvins",
+      "name": "ESA Collision Avoidance Challenge training data",
+      "purpose": "Historical ML forecasting of the ESA-defined event risk target",
+      "local_reference_file": "backend/ml_data/train_data.zip",
+      "formats": ["CSV in ZIP archive"],
+      "target": "Final event risk in log10 space, from the latest CDM record",
+      "supports": ["Grouped historical ML experiments", "Geometric and kinematic feature forecasting"],
+      "does_not_support": ["Physical Foster Pc", "Live event covariance", "HBR"],
+      "limitations": ["The artifact metadata reports poor high-risk recall and the live feature semantics are unverified; live inference remains unavailable."]
+    },
+    {
+      "id": "synthetic_maneuver_ranker",
+      "name": "ORION synthetic maneuver-ranking data",
+      "purpose": "Research-only candidate ranking experiment",
+      "local_reference_file": "backend/ml_data/maneuver_rank_synthetic_v1.csv",
+      "access_status": "Local synthetic dataset.",
+      "limitations": ["Never used as physical Pc", "Never treated as flight-proven maneuver effectiveness", "Current held-out evaluation does not justify candidate ranking for operational use"]
+    }
+  ]
+}

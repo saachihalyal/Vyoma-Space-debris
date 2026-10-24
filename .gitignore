@@ -1,0 +1,32 @@
+# Frontend dependencies and build output
+node_modules/
+dist/
+.vite/
+
+# Python environments and cache
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Large ML datasets
+backend/ml_data/train_data.zip
+backend/exports/spacetrack-cdm-throttle.json

@@ -1,0 +1,1316 @@
+{
+  "phase": "12.5",
+  "title": "Multi-encounter real-TLE zero-burn baseline validation",
+  "status": "completed",
+  "sample_selection": {
+    "rule_fixed_before_zero_burn_comparisons": "Include the Phase 12.4 valid event. Exclude its source archive from additional sampling; scan remaining saved screening-job export filenames lexicographically and each archive valid event IDs lexicographically. Select the first event for each new unordered object-ID pair with both original source-attributed TLE line pairs present; stop at five total encounters. Selection uses no TCA/miss deltas, Pc, maneuver output, or agreement measure.",
+    "sample_size": 5,
+    "distinct_object_pairs": 5,
+    "selected_stored_event_ids": [
+      "CA-AC94AB3E15651724C50B",
+      "CA-0E45D17A7FD97444E98C",
+      "CA-14365994EC97422475C2",
+      "CA-2C674611A47F15400B76",
+      "CA-33433777811BD607D203"
+    ],
+    "source_exports": [
+      "screening-job-2a50f67a597442279de1d5178468953d.json",
+      "screening-job-8fa7230ce99e4182afc2c1a8506130bf.json"
+    ],
+    "selection_limits": "Deterministic convenience sample, not random or representative. Four additions are from one 24-hour catalog snapshot; source groups overlap.",
+    "all_selected_cases_reported": true
+  },
+  "source_archives": {
+    "screening-job-2a50f67a597442279de1d5178468953d.json": {
+      "sha256": "920dd3a5be08b2c252be8a0a767e4cdc26cb0f1d08635763008e6bd288821188",
+      "job_id": "2a50f67a597442279de1d5178468953d",
+      "job_status": "partial",
+      "original_configuration": {
+        "limit": 120,
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "start_utc": "2026-10-14T06:13:37.447147+00:00"
+      }
+    },
+    "screening-job-8fa7230ce99e4182afc2c1a8506130bf.json": {
+      "sha256": "e81180b85a3b50d5178a1284f70eb02b085fa7f9a9b4d42820ab00981a74b5e2",
+      "job_id": "8fa7230ce99e4182afc2c1a8506130bf",
+      "job_status": "partial",
+      "original_configuration": {
+        "limit": 120,
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "start_utc": "2026-10-13T12:10:22.590000+00:00"
+      }
+    }
+  },
+  "screening_implementation": {
+    "function": "app.services.trajectory_screening.screen_tle_records",
+    "propagator": "python-sgp4 SGP4/SDP4",
+    "sgp4_version": "2.27",
+    "gravity_model": "WGS72",
+    "frame": "TEME",
+    "units": {
+      "position": "km",
+      "velocity": "km/s"
+    },
+    "time_scale": "UTC converted to split Julian date; no TEME transform",
+    "refinement": "bounded subdivisions and golden-section TCA refinement; exact convergence details retained per event",
+    "ai_safety": "Before each of five screen_tle_records calls, the report-generation code asserted predict_from_physics, predict_orbital_anomaly, and compare_ml_and_physics were replaced. Regressions assert stub calls occurred."
+  },
+  "maneuver_implementation": {
+    "function": "app.services.conjunction.optimize_maneuver",
+    "call": "lead_seconds=300, burn_magnitudes_m_s=(0.01,); solver includes a separate zero-delta-v candidate",
+    "propagation": "Earth two-body point-mass RK4, mu=398600.4418 km^3/s^2",
+    "integration_step_seconds": 5.0,
+    "convergence_step_seconds": 2.5,
+    "search": "burn epoch through 1800 s after event TCA; 5 s grid with local refinement to 0.01 s",
+    "interpretation": "zero-burn is a simulated baseline distinct from the SGP4 event; candidates are not operational recommendations."
+  },
+  "cases": [
+    {
+      "source_archive": "screening-job-8fa7230ce99e4182afc2c1a8506130bf.json",
+      "source_archive_sha256": "e81180b85a3b50d5178a1284f70eb02b085fa7f9a9b4d42820ab00981a74b5e2",
+      "source_job_id": "8fa7230ce99e4182afc2c1a8506130bf",
+      "source_job_status": "partial",
+      "stored_event_id": "CA-AC94AB3E15651724C50B",
+      "object_pair_ids": [
+        "22675",
+        "33870"
+      ],
+      "stored_physics_status": "valid",
+      "stored_event": {
+        "tca_utc": "2026-10-13T12:27:42.510342+00:00",
+        "miss_distance_km": 24.124867467555447,
+        "relative_position_secondary_minus_primary_km": [
+          8.716270725226877,
+          21.14745474814663,
+          -7.669485813713891
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -4.16832278772291,
+          6.282419020134512,
+          12.58155526052128
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835362225887,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "tle_records": [
+        {
+          "name": "COSMOS 2251",
+          "catalog_id": "22675",
+          "tle_epoch_field": "26285.93214546",
+          "source_type": "live",
+          "source_group": "cosmos_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-13T12:10:21.534664+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 22675U 93036A   26285.93214546  .00000073  00000+0  35918-4 0  9999",
+          "line2": "2 22675  74.0370 120.0610 0023996 132.3110 228.0080 14.33273188741311",
+          "line_pair_sha256_lf_separator": "347248b9a42f256b41f192fb7181dd5417c109cf02ae44ab4cd2b46696d8c5ed",
+          "raw_record_hash": "aa3c7f39402923a70d59ea8aad4557ed6fd21a5cad7e92cbe194682fd65e91f1",
+          "normalized_record_hash": "c1055f310e756a29bbc8db8bbe971996399235607700cafe464724571f3f8335",
+          "raw_response_hash": "1ee37bc96e35283d2d9176eb7c81806547a6062bc8530de828443ceda20483f4"
+        },
+        {
+          "name": "IRIDIUM 33 DEB",
+          "catalog_id": "33870",
+          "tle_epoch_field": "26285.96568532",
+          "source_type": "live",
+          "source_group": "iridium_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-13T12:10:21.131364+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 33870U 97051AP  26285.96568532  .00001809  00000+0  48993-3 0  9993",
+          "line2": "2 33870  86.3691 287.7128 0018141 248.6443 139.4894 14.47132973925350",
+          "line_pair_sha256_lf_separator": "196cf8ed42de2e621ad79fcc4ea72460fb129befe98a9339edffd8247d22dbc7",
+          "raw_record_hash": "f785369581edbbba9ce8b41041a874644bdbdeeb5054a36c72da1caaeecc6263",
+          "normalized_record_hash": "c9ec12390efdeadcf79459dfde04affa22c2032aee14a07a32069e028c80dad4",
+          "raw_response_hash": "8e4b8c80f2c4e71d78eac0fe34cbbff3be763991ff21d5f768ac8f017c70c0dc"
+        }
+      ],
+      "screening_configuration": {
+        "original_limit": 120,
+        "replay_pair_record_count": 2,
+        "start_utc": "2026-10-13T12:10:22.590000+00:00",
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "propagator": "python-sgp4 SGP4/SDP4",
+        "propagator_version": "2.27",
+        "gravity_model": "WGS72",
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC calendar input converted to split Julian date for SGP4",
+        "tca_refinement": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835362225887,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "replay_screen": {
+        "status": "valid",
+        "valid_track_count": 2,
+        "candidate_pair_count": 1,
+        "close_approach_count": 1,
+        "invalid_assessment_count": 0,
+        "matching_pair_event_count": 1,
+        "ai_hooks_verified_before_invocation": true,
+        "stub_call_counts": {
+          "esa_prediction_hook": 1,
+          "anomaly_hook": 1,
+          "comparison_hook": 1
+        }
+      },
+      "replay_event": {
+        "event_id": "CA-2BEA6E43B15E4188250E",
+        "physics_status": "valid",
+        "tca_utc": "2026-10-13T12:27:42.509763+00:00",
+        "miss_distance_km": 24.12486822956812,
+        "relative_position_secondary_minus_primary_km": [
+          8.718684194830985,
+          21.143817231384674,
+          -7.67677053783882
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -4.1683227719439735,
+          6.282419004714228,
+          12.581555273508966
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "16-interval bounded subdivision with per-basin golden-section refinement of Euclidean relative distance",
+          "subdivisions_per_bracket": 16,
+          "basin_limit_per_bracket": 4,
+          "iterations": 16,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.006796557806865167,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "stored_minus_replay": {
+        "tca_difference_seconds": -0.000579,
+        "miss_distance_difference_km": 7.620126716290088e-07
+      },
+      "maneuver_result": {
+        "status": "available_with_warning",
+        "reason_code": "BASELINE_COMPARISON_TOLERANCE_UNVALIDATED",
+        "warning": "Candidate sweep computed for research inspection; the comparison is within existing diagnostic thresholds, but those thresholds are not scientifically validated and candidates are not verified improvements to the original Stage 2A event.",
+        "repeatable_identical_candidate_results": true,
+        "physics_candidate_status": "evaluated",
+        "zero_burn_candidate": {
+          "delta_v_m_s": 0.0,
+          "direction": "zero-burn baseline",
+          "maneuver_epoch_utc": "2026-10-13T12:22:42.509763+00:00",
+          "lead_time_seconds": 300,
+          "predicted_miss_distance_km": 24.124868229568857,
+          "closest_approach_utc": "2026-10-13T12:27:42.509763+00:00",
+          "closest_approach_offset_from_original_tca_seconds": 0.0,
+          "change_from_zero_burn_km": 0.0,
+          "objective_status": "refined_local_minimum_within_bounded_search",
+          "search_interval_start_utc": "2026-10-13T12:22:42.509763+00:00",
+          "search_interval_end_utc": "2026-10-13T12:57:42.509763+00:00",
+          "search_interval_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "search_sample_step_seconds": 5.0,
+          "search_sample_count": 421,
+          "refinement_evaluations": 18,
+          "integration_state_convergence_km": 1.3104798736998253e-08,
+          "source_sgp4_miss_distance_km": 24.12486822956812
+        },
+        "zero_burn_relative_position_secondary_minus_primary_km": [
+          8.71868419482962,
+          21.143817231385583,
+          -7.676770537840184
+        ],
+        "zero_burn_relative_velocity_secondary_minus_primary_km_s": [
+          -4.168322771943905,
+          6.282419004714125,
+          12.581555273508759
+        ],
+        "baseline_reference_comparison": {
+          "status": "within_comparison_tolerance",
+          "reason_code": null,
+          "reference_source": "stored original Stage 2A SGP4 event",
+          "reference_tca_utc": "2026-10-13T12:27:42.509763+00:00",
+          "reference_miss_distance_km": 24.12486822956812,
+          "reference_state_separation_at_tca_km": 24.12486822956812,
+          "zero_burn_two_body_miss_distance_km": 24.124868229568857,
+          "zero_burn_closest_approach_utc": "2026-10-13T12:27:42.509763+00:00",
+          "miss_distance_difference_km": 7.389644451905042e-13,
+          "zero_burn_tca_offset_from_reference_seconds": 0.0,
+          "miss_distance_tolerance_km": 0.2412486822956812,
+          "tca_offset_tolerance_seconds": 5.0,
+          "interpretation": "The stored Stage 2A SGP4 event is the reference and the zero-burn two-body result is the simulated baseline. This comparison is not an independent validation. Configured thresholds are diagnostic only, not scientifically validated tolerances. Candidate changes are relative to the simulated baseline and do not establish improvement over the original event."
+        },
+        "search_settings": {
+          "force_model": "Earth two-body point-mass",
+          "mu_km3_s2": 398600.4418,
+          "integrator": "RK4",
+          "integration_step_seconds": 5.0,
+          "convergence_step_seconds": 2.5,
+          "search_grid_seconds": 5.0,
+          "window_start_utc": "2026-10-13T12:22:42.509763+00:00",
+          "window_end_utc": "2026-10-13T12:57:42.509763+00:00",
+          "window_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "sample_count": 421,
+          "refinement_evaluations": 18
+        }
+      },
+      "replay_minus_zero_burn": {
+        "tca_difference_seconds": 0.0,
+        "miss_distance_difference_km": 7.389644451905042e-13,
+        "absolute_miss_distance_difference_km": 7.389644451905042e-13
+      },
+      "comparison_status": "available"
+    },
+    {
+      "source_archive": "screening-job-2a50f67a597442279de1d5178468953d.json",
+      "source_archive_sha256": "920dd3a5be08b2c252be8a0a767e4cdc26cb0f1d08635763008e6bd288821188",
+      "source_job_id": "2a50f67a597442279de1d5178468953d",
+      "source_job_status": "partial",
+      "stored_event_id": "CA-0E45D17A7FD97444E98C",
+      "object_pair_ids": [
+        "33762",
+        "33776"
+      ],
+      "stored_physics_status": "valid",
+      "stored_event": {
+        "tca_utc": "2026-10-14T06:22:15.243382+00:00",
+        "miss_distance_km": 21.946216702033038,
+        "relative_position_secondary_minus_primary_km": [
+          19.638517277020583,
+          9.795559146879441,
+          0.10994404369739641
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -4.698854896455078,
+          9.521438548909721,
+          -9.841371197071695
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835362339574,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "tle_records": [
+        {
+          "name": "COSMOS 2251 DEB",
+          "catalog_id": "33762",
+          "tle_epoch_field": "26286.64287698",
+          "source_type": "live",
+          "source_group": "cosmos_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:30.677075+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 33762U 93036K   26286.64287698  .00000069  00000+0  34014-4 0  9996",
+          "line2": "2 33762  74.0390 112.5641 0014240 105.0979 331.8326 14.33737591924170",
+          "line_pair_sha256_lf_separator": "93210cd6fe83ff4e7f45febed72c42898c3467da27efd830c589fc7c977c05c7",
+          "raw_record_hash": "40a7444eb798450296d9583997435a1c964b55ff8bed5b317b7f145bbdd3dbf5",
+          "normalized_record_hash": "b27b903a16cd74ca5b6f8c8a9fadfd91c2e12d9c3619e475f376ce7d1e5ba58c",
+          "raw_response_hash": "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a"
+        },
+        {
+          "name": "IRIDIUM 33 DEB",
+          "catalog_id": "33776",
+          "tle_epoch_field": "26286.56590829",
+          "source_type": "live",
+          "source_group": "iridium_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:29.847801+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+          "line2": "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+          "line_pair_sha256_lf_separator": "488bfc1867a32511feffe21bc1ff5a0dae87894ed89f91469da0e9eb22408e9c",
+          "raw_record_hash": "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+          "normalized_record_hash": "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+          "raw_response_hash": "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f"
+        }
+      ],
+      "screening_configuration": {
+        "original_limit": 120,
+        "replay_pair_record_count": 2,
+        "start_utc": "2026-10-14T06:13:37.447147+00:00",
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "propagator": "python-sgp4 SGP4/SDP4",
+        "propagator_version": "2.27",
+        "gravity_model": "WGS72",
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC calendar input converted to split Julian date for SGP4",
+        "tca_refinement": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835362339574,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "replay_screen": {
+        "status": "valid",
+        "valid_track_count": 2,
+        "candidate_pair_count": 1,
+        "close_approach_count": 2,
+        "invalid_assessment_count": 0,
+        "matching_pair_event_count": 2,
+        "ai_hooks_verified_before_invocation": true,
+        "stub_call_counts": {
+          "esa_prediction_hook": 2,
+          "anomaly_hook": 2,
+          "comparison_hook": 2
+        }
+      },
+      "replay_event": {
+        "event_id": "CA-70A6E0EDDD83BCD7059F",
+        "physics_status": "valid",
+        "tca_utc": "2026-10-14T06:22:15.243148+00:00",
+        "miss_distance_km": 21.946217950319106,
+        "relative_position_secondary_minus_primary_km": [
+          19.639616807282437,
+          9.79333112958875,
+          0.11224692532869085
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -4.6988548924693125,
+          9.521438552685689,
+          -9.841371195300475
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "16-interval bounded subdivision with per-basin golden-section refinement of Euclidean relative distance",
+          "subdivisions_per_bracket": 16,
+          "basin_limit_per_bracket": 4,
+          "iterations": 16,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.00679655780675148,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "stored_minus_replay": {
+        "tca_difference_seconds": -0.000234,
+        "miss_distance_difference_km": 1.248286068289417e-06
+      },
+      "maneuver_result": {
+        "status": "available_with_warning",
+        "reason_code": "BASELINE_COMPARISON_TOLERANCE_UNVALIDATED",
+        "warning": "Candidate sweep computed for research inspection; the comparison is within existing diagnostic thresholds, but those thresholds are not scientifically validated and candidates are not verified improvements to the original Stage 2A event.",
+        "repeatable_identical_candidate_results": true,
+        "physics_candidate_status": "evaluated",
+        "zero_burn_candidate": {
+          "delta_v_m_s": 0.0,
+          "direction": "zero-burn baseline",
+          "maneuver_epoch_utc": "2026-10-14T06:17:15.243148+00:00",
+          "lead_time_seconds": 300,
+          "predicted_miss_distance_km": 21.946217950318715,
+          "closest_approach_utc": "2026-10-14T06:22:15.243148+00:00",
+          "closest_approach_offset_from_original_tca_seconds": 0.0,
+          "change_from_zero_burn_km": 0.0,
+          "objective_status": "refined_local_minimum_within_bounded_search",
+          "search_interval_start_utc": "2026-10-14T06:17:15.243148+00:00",
+          "search_interval_end_utc": "2026-10-14T06:52:15.243148+00:00",
+          "search_interval_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "search_sample_step_seconds": 5.0,
+          "search_sample_count": 421,
+          "refinement_evaluations": 18,
+          "integration_state_convergence_km": 1.2859407758570727e-08,
+          "source_sgp4_miss_distance_km": 21.946217950319106
+        },
+        "zero_burn_relative_position_secondary_minus_primary_km": [
+          19.639616807281982,
+          9.79333112958875,
+          0.11224692533141933
+        ],
+        "zero_burn_relative_velocity_secondary_minus_primary_km_s": [
+          -4.6988548924692335,
+          9.521438552685538,
+          -9.841371195300324
+        ],
+        "baseline_reference_comparison": {
+          "status": "within_comparison_tolerance",
+          "reason_code": null,
+          "reference_source": "stored original Stage 2A SGP4 event",
+          "reference_tca_utc": "2026-10-14T06:22:15.243148+00:00",
+          "reference_miss_distance_km": 21.946217950319106,
+          "reference_state_separation_at_tca_km": 21.946217950319106,
+          "zero_burn_two_body_miss_distance_km": 21.946217950318715,
+          "zero_burn_closest_approach_utc": "2026-10-14T06:22:15.243148+00:00",
+          "miss_distance_difference_km": -3.907985046680551e-13,
+          "zero_burn_tca_offset_from_reference_seconds": 0.0,
+          "miss_distance_tolerance_km": 0.21946217950319105,
+          "tca_offset_tolerance_seconds": 5.0,
+          "interpretation": "The stored Stage 2A SGP4 event is the reference and the zero-burn two-body result is the simulated baseline. This comparison is not an independent validation. Configured thresholds are diagnostic only, not scientifically validated tolerances. Candidate changes are relative to the simulated baseline and do not establish improvement over the original event."
+        },
+        "search_settings": {
+          "force_model": "Earth two-body point-mass",
+          "mu_km3_s2": 398600.4418,
+          "integrator": "RK4",
+          "integration_step_seconds": 5.0,
+          "convergence_step_seconds": 2.5,
+          "search_grid_seconds": 5.0,
+          "window_start_utc": "2026-10-14T06:17:15.243148+00:00",
+          "window_end_utc": "2026-10-14T06:52:15.243148+00:00",
+          "window_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "sample_count": 421,
+          "refinement_evaluations": 18
+        }
+      },
+      "replay_minus_zero_burn": {
+        "tca_difference_seconds": 0.0,
+        "miss_distance_difference_km": -3.907985046680551e-13,
+        "absolute_miss_distance_difference_km": 3.907985046680551e-13
+      },
+      "comparison_status": "available"
+    },
+    {
+      "source_archive": "screening-job-2a50f67a597442279de1d5178468953d.json",
+      "source_archive_sha256": "920dd3a5be08b2c252be8a0a767e4cdc26cb0f1d08635763008e6bd288821188",
+      "source_job_id": "2a50f67a597442279de1d5178468953d",
+      "source_job_status": "partial",
+      "stored_event_id": "CA-14365994EC97422475C2",
+      "object_pair_ids": [
+        "05560",
+        "33758"
+      ],
+      "stored_physics_status": "valid",
+      "stored_event": {
+        "tca_utc": "2026-10-14T09:46:53.177064+00:00",
+        "miss_distance_km": 5.506604732139153,
+        "relative_position_secondary_minus_primary_km": [
+          2.131346224496383,
+          -4.686617515770195,
+          1.9533753372606952
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -12.602714637781434,
+          -4.003397192959974,
+          4.1123405886247335
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835362225887,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "tle_records": [
+        {
+          "name": "ASTEX 1",
+          "catalog_id": "05560",
+          "tle_epoch_field": "26286.83485240",
+          "source_type": "live",
+          "source_group": "visual",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:29.943187+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 05560U 71089A   26286.83485240  .00000420  00000+0  10639-3 0  9996",
+          "line2": "2 05560  92.7154 222.1424 0017752  70.2248 290.0870 14.50928448893931",
+          "line_pair_sha256_lf_separator": "c73ead03597ef5933804bdcb4b4d36169e23e76126a302412207b53e853e8579",
+          "raw_record_hash": "6c5825476c375e3a5c997471f4e98ecc791d4a0e94317764cd1edb03cd5a5929",
+          "normalized_record_hash": "e245e92d8087fd920760dd3bf2eb37e25021ecfb9f8639e65e2a41c1b1deaf59",
+          "raw_response_hash": "95926ddf078d4a0ec2803b6da6c31985331dd14c2ef5673ff32ca7adf91c8779"
+        },
+        {
+          "name": "COSMOS 2251 DEB",
+          "catalog_id": "33758",
+          "tle_epoch_field": "26286.66461397",
+          "source_type": "live",
+          "source_group": "cosmos_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:30.677075+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 33758U 93036F   26286.66461397  .00002354  00000+0  57268-3 0  9997",
+          "line2": "2 33758  74.0298 359.7417 0017174 350.0328 161.9737 14.53285369927328",
+          "line_pair_sha256_lf_separator": "59d6a63e7ed7dcf47db8b5112ec8459713988a39f553ba1fe0afbd1939804c6a",
+          "raw_record_hash": "cbad65477834a607940fe2ad01d6fbfa3558c59d673defc60b7d8ad8e023deff",
+          "normalized_record_hash": "1567a87d792db8cf6f80294f907ad58387e17909d7377487f9fbbe30f5d7cee7",
+          "raw_response_hash": "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a"
+        }
+      ],
+      "screening_configuration": {
+        "original_limit": 120,
+        "replay_pair_record_count": 2,
+        "start_utc": "2026-10-14T06:13:37.447147+00:00",
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "propagator": "python-sgp4 SGP4/SDP4",
+        "propagator_version": "2.27",
+        "gravity_model": "WGS72",
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC calendar input converted to split Julian date for SGP4",
+        "tca_refinement": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835362225887,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "replay_screen": {
+        "status": "valid",
+        "valid_track_count": 2,
+        "candidate_pair_count": 1,
+        "close_approach_count": 3,
+        "invalid_assessment_count": 0,
+        "matching_pair_event_count": 3,
+        "ai_hooks_verified_before_invocation": true,
+        "stub_call_counts": {
+          "esa_prediction_hook": 3,
+          "anomaly_hook": 3,
+          "comparison_hook": 3
+        }
+      },
+      "replay_event": {
+        "event_id": "CA-1B6F6A49EEFC33F01E76",
+        "physics_status": "valid",
+        "tca_utc": "2026-10-14T09:46:53.177605+00:00",
+        "miss_distance_km": 5.506603401422112,
+        "relative_position_secondary_minus_primary_km": [
+          2.124528154022528,
+          -4.688783354965381,
+          1.9556001108403507
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -12.602714638612557,
+          -4.003397189607391,
+          4.112340589304574
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "16-interval bounded subdivision with per-basin golden-section refinement of Euclidean relative distance",
+          "subdivisions_per_bracket": 16,
+          "basin_limit_per_bracket": 4,
+          "iterations": 16,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.006796557807319914,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "stored_minus_replay": {
+        "tca_difference_seconds": 0.000541,
+        "miss_distance_difference_km": -1.3307170414478264e-06
+      },
+      "maneuver_result": {
+        "status": "available_with_warning",
+        "reason_code": "BASELINE_COMPARISON_TOLERANCE_UNVALIDATED",
+        "warning": "Candidate sweep computed for research inspection; the comparison is within existing diagnostic thresholds, but those thresholds are not scientifically validated and candidates are not verified improvements to the original Stage 2A event.",
+        "repeatable_identical_candidate_results": true,
+        "physics_candidate_status": "evaluated",
+        "zero_burn_candidate": {
+          "delta_v_m_s": 0.0,
+          "direction": "zero-burn baseline",
+          "maneuver_epoch_utc": "2026-10-14T09:41:53.177605+00:00",
+          "lead_time_seconds": 300,
+          "predicted_miss_distance_km": 5.506603401422482,
+          "closest_approach_utc": "2026-10-14T09:46:53.177605+00:00",
+          "closest_approach_offset_from_original_tca_seconds": 0.0,
+          "change_from_zero_burn_km": 0.0,
+          "objective_status": "refined_local_minimum_within_bounded_search",
+          "search_interval_start_utc": "2026-10-14T09:41:53.177605+00:00",
+          "search_interval_end_utc": "2026-10-14T10:16:53.177605+00:00",
+          "search_interval_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "search_sample_step_seconds": 5.0,
+          "search_sample_count": 421,
+          "refinement_evaluations": 18,
+          "integration_state_convergence_km": 1.364356201784985e-08,
+          "source_sgp4_miss_distance_km": 5.506603401422112
+        },
+        "zero_burn_relative_position_secondary_minus_primary_km": [
+          2.1245281540229826,
+          -4.688783354964471,
+          1.9556001108430792
+        ],
+        "zero_burn_relative_velocity_secondary_minus_primary_km_s": [
+          -12.602714638612337,
+          -4.003397189607322,
+          4.1123405893045035
+        ],
+        "baseline_reference_comparison": {
+          "status": "within_comparison_tolerance",
+          "reason_code": null,
+          "reference_source": "stored original Stage 2A SGP4 event",
+          "reference_tca_utc": "2026-10-14T09:46:53.177605+00:00",
+          "reference_miss_distance_km": 5.506603401422112,
+          "reference_state_separation_at_tca_km": 5.506603401422112,
+          "zero_burn_two_body_miss_distance_km": 5.506603401422482,
+          "zero_burn_closest_approach_utc": "2026-10-14T09:46:53.177605+00:00",
+          "miss_distance_difference_km": 3.703704010149522e-13,
+          "zero_burn_tca_offset_from_reference_seconds": 0.0,
+          "miss_distance_tolerance_km": 0.1,
+          "tca_offset_tolerance_seconds": 5.0,
+          "interpretation": "The stored Stage 2A SGP4 event is the reference and the zero-burn two-body result is the simulated baseline. This comparison is not an independent validation. Configured thresholds are diagnostic only, not scientifically validated tolerances. Candidate changes are relative to the simulated baseline and do not establish improvement over the original event."
+        },
+        "search_settings": {
+          "force_model": "Earth two-body point-mass",
+          "mu_km3_s2": 398600.4418,
+          "integrator": "RK4",
+          "integration_step_seconds": 5.0,
+          "convergence_step_seconds": 2.5,
+          "search_grid_seconds": 5.0,
+          "window_start_utc": "2026-10-14T09:41:53.177605+00:00",
+          "window_end_utc": "2026-10-14T10:16:53.177605+00:00",
+          "window_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "sample_count": 421,
+          "refinement_evaluations": 18
+        }
+      },
+      "replay_minus_zero_burn": {
+        "tca_difference_seconds": 0.0,
+        "miss_distance_difference_km": 3.703704010149522e-13,
+        "absolute_miss_distance_difference_km": 3.703704010149522e-13
+      },
+      "comparison_status": "available"
+    },
+    {
+      "source_archive": "screening-job-2a50f67a597442279de1d5178468953d.json",
+      "source_archive_sha256": "920dd3a5be08b2c252be8a0a767e4cdc26cb0f1d08635763008e6bd288821188",
+      "source_job_id": "2a50f67a597442279de1d5178468953d",
+      "source_job_status": "partial",
+      "stored_event_id": "CA-2C674611A47F15400B76",
+      "object_pair_ids": [
+        "10967",
+        "33761"
+      ],
+      "stored_physics_status": "valid",
+      "stored_event": {
+        "tca_utc": "2026-10-14T12:27:22.877726+00:00",
+        "miss_distance_km": 4.370215863115639,
+        "relative_position_secondary_minus_primary_km": [
+          3.954030995206267,
+          -1.5894621552615718,
+          0.9685223983816513
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -1.7374285829151837,
+          4.37838357920999,
+          14.20793285295186
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835364044877,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "tle_records": [
+        {
+          "name": "SEASAT 1",
+          "catalog_id": "10967",
+          "tle_epoch_field": "26286.79142995",
+          "source_type": "live",
+          "source_group": "visual",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=visual&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:29.943187+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 10967U 78064A   26286.79142995  .00000340  00000+0  13318-3 0  9993",
+          "line2": "2 10967 108.0099 223.2307 0002597 286.4630  73.6231 14.46305386538045",
+          "line_pair_sha256_lf_separator": "c52a02d81f36fc2f7e4fe87ed3e29e53923fee0d2ec9d51df6d38083d28965cf",
+          "raw_record_hash": "0df7cd6615c6d9df048da7d52bb1246678dcbb44cd8b612d33dfecca4300eef3",
+          "normalized_record_hash": "9e300263e3fef1b2a70e951532a9dbe257ade507f482120bdde6680f80bf4709",
+          "raw_response_hash": "95926ddf078d4a0ec2803b6da6c31985331dd14c2ef5673ff32ca7adf91c8779"
+        },
+        {
+          "name": "COSMOS 2251 DEB",
+          "catalog_id": "33761",
+          "tle_epoch_field": "26286.78167957",
+          "source_type": "live",
+          "source_group": "cosmos_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:30.677075+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 33761U 93036J   26286.78167957  .00001095  00000+0  33251-3 0  9996",
+          "line2": "2 33761  74.0366  45.8232 0022198  53.1880  70.6776 14.43226061926345",
+          "line_pair_sha256_lf_separator": "35aab9e6d656f9530419a221837376c78d3416f06ab34add772f82171f479d37",
+          "raw_record_hash": "5680d5ce43646053f3dcd4ce5f6a89a37a52a6b512f415e67268324af5a4c157",
+          "normalized_record_hash": "39581c9c7d8a6b46a117a45bf24ddfa83b77dbedb1181dd3b9279e490e3c0910",
+          "raw_response_hash": "d8f9e202d5b7c07dd0afb1760dc602b9d7449569f76c93eaffc9e4717543986a"
+        }
+      ],
+      "screening_configuration": {
+        "original_limit": 120,
+        "replay_pair_record_count": 2,
+        "start_utc": "2026-10-14T06:13:37.447147+00:00",
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "propagator": "python-sgp4 SGP4/SDP4",
+        "propagator_version": "2.27",
+        "gravity_model": "WGS72",
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC calendar input converted to split Julian date for SGP4",
+        "tca_refinement": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835364044877,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "replay_screen": {
+        "status": "valid",
+        "valid_track_count": 2,
+        "candidate_pair_count": 1,
+        "close_approach_count": 2,
+        "invalid_assessment_count": 0,
+        "matching_pair_event_count": 2,
+        "ai_hooks_verified_before_invocation": true,
+        "stub_call_counts": {
+          "esa_prediction_hook": 2,
+          "anomaly_hook": 2,
+          "comparison_hook": 2
+        }
+      },
+      "replay_event": {
+        "event_id": "CA-80825493666CC0880A34",
+        "physics_status": "valid",
+        "tca_utc": "2026-10-14T12:27:22.878701+00:00",
+        "miss_distance_km": 4.370224958145784,
+        "relative_position_secondary_minus_primary_km": [
+          3.9523369973385343,
+          -1.5851932170307919,
+          0.9823751365689759
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          -1.7374285831137006,
+          4.378383584645967,
+          14.2079328512331
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "16-interval bounded subdivision with per-basin golden-section refinement of Euclidean relative distance",
+          "subdivisions_per_bracket": 16,
+          "basin_limit_per_bracket": 4,
+          "iterations": 16,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.006796557805500925,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "stored_minus_replay": {
+        "tca_difference_seconds": 0.000975,
+        "miss_distance_difference_km": 9.095030145012117e-06
+      },
+      "maneuver_result": {
+        "status": "available_with_warning",
+        "reason_code": "BASELINE_COMPARISON_TOLERANCE_UNVALIDATED",
+        "warning": "Candidate sweep computed for research inspection; the comparison is within existing diagnostic thresholds, but those thresholds are not scientifically validated and candidates are not verified improvements to the original Stage 2A event.",
+        "repeatable_identical_candidate_results": true,
+        "physics_candidate_status": "evaluated",
+        "zero_burn_candidate": {
+          "delta_v_m_s": 0.0,
+          "direction": "zero-burn baseline",
+          "maneuver_epoch_utc": "2026-10-14T12:22:22.878701+00:00",
+          "lead_time_seconds": 300,
+          "predicted_miss_distance_km": 4.370224958142116,
+          "closest_approach_utc": "2026-10-14T12:27:22.878701+00:00",
+          "closest_approach_offset_from_original_tca_seconds": 0.0,
+          "change_from_zero_burn_km": 0.0,
+          "objective_status": "refined_local_minimum_within_bounded_search",
+          "search_interval_start_utc": "2026-10-14T12:22:22.878701+00:00",
+          "search_interval_end_utc": "2026-10-14T12:57:22.878701+00:00",
+          "search_interval_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "search_sample_step_seconds": 5.0,
+          "search_sample_count": 421,
+          "refinement_evaluations": 18,
+          "integration_state_convergence_km": 1.318381535865452e-08,
+          "source_sgp4_miss_distance_km": 4.370224958145784
+        },
+        "zero_burn_relative_position_secondary_minus_primary_km": [
+          3.9523369973348963,
+          -1.5851932170289729,
+          0.9823751365702265
+        ],
+        "zero_burn_relative_velocity_secondary_minus_primary_km_s": [
+          -1.737428583113668,
+          4.378383584645896,
+          14.207932851232858
+        ],
+        "baseline_reference_comparison": {
+          "status": "within_comparison_tolerance",
+          "reason_code": null,
+          "reference_source": "stored original Stage 2A SGP4 event",
+          "reference_tca_utc": "2026-10-14T12:27:22.878701+00:00",
+          "reference_miss_distance_km": 4.370224958145784,
+          "reference_state_separation_at_tca_km": 4.370224958145784,
+          "zero_burn_two_body_miss_distance_km": 4.370224958142116,
+          "zero_burn_closest_approach_utc": "2026-10-14T12:27:22.878701+00:00",
+          "miss_distance_difference_km": -3.668176873361517e-12,
+          "zero_burn_tca_offset_from_reference_seconds": 0.0,
+          "miss_distance_tolerance_km": 0.1,
+          "tca_offset_tolerance_seconds": 5.0,
+          "interpretation": "The stored Stage 2A SGP4 event is the reference and the zero-burn two-body result is the simulated baseline. This comparison is not an independent validation. Configured thresholds are diagnostic only, not scientifically validated tolerances. Candidate changes are relative to the simulated baseline and do not establish improvement over the original event."
+        },
+        "search_settings": {
+          "force_model": "Earth two-body point-mass",
+          "mu_km3_s2": 398600.4418,
+          "integrator": "RK4",
+          "integration_step_seconds": 5.0,
+          "convergence_step_seconds": 2.5,
+          "search_grid_seconds": 5.0,
+          "window_start_utc": "2026-10-14T12:22:22.878701+00:00",
+          "window_end_utc": "2026-10-14T12:57:22.878701+00:00",
+          "window_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "sample_count": 421,
+          "refinement_evaluations": 18
+        }
+      },
+      "replay_minus_zero_burn": {
+        "tca_difference_seconds": 0.0,
+        "miss_distance_difference_km": -3.668176873361517e-12,
+        "absolute_miss_distance_difference_km": 3.668176873361517e-12
+      },
+      "comparison_status": "available"
+    },
+    {
+      "source_archive": "screening-job-2a50f67a597442279de1d5178468953d.json",
+      "source_archive_sha256": "920dd3a5be08b2c252be8a0a767e4cdc26cb0f1d08635763008e6bd288821188",
+      "source_job_id": "2a50f67a597442279de1d5178468953d",
+      "source_job_status": "partial",
+      "stored_event_id": "CA-33433777811BD607D203",
+      "object_pair_ids": [
+        "24946",
+        "33776"
+      ],
+      "stored_physics_status": "valid",
+      "stored_event": {
+        "tca_utc": "2026-10-14T15:20:52.448517+00:00",
+        "miss_distance_km": 22.183029131358662,
+        "relative_position_secondary_minus_primary_km": [
+          -7.526691045532743,
+          12.611147945709433,
+          16.625121077430776
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          1.3093718287570164,
+          0.9391559726468701,
+          -0.11959961761825258
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835367682856,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "tle_records": [
+        {
+          "name": "IRIDIUM 33",
+          "catalog_id": "24946",
+          "tle_epoch_field": "26286.54131464",
+          "source_type": "live",
+          "source_group": "iridium_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:29.847801+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 24946U 97051C   26286.54131464  .00000202  00000+0  63807-4 0  9990",
+          "line2": "2 24946  86.3828 300.2841 0006061 309.5601  50.5059 14.35185780522068",
+          "line_pair_sha256_lf_separator": "b0654525022540fb1c69812c9414f9d5e684aef4336c5e08cc510251bc00bfd0",
+          "raw_record_hash": "e03c7b2671a6b98e6242b6bdb11093b920efafde282811f2762e89239d3060bb",
+          "normalized_record_hash": "7417f477dad5bf02008f8769e8d6a434ab58f1f4334e68772cd2b3b647707fa4",
+          "raw_response_hash": "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f"
+        },
+        {
+          "name": "IRIDIUM 33 DEB",
+          "catalog_id": "33776",
+          "tle_epoch_field": "26286.56590829",
+          "source_type": "live",
+          "source_group": "iridium_debris",
+          "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=TLE",
+          "retrieval_timestamp_utc": "2026-10-14T06:01:29.847801+00:00",
+          "retrieval_http_status": 200,
+          "line1": "1 33776U 97051P   26286.56590829  .00000577  00000+0  18178-3 0  9992",
+          "line2": "2 33776  86.4018 312.7314 0012203 277.6953 195.0424 14.38652239924646",
+          "line_pair_sha256_lf_separator": "488bfc1867a32511feffe21bc1ff5a0dae87894ed89f91469da0e9eb22408e9c",
+          "raw_record_hash": "8267c705053be0cb60d540e8fc90bb9e612ee114ee45c654d127d9dc697a0282",
+          "normalized_record_hash": "115761821eae059d8ee73a9d0c1dd3551cc0ec20bc87b14b001993c7683775f3",
+          "raw_response_hash": "43d80d178dc33240c33676584ed4d962e4ed297a77a16b5a2639dc85f12d4e3f"
+        }
+      ],
+      "screening_configuration": {
+        "original_limit": 120,
+        "replay_pair_record_count": 2,
+        "start_utc": "2026-10-14T06:13:37.447147+00:00",
+        "horizon_hours": 24.0,
+        "sample_step_seconds": 60,
+        "screening_threshold_km": 25.0,
+        "propagator": "python-sgp4 SGP4/SDP4",
+        "propagator_version": "2.27",
+        "gravity_model": "WGS72",
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC calendar input converted to split Julian date for SGP4",
+        "tca_refinement": {
+          "method": "bounded golden-section minimization of Euclidean relative distance",
+          "iterations": 20,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.007932835367682856,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "replay_screen": {
+        "status": "valid",
+        "valid_track_count": 2,
+        "candidate_pair_count": 1,
+        "close_approach_count": 1,
+        "invalid_assessment_count": 0,
+        "matching_pair_event_count": 1,
+        "ai_hooks_verified_before_invocation": true,
+        "stub_call_counts": {
+          "esa_prediction_hook": 1,
+          "anomaly_hook": 1,
+          "comparison_hook": 1
+        }
+      },
+      "replay_event": {
+        "event_id": "CA-C3914594D2EC35CB2190",
+        "physics_status": "valid",
+        "tca_utc": "2026-10-14T15:20:52.448445+00:00",
+        "miss_distance_km": 22.183029130807117,
+        "relative_position_secondary_minus_primary_km": [
+          -7.5267853205043025,
+          12.611080326186652,
+          16.625129688629386
+        ],
+        "relative_velocity_secondary_minus_primary_km_s": [
+          1.3093718279657387,
+          0.939155973491288,
+          -0.11959962021895874
+        ],
+        "frame": "TEME",
+        "position_units": "km",
+        "velocity_units": "km/s",
+        "time_scale": "UTC",
+        "convergence": {
+          "method": "16-interval bounded subdivision with per-basin golden-section refinement of Euclidean relative distance",
+          "subdivisions_per_bracket": 16,
+          "basin_limit_per_bracket": 4,
+          "iterations": 16,
+          "time_tolerance_seconds": 0.01,
+          "final_bracket_width_seconds": 0.006796557805500925,
+          "neighbor_check_seconds": 0.1,
+          "neighbor_check_passed": true,
+          "bracket_origin": "coarse sampled local minimum and adjacent sample epochs"
+        }
+      },
+      "stored_minus_replay": {
+        "tca_difference_seconds": -7.2e-05,
+        "miss_distance_difference_km": -5.515445877790626e-10
+      },
+      "maneuver_result": {
+        "status": "available_with_warning",
+        "reason_code": "BASELINE_COMPARISON_TOLERANCE_UNVALIDATED",
+        "warning": "Candidate sweep computed for research inspection; the comparison is within existing diagnostic thresholds, but those thresholds are not scientifically validated and candidates are not verified improvements to the original Stage 2A event.",
+        "repeatable_identical_candidate_results": true,
+        "physics_candidate_status": "evaluated",
+        "zero_burn_candidate": {
+          "delta_v_m_s": 0.0,
+          "direction": "zero-burn baseline",
+          "maneuver_epoch_utc": "2026-10-14T15:15:52.448445+00:00",
+          "lead_time_seconds": 300,
+          "predicted_miss_distance_km": 22.183029130810787,
+          "closest_approach_utc": "2026-10-14T15:20:52.448445+00:00",
+          "closest_approach_offset_from_original_tca_seconds": 0.0,
+          "change_from_zero_burn_km": 0.0,
+          "objective_status": "refined_local_minimum_within_bounded_search",
+          "search_interval_start_utc": "2026-10-14T15:15:52.448445+00:00",
+          "search_interval_end_utc": "2026-10-14T15:50:52.448445+00:00",
+          "search_interval_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "search_sample_step_seconds": 5.0,
+          "search_sample_count": 421,
+          "refinement_evaluations": 18,
+          "integration_state_convergence_km": 1.2884280234048497e-08,
+          "source_sgp4_miss_distance_km": 22.183029130807117
+        },
+        "zero_burn_relative_position_secondary_minus_primary_km": [
+          -7.526785320504871,
+          12.611080326186766,
+          16.625129688633933
+        ],
+        "zero_burn_relative_velocity_secondary_minus_primary_km_s": [
+          1.309371827965712,
+          0.9391559734912729,
+          -0.11959962021895533
+        ],
+        "baseline_reference_comparison": {
+          "status": "within_comparison_tolerance",
+          "reason_code": null,
+          "reference_source": "stored original Stage 2A SGP4 event",
+          "reference_tca_utc": "2026-10-14T15:20:52.448445+00:00",
+          "reference_miss_distance_km": 22.183029130807117,
+          "reference_state_separation_at_tca_km": 22.18302913080712,
+          "zero_burn_two_body_miss_distance_km": 22.183029130810787,
+          "zero_burn_closest_approach_utc": "2026-10-14T15:20:52.448445+00:00",
+          "miss_distance_difference_km": 3.6699532302009175e-12,
+          "zero_burn_tca_offset_from_reference_seconds": 0.0,
+          "miss_distance_tolerance_km": 0.2218302913080712,
+          "tca_offset_tolerance_seconds": 5.0,
+          "interpretation": "The stored Stage 2A SGP4 event is the reference and the zero-burn two-body result is the simulated baseline. This comparison is not an independent validation. Configured thresholds are diagnostic only, not scientifically validated tolerances. Candidate changes are relative to the simulated baseline and do not establish improvement over the original event."
+        },
+        "search_settings": {
+          "force_model": "Earth two-body point-mass",
+          "mu_km3_s2": 398600.4418,
+          "integrator": "RK4",
+          "integration_step_seconds": 5.0,
+          "convergence_step_seconds": 2.5,
+          "search_grid_seconds": 5.0,
+          "window_start_utc": "2026-10-14T15:15:52.448445+00:00",
+          "window_end_utc": "2026-10-14T15:50:52.448445+00:00",
+          "window_seconds_from_burn": [
+            0.0,
+            2100.0
+          ],
+          "sample_count": 421,
+          "refinement_evaluations": 18
+        }
+      },
+      "replay_minus_zero_burn": {
+        "tca_difference_seconds": 0.0,
+        "miss_distance_difference_km": 3.6699532302009175e-12,
+        "absolute_miss_distance_difference_km": 3.6699532302009175e-12
+      },
+      "comparison_status": "available"
+    }
+  ],
+  "difference_distributions": {
+    "stored_to_replay_tca": {
+      "status": "available",
+      "count": 5,
+      "units": "s",
+      "min": -0.000579,
+      "max": 0.000975,
+      "mean": 0.0001262,
+      "median": -7.2e-05,
+      "mean_absolute": 0.0004802,
+      "maximum_absolute": 0.000975
+    },
+    "stored_to_replay_miss": {
+      "status": "available",
+      "count": 5,
+      "units": "km",
+      "min": -1.3307170414478264e-06,
+      "max": 9.095030145012117e-06,
+      "mean": 1.9548120597789875e-06,
+      "median": 7.620126716290088e-07,
+      "mean_absolute": 2.48731949419323e-06,
+      "maximum_absolute": 9.095030145012117e-06
+    },
+    "replay_to_zero_burn_tca": {
+      "status": "available",
+      "count": 5,
+      "units": "s",
+      "min": 0.0,
+      "max": 0.0,
+      "mean": 0.0,
+      "median": 0.0,
+      "mean_absolute": 0.0,
+      "maximum_absolute": 0.0
+    },
+    "replay_to_zero_burn_miss": {
+      "status": "available",
+      "count": 5,
+      "units": "km",
+      "min": -3.668176873361517e-12,
+      "max": 3.6699532302009175e-12,
+      "mean": 1.440625396753603e-13,
+      "median": 3.703704010149522e-13,
+      "mean_absolute": 1.7676526908871893e-12,
+      "maximum_absolute": 3.6699532302009175e-12
+    }
+  },
+  "aggregate_findings": {
+    "valid_replay_cases": 5,
+    "zero_burn_available_cases": 5,
+    "zero_burn_repeatable_cases": 5,
+    "all_zero_burn_tca_offsets_zero": true,
+    "all_zero_burn_miss_deltas_below_1e-9_km": true,
+    "all_solver_results_warning_qualified": true,
+    "comparison_tolerances_scientifically_validated": false
+  },
+  "cause_investigation": {
+    "verified": "For all five sampled encounters, zero-burn closest approach is at the replay TCA to solver precision and miss-distance differences are at floating-point scale. The maneuver search grid explicitly contains event TCA (elapsed=lead_seconds); the solver back-propagates TCA states to the burn epoch and forward-propagates them with the same two-body model.",
+    "stored_vs_replay": "Stored event to current replay differences are small but nonzero and are preserved per case. No causal explanation is established; time conversion, historic code/runtime or refinement details are possibilities, not proven causes.",
+    "model_difference": "SGP4/SDP4 and two-body are different propagation models. This five-case sample cannot establish general equivalence."
+  },
+  "execution_controls": {
+    "network_accessed": false,
+    "services_or_live_jobs_started": false,
+    "screening_function_calls": 5,
+    "calls_with_ai_hooks_verified_stubbed": 5,
+    "esa_model_inference": false,
+    "anomaly_detection": false,
+    "training": false,
+    "packages_installed": false,
+    "production_code_changed": false,
+    "model_artifacts_changed": false
+  },
+  "tests": {
+    "focused_new_regressions": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research.ResearchManeuverTests.test_captured_real_tle_screening_event_has_repeatable_zero_burn_baseline tests.test_maneuver_research.ResearchManeuverTests.test_additional_captured_tle_encounters_replay_and_zero_burn_deterministically",
+      "result": "2 passed, 0 failed (Ran 2 tests in 3.223 s)"
+    },
+    "broader_safe_maneuver_and_orbit_selection": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest [the two new regression tests, selected zero-burn/search/integration tests, all TcaReferenceTests except test_identical_trajectories_have_zero_separation, and TrajectoryPipelineTests.test_distinct_valid_tles_have_distinct_states_and_keep_identity]",
+      "result": "Prior-session report claimed 22 passed, 0 failed; this run did not reproduce that exact grouped command because its command was recorded only as a descriptive placeholder. Current independently rerun module results are recorded below.",
+      "reported_duration_seconds": null,
+      "verification_note": "Historical result only; not counted as current verified validation."
+    },
+    "existing_test_failure": {
+      "test_id": "tests.test_trajectory_screening.TcaReferenceTests.test_identical_trajectories_have_zero_separation",
+      "result": "Initial expectation failed; corrected contract test and all relevant trajectory-screening tests now pass.",
+      "diagnostic_command_from_backend": ".\\.venv\\Scripts\\python.exe -B -c \"from app.services.trajectory_screening import StateVector,minimize_relative_distance; f=lambda t: StateVector((7000.0,1.0,-2.0),(0.0,7.5,0.0)); s=minimize_relative_distance(f,f,lower_offset_seconds=0,upper_offset_seconds=30,horizon_start_offset_seconds=0,horizon_end_offset_seconds=60); print(s.status,s.reason_code,s.miss_distance_km,s.offset_seconds)\"",
+      "diagnostic_result": "invalid non_unique_tca_flat_distance 0.0 None",
+      "disposition": "Resolved by correcting the test expectation to match the solver contract; no production change. See orbit_refinement_failure_investigation."
+    },
+    "warnings": [
+      "StarletteDeprecationWarning from starlette.testclient importing httpx; no package installed."
+    ],
+    "maneuver_research_module": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research",
+      "result": "17 passed, 0 failed (Ran 17 tests in 9.448 s)"
+    },
+    "trajectory_screening_module": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_trajectory_screening",
+      "result": "34 passed, 0 failed (Ran 34 tests in 28.530 s); expected injected-failure log emitted by its failure-path test"
+    },
+    "orbit_refinement_reference_tests": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_trajectory_screening.TcaReferenceTests",
+      "result": "12 passed, 0 failed (includes corrected identical-trajectory contract test)"
+    },
+    "report_independent_checks": {
+      "method": "Python JSON structural checks plus recomputation from saved source exports and report fields; no screening or inference calls in this check.",
+      "result": "JSON parsed; exactly five unique unordered pairs including Phase 12.4 encounter; 5/5 source archive SHA-256 hashes; 10/10 exact TLE line-pair SHA-256 hashes; 5/5 stored-to-replay TCA and miss differences recomputed; 5/5 replay-to-zero-burn miss differences recomputed; 5/5 hook-use and repeatability assertions present; all five comparison_status values available.",
+      "limits": "Recorded replay and two-body numerical results were independently cross-checked against the report arithmetic and deterministic fixture regression. Historical source exports are the provenance source; CelesTrak was not contacted."
+    },
+    "orbit_refinement_failure_investigation": {
+      "test_id": "tests.test_trajectory_screening.TcaReferenceTests.test_identical_trajectories_have_zero_separation_but_no_unique_tca",
+      "observed": "minimize_relative_distance returns invalid, reason_code non_unique_tca_flat_distance, miss_distance_km 0.0, offset_seconds None for identical states throughout [0, 30] s.",
+      "contract": "The solver detects a flat distance interval and intentionally withholds TCA because infinitely many epochs share the same minimum. It preserves the known zero miss distance. The solver implementation is consistent with the non-unique-TCA contract; the old test expectation of valid or boundary was incorrect.",
+      "change": "Renamed and corrected the test to assert invalid/non_unique_tca_flat_distance, zero miss distance, and no TCA. Existing non-finite-state and invalid-propagation tests continue to reject unrelated invalid cases.",
+      "verification": "Corrected test passes; all 12 TcaReferenceTests and all 34 trajectory-screening tests pass.",
+      "original_failing_test_id": "tests.test_trajectory_screening.TcaReferenceTests.test_identical_trajectories_have_zero_separation"
+    }
+  },
+  "files_changed": [
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_trajectory_screening.py",
+    "backend/exports/evaluations/phase_12_5_real_tle_baseline_validation.json"
+  ],
+  "limitations": [
+    "Historical source exports were marked partial overall; every selected source event and two-track replay was valid.",
+    "Recorded CelesTrak provenance was used without network refresh or external verification.",
+    "The five encounters are a deterministic convenience sample, not a representative corpus.",
+    "Near-zero differences in this sample do not validate SGP4/two-body equivalence generally.",
+    "Baseline thresholds remain unvalidated diagnostics.",
+    "No covariance/HBR-backed Foster Pc before/after calculation was performed; no collision-risk reduction or operational safety claim follows."
+  ]
+}

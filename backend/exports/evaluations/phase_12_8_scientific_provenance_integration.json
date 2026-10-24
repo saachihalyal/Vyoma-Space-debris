@@ -1,0 +1,157 @@
+{
+  "phase": "12.8",
+  "title": "Scientific provenance and event-status integration verification",
+  "status": "completed_with_event_job_provenance_correction",
+  "objective": "Verify consistency of scientific provenance, event identity, screening status, Pc availability, and maneuver-result status across offline application paths. Algorithms were not redesigned.",
+  "workflow_audit": [
+    {
+      "step": "Physical screening results, job status, and proxy distinction",
+      "files": [
+        "backend/app/main.py",
+        "backend/app/services/trajectory_screening.py",
+        "src/App.jsx",
+        "src/utils/screeningRefreshPolicy.js",
+        "src/utils/maneuverSelection.js",
+        "src/components/UI/ManeuverScreeningContext.js"
+      ],
+      "finding": "Physical event selection is resolved from the accepted screening result, rejects duplicate or malformed IDs, and does not fall through from an explicitly selected proxy to an unrelated physical event. Partial accepted results retain their job identity and display an incomplete-coverage note. A later failed attempt remains separate from the prior accepted result. Test lifecycle jobs mock the conjunction runner; fixture screening calls in maneuver research patch and assert the prediction, anomaly, and comparison hooks before each call."
+    },
+    {
+      "step": "Maneuver request and result association",
+      "files": [
+        "backend/app/main.py",
+        "src/api/ssaClient.js",
+        "src/App.jsx",
+        "src/components/UI/ManeuverBaselineComparison.js"
+      ],
+      "finding": "The backend resolves the event from the supplied screening job and uses stored authoritative event data. The maneuver response now includes screening_job_id; the client checks both response screening job ID and event ID before returning the result. UI rendering remains bound to the current event and job and reports available_with_warning as warning-qualified research output."
+    },
+    {
+      "step": "Covariance, HBR, source Pc, and scenario Pc",
+      "files": [
+        "backend/app/services/cdm_ingestion.py",
+        "backend/app/services/event_pc_inputs.py",
+        "backend/app/services/collision_probability.py",
+        "src/components/UI/CollisionPcSummary.js"
+      ],
+      "finding": "The existing input contract validates event/object identity, TCA epoch, state frame and units, state vectors, miss-distance geometry, covariance metadata and matrices, HBR, and explicit covariance-independence assumptions. Source-reported CDM Pc remains distinct from user-entered synthetic scenario Pc; unavailable/invalid statuses are not emitted as zero. The Foster implementation is unchanged."
+    },
+    {
+      "step": "Report generation and job provenance",
+      "files": [
+        "backend/app/main.py",
+        "backend/app/services/reports.py",
+        "backend/tests/test_report_status.py"
+      ],
+      "finding": "CSV exports include screening_job_id in export metadata. Selected event and maneuver PDFs are resolved from the requested job, but previously did not print the job ID. The selected-job routes now pass the requested job ID into the report summary, and event PDFs print it alongside the deterministic event key and screening completion status."
+    }
+  ],
+  "reproduced_defects": [
+    {
+      "id": "selected_event_report_omits_screening_job_identity",
+      "severity": "provenance",
+      "reproduction": "The selected event and maneuver PDF endpoints correctly loaded an event and maneuver result from the requested job, but the rendered PDF had no screening job ID. The CSV export metadata already included it, so the PDF did not carry the same explicit job association as its API route/source.",
+      "correction": "Both job-bound PDF routes now add the requested screening_job_id to a copied screening summary. Event reports render the job ID, deterministic event key, and completion status. A regression checks the rendered report text and API renderer handoff.",
+      "regression": "backend/tests/test_report_status.py::MissionReportStatusTests.test_event_report_prints_screening_job_identity and backend/tests/test_report_status.py::SelectedJobEventReportTests.test_selected_event_pdf_uses_stored_job_event_without_rescreening; backend/tests/test_maneuver_research.py asserts the maneuver assessment PDF includes the requested screening job ID."
+    },
+    {
+      "id": "maneuver_response_job_identity_not_returned_or_checked",
+      "severity": "cross_layer_identity",
+      "reproduction": "The maneuver API response included event_id inside its result but omitted the screening job ID. The frontend associated the result with the request's local job context without being able to verify a returned job identity.",
+      "correction": "The API now returns screening_job_id. The client rejects responses whose job ID or result event ID differs from the request. Deterministic frontend tests cover both mismatches.",
+      "regression": "tests/catalogLifecycle.test.js::maneuver evaluation rejects response event or screening job identity mismatches and backend/tests/test_maneuver_research.py asserts job ID in complete and partial maneuver responses."
+    }
+  ],
+  "requested_cases": {
+    "A_valid_physical_event_with_matching_tca_covariance_hbr": "Covered by existing deterministic physical-event/CDM and scenario fixtures; tests assert available Pc and provenance through the calculation/API and separate source/scenario presentation. No operational encounter is implied.",
+    "B_mismatched_event_identity_epoch_frame_units_vectors_or_miss_geometry": "Phase 12.7 event-input regressions cover event and ordered object identity, state object ID, epoch, frame/units, malformed state vectors, and disagreement between state separation and miss distance; API mismatch returns 422 without persisting a calculated scenario Pc.",
+    "C_partial_screening_job": "Backend partial-job maneuver regression confirms event ID, job ID, warning-qualified response, and storage association. Frontend context rendering explicitly shows partial status and limited coverage.",
+    "D_failed_or_empty_attempt_after_prior_accepted_result": "Frontend lifecycle tests verify a failed replacement attempt preserves the previously accepted events, job, and selected event. Backend lifecycle tests distinguish mocked failed and completed-empty jobs; a completed-empty result is not an event assessment.",
+    "E_heuristic_proxy_with_physical_event": "Selection regression proves an explicitly selected proxy cannot resolve to a physical event and an unmatched proxy remains empty. Maneuver backend rejects proxy records with 422.",
+    "F_missing_covariance_or_hbr": "Foster input tests assert missing uncertainty inputs return unavailable/reason-coded results; frontend and report tests keep the value unavailable and do not substitute zero.",
+    "G_available_source_pc_unavailable_scenario_pc": "Frontend and report regressions assert source Pc remains numeric/available while scenario Pc remains unavailable with its own status/reasons.",
+    "H_available_scenario_pc_unavailable_source_pc": "Frontend and report regressions assert scenario Pc remains labeled as a synthetic research scenario while source Pc remains unavailable with its own status/reasons.",
+    "I_numerically_available_warning_qualified_maneuver": "Backend maneuver API and PDF tests assert available_with_warning and warning/discrepancy interpretation. UI distinguishes simulated comparison from validated improvement and reports Pc comparison as not calculated.",
+    "J_missing_or_cross_job_event_selection": "Backend maneuver tests reject missing jobs and events not in the requested job. Frontend selection and API-client tests reject stale/cross-job responses; job-bound report paths reject events absent from their job."
+  },
+  "tests": {
+    "backend_focused": {
+      "command_from_backend": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_screening_jobs tests.test_collision_probability tests.test_cdm_ingestion tests.test_report_status",
+      "result": "83 tests passed, 0 failed (Ran 83 tests in 7.866 s)",
+      "notes": "The expected injected exception traceback is printed by the screening-job regression that verifies failed status is preserved. Starlette/httpx deprecation warning is emitted. Maneuver research fixture screenings use _screen_with_ai_hooks_stubbed, which replaces and asserts predict_from_physics, predict_orbital_anomaly, and compare_ml_and_physics immediately before every screen_tle_records invocation; tests assert the stubs are used."
+    },
+    "frontend_focused": {
+      "command": "node --test tests/maneuverScreeningContext.test.js tests/maneuverSelection.test.js tests/maneuverBaselineComparison.test.js tests/catalogLifecycle.test.js tests/reportDownloads.test.js tests/collisionPcRendering.test.js",
+      "result": "65 passed, 0 failed, 0 skipped (Ran in 4.844 s)",
+      "notes": "Expected diagnostic output includes deliberately malformed or inaccessible local watchlist fixtures and mocked screening polling. An earlier run before correcting a stale mocked response failed because that fixture omitted the newly required response screening_job_id; the fixture was updated and the exact command then passed."
+    },
+    "production_build": {
+      "command": "npm run build",
+      "result": "passed; Vite 6.4.4 transformed 3,201 modules and built in 45.60 s",
+      "notes": "Vite reports the existing large JavaScript chunk warning (1,755.16 kB minified)."
+    },
+    "report_validation": {
+      "command": "Python JSON parse and required case, regression, final test-result, and execution-control assertions for phase_12_8_scientific_provenance_integration.json",
+      "result": "passed"
+    }
+  },
+  "execution_controls": {
+    "network_accessed": false,
+    "packages_installed": false,
+    "live_services_or_live_screening_jobs_started": false,
+    "actual_ai_model_inference": false,
+    "fixture_screen_tle_records_invocations": "The maneuver-research fixture helper performs the test-defined fixture screening calls with all three downstream ESA prediction/anomaly/comparison hooks replaced and asserted immediately before each call; the tests assert stub use. Screening lifecycle tests mock main.conjunctions and do not run trajectory screening.",
+    "model_artifacts_or_thresholds_changed": false,
+    "propagation_maneuver_or_foster_pc_algorithms_changed": false
+  },
+  "browser_behavior": {
+    "status": "not_verified",
+    "detail": "Frontend behavior was checked with Node rendering and integration tests plus a production build. No browser session or interactive UI inspection was performed."
+  },
+  "limitations": [
+    "Verification used deterministic fixtures, mocked API job storage, and locally stored archived test data; it does not establish behavior against live operational feeds or services.",
+    "Imported CDM labels and covariance/HBR provenance are not authenticated by this application.",
+    "A warning-qualified maneuver sweep and scenario Pc remain exploratory research outputs; no maneuver effectiveness, Pc reduction, collision-risk reduction, or operational safety is established.",
+    "No post-maneuver Pc is calculated by the maneuver workflow.",
+    "Interactive browser behavior remains unverified."
+  ],
+  "files_inspected": [
+    "backend/app/main.py",
+    "backend/app/models.py",
+    "backend/app/services/trajectory_screening.py",
+    "backend/app/services/conjunction.py",
+    "backend/app/services/cdm_ingestion.py",
+    "backend/app/services/event_pc_inputs.py",
+    "backend/app/services/collision_probability.py",
+    "backend/app/services/reports.py",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_screening_jobs.py",
+    "backend/tests/test_collision_probability.py",
+    "backend/tests/test_cdm_ingestion.py",
+    "backend/tests/test_report_status.py",
+    "src/App.jsx",
+    "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js",
+    "src/utils/screeningRefreshPolicy.js",
+    "src/components/UI/ManeuverScreeningContext.js",
+    "src/components/UI/ManeuverBaselineComparison.js",
+    "src/components/UI/CollisionPcSummary.js",
+    "tests/catalogLifecycle.test.js",
+    "tests/maneuverScreeningContext.test.js",
+    "tests/maneuverSelection.test.js",
+    "tests/maneuverBaselineComparison.test.js",
+    "tests/reportDownloads.test.js",
+    "tests/collisionPcRendering.test.js",
+    "backend/exports/evaluations/phase_12_6_collision_to_maneuver_validation.json",
+    "backend/exports/evaluations/phase_12_7_pc_integrity_validation.json"
+  ],
+  "files_changed": [
+    "backend/app/main.py",
+    "backend/app/services/reports.py",
+    "backend/tests/test_maneuver_research.py",
+    "backend/tests/test_report_status.py",
+    "src/api/ssaClient.js",
+    "tests/catalogLifecycle.test.js",
+    "backend/exports/evaluations/phase_12_8_scientific_provenance_integration.json"
+  ]
+}

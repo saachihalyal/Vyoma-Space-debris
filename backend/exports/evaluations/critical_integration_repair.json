@@ -1,0 +1,185 @@
+{
+  "assessment_timestamp_utc": "2026-10-17T18:39:33Z",
+  "repository_path": "C:/Users/NARSINH K/Documents/Codex/2026-10-04/you-are-modifying-an-existing-research/outputs/space-debris-ssa-platform",
+  "overall_status": "BLOCKED",
+  "decision": "The current frontend correctly rejects the response from the running backend because the response omits its screening-job ID and exposes an older maneuver response schema. The checked-out backend implementation passes the same archived event/job case, but the running backend was not restarted per instruction. Live TLE events still lack covariance and HBR. A separate explicitly synthetic research-scenario Pc path is available and passed API-level checks; no browser interaction was possible.",
+  "files_inspected": [
+    "README.md", "package.json", "vite.config.js", "src/App.jsx", "src/api/ssaClient.js",
+    "src/utils/maneuverSelection.js", "src/utils/screeningRefreshPolicy.js",
+    "src/components/UI/ManeuverAiSummary.js", "src/components/UI/CollisionPcSummary.js",
+    "backend/app/main.py", "backend/app/services/trajectory_screening.py",
+    "backend/app/services/cdm_ingestion.py", "backend/app/services/event_pc_inputs.py",
+    "backend/app/services/collision_probability.py", "backend/app/ai/maneuver_ranker.py",
+    "backend/tests/test_maneuver_research.py", "backend/tests/test_screening_jobs.py",
+    "backend/tests/test_archived_job_restore.py", "backend/tests/test_report_status.py",
+    "backend/tests/test_collision_probability.py", "backend/tests/test_cdm_ingestion.py",
+    "backend/tests/test_trajectory_screening.py", "tests/catalogLifecycle.test.js",
+    "tests/maneuverSelection.test.js", "tests/reportDownloads.test.js", "tests/collisionPcRendering.test.js",
+    "backend/exports/screening-job-0c5ce83aa5244312bf38a460d2163a76.json",
+    "backend/exports/screening-job-2a50f67a597442279de1d5178468953d.json",
+    "backend/exports/screening-job-345893c556b4440580d7326fd13d8619.json",
+    "backend/exports/screening-job-8fa7230ce99e4182afc2c1a8506130bf.json",
+    "backend/exports/screening-job-a6979ca02a9544c9bb2f69b261b04ebf.json",
+    "backend/ml_data/train_data.zip", "backend/ml_data/maneuver_rank_synthetic_v1.csv",
+    "backend/exports/evaluations/phase_14_1_collision_ai_diagnosis.json",
+    "backend/exports/evaluations/phase_14_collision_ai_implementation.json",
+    "backend/exports/evaluations/phase_15_maneuver_ai_implementation.json",
+    "backend/exports/evaluations/phase_16_runtime_browser_verification.json",
+    "backend/exports/evaluations/phase_17_browser_demonstration_verification.json"
+  ],
+  "maneuver_investigation": {
+    "root_cause": "The frontend is connected to http://127.0.0.1:8001, as confirmed in the Vite-transformed src/api/ssaClient.js. It requests POST /api/conjunctions/{event_id}/maneuver?screening_job_id={selected_job_id} with the selected event JSON. The running API response has no top-level screening_job_id. The frontend therefore rejects it at its identity guard. This is a runtime API contract/version mismatch, not evidence of a conflicting event ID or a reason to bypass provenance validation.",
+    "selected_event_and_job_sources_in_checked_out_frontend": {
+      "event": "selectedEvent is resolved by event ID against the accepted platform.conjunctions physical-event list; selection reconciliation clears selections absent from the newly accepted result.",
+      "accepted_job_id": "platform.conjunctionStatus.job_id, set from an accepted completed or partial screening result.",
+      "request": "getManeuver serializes the resolved physical event as the POST body and passes the accepted screening job ID in the query string.",
+      "stale_response_guard": "App.jsx increments a maneuver request generation and aborts the prior request; only the current generation can update state. Existing selection tests cover superseded responses.",
+      "backend_lookup_in_checked_out_source": "main.maneuver resolves the event from _screening_jobs[screening_job_id], validates stored event and physics identities, evaluates the stored event and returns that same screening_job_id. It does not rerun screening."
+    },
+    "exact_live_runtime_identifiers": {
+      "fixture_job_id_sent": "2a50f67a597442279de1d5178468953d",
+      "fixture_event_id_sent": "CA-0E45D17A7FD97444E98C",
+      "response_event_id": "CA-0E45D17A7FD97444E98C",
+      "response_screening_job_id": null,
+      "identity_finding": "The event ID matched. The response omitted a job ID; there was no different response job ID to compare."
+    },
+    "live_api_evidence": {
+      "frontend_url": "http://127.0.0.1:5173",
+      "backend_url_used_by_frontend": "http://127.0.0.1:8001",
+      "backend_openapi": "GET /openapi.json returned HTTP 200, title ORION SSA Research API, version 1.3.0.",
+      "archive_restore": "POST /api/conjunction-jobs/2a50f67a597442279de1d5178468953d/restore restored the existing local archive in the running process; this did not start screening.",
+      "maneuver_request": "POST /api/conjunctions/CA-0E45D17A7FD97444E98C/maneuver?screening_job_id=2a50f67a597442279de1d5178468953d&lead_seconds=300&burn_magnitudes_m_s=0.01,0.05 with the stored archived event JSON returned HTTP 200.",
+      "response_shape": "Top-level keys were success, timestamp, data, message; screening_job_id was absent. The old data schema included result_type, physics_candidate_status, ml_result, comparison_result, baseline_reference_comparison, and candidates. The model status was not_implemented. Thirteen physical rows were returned, including the zero-burn row, demonstrating that the old API did run its candidate evaluator.",
+      "process_source": "The backend process command line was not accessible in this environment, so its exact source checkout could not be established. The observed response is incompatible with the checked-out backend contract below."
+    },
+    "checked_out_backend_fixture_result": {
+      "method": "FastAPI TestClient, archive restore plus the same event/job request; no provider, screening job, or external service call.",
+      "http_status": 200,
+      "request_event_id": "CA-0E45D17A7FD97444E98C",
+      "response_event_id": "CA-0E45D17A7FD97444E98C",
+      "request_screening_job_id": "2a50f67a597442279de1d5178468953d",
+      "response_screening_job_id": "2a50f67a597442279de1d5178468953d",
+      "maneuver_status": "available_with_warning",
+      "physics_candidate_status": "evaluated",
+      "maneuver_model_status": "available",
+      "physical_candidate_rows_including_zero_burn": 13,
+      "zero_burn_comparison_status": "within_comparison_tolerance",
+      "pc_before": null,
+      "pc_after": null,
+      "interpretation": "The checked-out backend loads the shipped model and evaluates physical candidates. This is a deterministic archived TLE replay, not current orbital data or validation of maneuver effectiveness."
+    },
+    "code_change": "src/api/ssaClient.js now distinguishes an absent/empty response screening_job_id from a nonmatching ID and reports that the backend cannot confirm job provenance. Strict rejection remains in place. tests/catalogLifecycle.test.js adds a regression using the observed legacy response shape. This diagnostic correction does not make the incompatible running service's maneuver result acceptable or restore the missing model output.",
+    "cross_job_protection": "The checked-out backend resolves by requested job and event and returns 404 if the event is absent from that job. tests.test_maneuver_research.ResearchManeuverTests.test_maneuver_api_uses_valid_event_and_bounded_configuration covers a missing/expired job and event not in the supplied job. Frontend tests retain response job/event mismatch rejection."
+  },
+  "pdf_provenance": {
+    "checked_out_source": "Both selected-event and maneuver PDF routes require the selected job/event pair and build the report using the event and stored maneuver result from that job.",
+    "verification": "The executed backend test group tests.test_report_status and tests.test_maneuver_research passed; existing tests assert job-bound PDF content and event/job identity. No browser-managed download was performed in this assessment.",
+    "running_backend": "No PDF was downloaded from the incompatible live server during this assessment."
+  },
+  "pc_investigation": {
+    "documented_live_or_reference_event_found": false,
+    "archived_physical_events": "Inspected five local screening-job archives. Their physical event records have no covariance matrices or HBR values and no available collision probability. The examined event CA-0E45D17A7FD97444E98C reports collision_probability.status=unavailable, pc=null, reason codes NO_COVARIANCE and HBR_UNAVAILABLE; physics covariance and hard_body_radius fields are unavailable/null.",
+    "local_historical_dataset": "backend/ml_data/train_data.zip contains only train_data.csv (103 columns). It includes historical covariance-derived fields and per-object sigma/covariance terms, but no HBR column. The bundled CSV does not contain the object designators and absolute event TCA needed to bind a row to a current screening event, and the ZIP has no accompanying raw CDM or schema document establishing supported live-event frame/epoch/unit provenance. It was not used as a Pc input.",
+    "supported_ingestion": "The checked-out API supports event-bound CCSDS CDM import and an explicitly assumed separate research-scenario Pc route. CDM import validates the two segments, object identifiers, TCA, frame, covariance matrix/units and HBR. The Foster 2D implementation requires compatible covariance inputs and an explicit independence assumption when cross-correlation is absent.",
+    "synthetic_scenario_test": {
+      "classification": "SYNTHETIC RESEARCH SCENARIO ONLY",
+      "source_fixture": "backend/tests/test_cdm_ingestion.py::physical_event and diagonal_position_covariance, reused by the existing scenario API test.",
+      "api_route": "POST /api/conjunction-jobs/scenario-research-test/events/EV-INPUT-TEST/scenario-pc via in-process FastAPI TestClient.",
+      "event_id": "EV-INPUT-TEST",
+      "screening_job_id": "scenario-research-test",
+      "tca_utc": "2025-01-01T00:00:00+00:00",
+      "coordinate_frame": "TEME",
+      "position_covariance_each_object": "Diagonal 3x3 matrix, 0.1 km^2 on each diagonal; test-specified, not measured.",
+      "combined_hbr": "0.001 km; explicit user-entered assumption, not measured dimensions.",
+      "independence": "Explicitly assumed; no cross-correlation term included.",
+      "result_status": "available",
+      "calculated_scenario_pc": 0.0000024382718084254695,
+      "result_provenance": "scenario_collision_probability.provenance.is_synthetic=true; both covariance source types and HBR source type are synthetic; assumptions include RESEARCH SCENARIO ONLY.",
+      "source_pc": "Remains unavailable and separate from this scenario result.",
+      "frontend_evidence": "Collision Analysis binds collision_probability and scenario_collision_probability separately to CollisionPcSummary. tests/collisionPcRendering.test.js verifies missing Pc is not zero and synthetic Research scenario Pc is visibly separate. This is component/API-level evidence, not browser verification."
+    },
+    "live_pc_limitation": "Live TLE-derived events have no event-bound covariance for either object and no sourced combined HBR. Without compatible same-TCA covariance matrices, HBR provenance, and justified/explicit correlation assumptions, Foster Pc remains unavailable. The ESA historical log-risk output is not a substitute."
+  },
+  "screening_response_limit": {
+    "finding": "The response cap is intentional and partial status is the documented behavior when generated assessments exceed the requested limit.",
+    "checked_out_source": "backend/app/main.py slices returned_assessments to limit, records assessment_record_count, returned_assessment_record_count, assessment_records_truncated, assessment_response_limit_reached, and appends assessment_response_limit_reached to partial_reasons. It preserves computation_status separately and sets result/completion/coverage status to partial.",
+    "frontend_request": "The client requests a bounded limit of 120 for the screening job workflow.",
+    "regression": "tests.test_trajectory_screening.TrajectoryPipelineTests.test_screening_response_cap_is_marked_partial_and_reports_full_and_returned_counts verifies cap metadata and the partial reason.",
+    "assessment": "For a reported 165 generated close approaches and 120 returned records, 45 records are omitted by the configured response cap; this is not a claim that the displayed 120 contain all generated assessments. No metadata or cap defect was reproduced, so the cap and partial status were left unchanged."
+  },
+  "scientific_limitations": {
+    "collision_ai": "The ESA model predicts historical ESA log-risk. Phase 14.1 evaluation found zero of 145 held-out high-risk labels detected at the evaluated threshold. It is not a validated alert model or Foster Pc estimator.",
+    "maneuver_ai": "The model is trained on synthetic simulator-labelled scenarios. Phase 15 reported 3/12 held-out exact best-candidate matches and worse mean miss-distance regret than the minimum-delta-v baseline. It is experimental ranking support, not maneuver effectiveness or operational safety.",
+    "maneuver_physics": "The candidate engine is a warning-qualified two-body research simulation; it does not calculate post-maneuver Pc or establish operational feasibility.",
+    "archive": "The archived maneuver demonstration job is partial and contains historical TLE-derived data retrieved 2026-10-14. Do not present it as current orbital conditions."
+  },
+  "automated_checks": [
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research tests.test_screening_jobs tests.test_archived_job_restore tests.test_report_status tests.test_collision_probability tests.test_cdm_ingestion tests.test_trajectory_screening (from backend)",
+      "result": "129 tests passed; 0 failed. Expected injected screening-failure traces and an httpx/Starlette deprecation warning appeared. Tests use local fixtures and mocks; no screening was launched against a live provider."
+    },
+    {
+      "command": "node --test tests/catalogLifecycle.test.js",
+      "result": "35 tests passed; includes the new missing-job-ID compatibility diagnostic regression, genuine event/job mismatch rejection, selection association, and stale-result handling."
+    },
+    {
+      "command": "npm test",
+      "result": "106 tests passed; 0 failed. Expected malformed/inaccessible storage warnings were exercised by tests."
+    },
+    {
+      "command": "npm run build",
+      "result": "Passed; Vite transformed 3,203 modules. Existing large-chunk advisory remains (main bundle approximately 1.76 MB minified)."
+    },
+    {
+      "command": "PowerShell here-string piped to backend/.venv/Scripts/python.exe -B - (FastAPI TestClient archive maneuver harness)",
+      "result": "Restored the existing archive in an isolated in-process test app and posted the matching event/job pair. HTTP 200; matching IDs; warning-qualified physical results; model available; zero-burn comparison present. No screening/provider call."
+    },
+    {
+      "command": "PowerShell here-string piped to backend/.venv/Scripts/python.exe -B - (FastAPI TestClient synthetic scenario-Pc harness)",
+      "result": "HTTP 200; finite synthetic scenario Pc 2.4382718084254695e-06; TCA/frame/object covariance/HBR and synthetic provenance returned; source Pc remained separate."
+    },
+    {
+      "command": "PowerShell here-string piped to node --input-type=module - (React static render of CollisionPcSummary with the returned synthetic scenario result)",
+      "result": "Passed assertions for displayed value 2.43827e-6, Research scenario Pc label, synthetic provenance, separation warning, and source Pc NO_COVARIANCE/HBR_UNAVAILABLE. This is static component rendering, not browser interaction."
+    },
+    {
+      "command": "Invoke-RestMethod http://127.0.0.1:8001/openapi.json; POST existing archive restore; POST stored event to live maneuver route",
+      "result": "OpenAPI HTTP 200. Existing job restored without screening. Live maneuver API HTTP 200 but omitted screening_job_id and returned an older schema with ml_result.status=not_implemented; frontend must reject it."
+    },
+    {
+      "command": "await cua.getState()",
+      "result": "No browser or app surfaces available. No actual browser interaction was performed."
+    }
+  ],
+  "files_changed": [
+    {"path": "src/api/ssaClient.js", "change": "Distinguishes a missing/blank response screening_job_id from a nonmatching ID. Both remain rejected."},
+    {"path": "tests/catalogLifecycle.test.js", "change": "Adds a regression using the observed old response shape with a missing job ID; existing mismatch regression remains."},
+    {"path": "backend/exports/evaluations/critical_integration_repair.json", "change": "This evidence report."},
+    {"path": "dist/", "change": "Generated production build output from the requested npm run build; no hand edits."}
+  ],
+  "production_science_config_and_model_changes": "No backend, propagation, maneuver mathematics, collision probability, model artifact, model threshold, or configuration changes were made. No new screening job was started. The existing archived job was restored in the running backend and the archived event was submitted for maneuver assessment; those operations were local and job-bound.",
+  "runtime_browser_verification": {
+    "actual_browser_available": false,
+    "browser_interactions": false,
+    "frontend_http": "Vite returned the app and transformed client module at 127.0.0.1:5173; its injected VITE_API_BASE is 127.0.0.1:8001.",
+    "backend_http": "The running API at 127.0.0.1:8001 returned OpenAPI and the archived maneuver request. Port 8000 was not serving the configured app.",
+    "manual_visible_labels_and_downloads": "Not verified. No screenshot, navigation, click, browser console, or browser-managed PDF download was captured.",
+    "service_lifecycle": "Neither running service was restarted, stopped, or reconfigured."
+  },
+  "remaining_blockers": [
+    "The running backend at port 8001 must serve the checked-out job-bound maneuver API contract before the live UI can accept maneuver results. The response must include screening_job_id and actual model/physics fields. This requires replacing/restarting that service, which was explicitly not done.",
+    "The current live backend also reports its maneuver model as not_implemented; current workspace TestClient verifies the local artifact-backed implementation, but that is not evidence the running process loaded it.",
+    "No genuine documented live or reference event with both supported object covariances and sourced HBR was found. Live event Pc therefore remains unavailable.",
+    "Actual browser workflow and PDF downloads remain unverified because no browser surface was available."
+  ],
+  "report_validation": {
+    "status": "PASS",
+    "checks": [
+      "JSON parsed successfully and required top-level data and reported identities were validated after write.",
+      "Reported live and TestClient identifiers are checked for exact request/response agreement or explicit absence.",
+      "The synthetic Pc result is separately labelled and has synthetic provenance.",
+      "Browser verification is explicitly recorded as not performed.",
+      "Test counts match executed commands."
+    ]
+  }
+}

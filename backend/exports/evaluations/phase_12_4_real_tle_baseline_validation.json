@@ -1,0 +1,208 @@
+{
+  "phase": "12.4",
+  "title": "Real-TLE zero-burn baseline validation",
+  "status": "completed_with_execution_constraint_incident_disclosed",
+  "dataset_provenance": {
+    "source_export": "backend/exports/screening-job-8fa7230ce99e4182afc2c1a8506130bf.json",
+    "source_export_sha256": "e81180b85a3b50d5178a1284f70eb02b085fa7f9a9b4d42820ab00981a74b5e2",
+    "source_job_id": "8fa7230ce99e4182afc2c1a8506130bf",
+    "source_job_created_at_utc": "2026-10-13T12:10:30.861421+00:00",
+    "source_job_status": "partial",
+    "note": "The selected event itself is valid. The overall stored 120-object screening job was partial for invalid assessments; it is used here only as an offline source of exact TLE and event provenance. No network request was made."
+  },
+  "tle_records": [
+    {
+      "name": "COSMOS 2251",
+      "catalog_id": "22675",
+      "tle_epoch_field": "26285.93214546",
+      "retrieved_at_utc": "2026-10-13T12:10:21.534664+00:00",
+      "source_group": "cosmos_debris",
+      "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=cosmos-2251-debris&FORMAT=TLE",
+      "retrieval_http_status_recorded": 200,
+      "line1": "1 22675U 93036A   26285.93214546  .00000073  00000+0  35918-4 0  9999",
+      "line2": "2 22675  74.0370 120.0610 0023996 132.3110 228.0080 14.33273188741311",
+      "line_pair_sha256_with_lf_separator": "347248b9a42f256b41f192fb7181dd5417c109cf02ae44ab4cd2b46696d8c5ed",
+      "normalized_record_hash": "c1055f310e756a29bbc8db8bbe971996399235607700cafe464724571f3f8335",
+      "raw_record_hash": "aa3c7f39402923a70d59ea8aad4557ed6fd21a5cad7e92cbe194682fd65e91f1",
+      "raw_response_hash": "1ee37bc96e35283d2d9176eb7c81806547a6062bc8530de828443ceda20483f4"
+    },
+    {
+      "name": "IRIDIUM 33 DEB",
+      "catalog_id": "33870",
+      "tle_epoch_field": "26285.96568532",
+      "retrieved_at_utc": "2026-10-13T12:10:21.131364+00:00",
+      "source_group": "iridium_debris",
+      "source_url_recorded_in_archive": "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-33-debris&FORMAT=TLE",
+      "retrieval_http_status_recorded": 200,
+      "line1": "1 33870U 97051AP  26285.96568532  .00001809  00000+0  48993-3 0  9993",
+      "line2": "2 33870  86.3691 287.7128 0018141 248.6443 139.4894 14.47132973925350",
+      "line_pair_sha256_with_lf_separator": "196cf8ed42de2e621ad79fcc4ea72460fb129befe98a9339edffd8247d22dbc7",
+      "normalized_record_hash": "c9ec12390efdeadcf79459dfde04affa22c2032aee14a07a32069e028c80dad4",
+      "raw_record_hash": "f785369581edbbba9ce8b41041a874644bdbdeeb5054a36c72da1caaeecc6263",
+      "raw_response_hash": "8e4b8c80f2c4e71d78eac0fe34cbbff3be763991ff21d5f768ac8f017c70c0dc"
+    }
+  ],
+  "screening_configuration": {
+    "limit": 120,
+    "fixed_start_utc": "2026-10-13T12:10:22.590000+00:00",
+    "horizon_hours": 24.0,
+    "sample_step_seconds": 60,
+    "screening_threshold_km": 25.0,
+    "screening_method": "SGP4 TEME trajectory screening with bounded golden-section TCA refinement",
+    "screening_method_version": "1.0",
+    "propagator": "python-sgp4 SGP4/SDP4",
+    "propagator_version": "2.27",
+    "gravity_model": "WGS72",
+    "output_frame": "TEME",
+    "time_scale": "UTC calendar input converted to split Julian date for SGP4; no TEME frame transform",
+    "position_units": "km",
+    "velocity_units": "km/s",
+    "two_record_replay_result": {
+      "valid_tracks": 2,
+      "candidate_pairs": 1,
+      "close_approaches": 1,
+      "invalid_assessments": 0,
+      "event_status": "valid"
+    }
+  },
+  "physical_event": {
+    "stored_source_event_id": "CA-AC94AB3E15651724C50B",
+    "replayed_event_id": "CA-2BEA6E43B15E4188250E",
+    "stored_source_event_tca_utc": "2026-10-13T12:27:42.510342+00:00",
+    "stored_source_event_miss_distance_km": 24.124867467555447,
+    "stored_source_relative_position_secondary_minus_primary_km": [
+      8.716270725226877,
+      21.14745474814663,
+      -7.669485813713891
+    ],
+    "stored_source_relative_velocity_secondary_minus_primary_km_s": [
+      -4.16832278772291,
+      6.282419020134512,
+      12.58155526052128
+    ],
+    "replayed_event_tca_utc": "2026-10-13T12:27:42.509763+00:00",
+    "replayed_event_miss_distance_km": 24.12486822956812,
+    "replay_minus_stored_tca_seconds": -0.000579,
+    "replay_minus_stored_miss_distance_km": 7.62012673e-7,
+    "replayed_relative_position_secondary_minus_primary_km": [
+      8.718684194830985,
+      21.143817231384674,
+      -7.67677053783882
+    ],
+    "replayed_relative_velocity_secondary_minus_primary_km_s": [
+      -4.1683227719439735,
+      6.282419004714228,
+      12.581555273508966
+    ],
+    "event_identity_note": "The current replay computes an event ID from the TLE-pair identity, microsecond UTC TCA, and method version. Its sub-millisecond TCA difference from the stored event therefore yields a different event ID. Both results use the same two recorded TLE element lines; the source does not establish why the historical serialized result differs at this precision."
+  },
+  "maneuver_zero_burn": {
+    "input_event": "current SGP4 replay event CA-2BEA6E43B15E4188250E",
+    "solver_call": "optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,))",
+    "status": "available_with_warning",
+    "reason_code": "BASELINE_COMPARISON_TOLERANCE_UNVALIDATED",
+    "simulator": "Earth two-body point-mass RK4, mu=398600.4418 km^3/s^2; 5 s integration and closest-approach grid; convergence checked at 2.5 s",
+    "tca_state_frame_and_units": "TEME; position km; velocity km/s; TCA and burn epochs UTC",
+    "burn_epoch_utc": "2026-10-13T12:22:42.509763+00:00",
+    "search_start_utc": "2026-10-13T12:22:42.509763+00:00",
+    "search_end_utc": "2026-10-13T12:57:42.509763+00:00",
+    "search_interval_seconds_from_burn": [
+      0.0,
+      2100.0
+    ],
+    "sample_step_seconds": 5.0,
+    "sample_count": 421,
+    "zero_burn_tca_utc": "2026-10-13T12:27:42.509763+00:00",
+    "zero_burn_miss_distance_km": 24.124868229568857,
+    "zero_burn_relative_position_secondary_minus_primary_km": [
+      8.71868419482962,
+      21.143817231385583,
+      -7.676770537840184
+    ],
+    "zero_burn_relative_velocity_secondary_minus_primary_km_s": [
+      -4.168322771943905,
+      6.282419004714125,
+      12.581555273508759
+    ],
+    "baseline_reference_comparison": {
+      "status": "within_comparison_tolerance",
+      "miss_distance_difference_km": 7.389644451905042e-13,
+      "absolute_miss_distance_difference_km": 7.389644451905042e-13,
+      "tca_offset_seconds": 0.0,
+      "absolute_tca_offset_seconds": 0.0,
+      "configured_miss_tolerance_km": 0.2412486822956812,
+      "configured_tca_tolerance_seconds": 5.0,
+      "warning_qualification_retained": true
+    },
+    "repeatability": {
+      "optimizer_called_twice_on_identical_replayed_event": true,
+      "candidate_results_equal": true,
+      "covered_by_test": "test_captured_real_tle_screening_event_has_repeatable_zero_burn_baseline"
+    }
+  },
+  "comparison_differences": {
+    "zero_burn_minus_sgp4_relative_position_km": [
+      1.819e-12,
+      2.727e-12,
+      -4.55e-13
+    ],
+    "zero_burn_minus_sgp4_relative_velocity_km_s": [
+      6.9e-14,
+      -1.07e-13,
+      -2.16e-13
+    ],
+    "note": "Differences are computed from the optimizer's zero-burn state and the replayed SGP4 event at the event TCA. Values at this magnitude reflect floating-point/numerical reconstruction for this fixture and should not be read as evidence that the propagation models are generally equivalent."
+  },
+  "interpretation": {
+    "earlier_hand_built_fixture_values_reproduced": false,
+    "result": "The earlier approximately 0.1846 km and 781 s mismatch did not recur for this TLE-derived encounter. The former fixture assigned a one-kilometre separation and identical state velocities by hand and had provenance method=fixture; it was not a conjunction event produced by SGP4 screening.",
+    "verified_findings": [
+      "The saved event contains a genuine, source-attributed pair of CelesTrak TLE records and an SGP4-derived physical event.",
+      "The current project screening code replayed the two records into one valid close approach under the archived fixed configuration.",
+      "For this encounter, zero-burn two-body closest approach is at the same sampled TCA and has a miss-distance difference at floating-point scale.",
+      "The output remains available_with_warning because the existing baseline thresholds are diagnostic and scientifically unvalidated."
+    ],
+    "root_cause_assessment": "The large prior values were specific to the artificial state fixture and are not representative of this TLE-derived encounter. Different force models remain a real methodological difference, but this pair does not establish their typical effect. The 0.000579 s discrepancy between the stored historical event and current SGP4 replay is unresolved and too small to explain or validate the prior large fixture result.",
+    "no_production_fix_justified": true,
+    "no_claim_of_model_equivalence_or_operational_safety": true,
+    "collision_probability_reduction_claim": false,
+    "pc_before_after_calculated": false
+  },
+  "constraint_incident": {
+    "model_inference_function_invoked_during_initial_exploratory_attempt": true,
+    "details": "An initial offline call to screen_tle_records was made without patching its downstream AI assessment hooks. The screening function invokes predict_from_physics and predict_orbital_anomaly once for the single event. This was unintended and violated the no-model-inference constraint. No later screening call used those hooks unpatched; the successful replay regression patched both functions to unavailable results.",
+    "live_screening_job_or_service_started": false,
+    "model_training_or_artifact_modification": false,
+    "follow_up_action": "Disclose this execution deviation; no further inference or live job was run."
+  },
+  "tests": {
+    "command": "From backend: .\\.venv\\Scripts\\python.exe -B -m unittest tests.test_maneuver_research.ResearchManeuverTests.test_captured_real_tle_screening_event_has_repeatable_zero_burn_baseline tests.test_maneuver_research.ResearchManeuverTests.test_zero_burn_baseline_is_repeatable_and_flagged_against_known_event_reference tests.test_maneuver_research.ResearchManeuverTests.test_baseline_within_existing_thresholds_is_explicit_but_not_validation tests.test_maneuver_research.ResearchManeuverTests.test_search_keeps_and_flags_a_minimum_at_the_end_boundary tests.test_trajectory_screening.TcaReferenceTests.test_linear_relative_motion_matches_analytic_tca_and_miss_distance tests.test_trajectory_screening.TrajectoryPipelineTests.test_distinct_valid_tles_have_distinct_states_and_keep_identity",
+    "result": "passed",
+    "passed": 6,
+    "failed": 0,
+    "warning": "StarletteDeprecationWarning: starlette.testclient currently uses httpx; no package was installed."
+  },
+  "files_changed": [
+    "backend/tests/test_maneuver_research.py",
+    "backend/exports/evaluations/phase_12_4_real_tle_baseline_validation.json"
+  ],
+  "production_code_changed": false,
+  "model_artifacts_changed": false,
+  "independent_validation": {
+    "export_sha256_recomputed_with_GetFileHash": "e81180b85a3b50d5178a1284f70eb02b085fa7f9a9b4d42820ab00981a74b5e2",
+    "json_validation": "passed with Python json parser",
+    "key_numerical_cross_checks": [
+      "Recomputed the archived screening-export SHA-256 and matched the recorded value.",
+      "Matched both TLE lines, line-pair hashes, raw-record hashes, and raw-response hashes against the stored event provenance.",
+      "Replayed the physical event with the recorded two TLEs and fixed screening configuration while AI assessment hooks were stubbed; event ID, TCA, and miss distance matched the report.",
+      "Re-ran zero-burn optimization on the replayed event and matched the reported TCA, miss distance, and baseline miss-distance delta."
+    ]
+  },
+  "limitations": [
+    "One TLE pair and one encounter do not validate general equivalence between SGP4/SDP4 and the two-body simulator.",
+    "TLEs are a historical captured sample from the repository export, not current operational data.",
+    "The source screening job was partial overall, although this pair's event and both tracks were valid.",
+    "No covariance/HBR-backed before/after Foster Pc was calculated; no collision-probability reduction or operational maneuver safety conclusion follows.",
+    "Existing baseline comparison tolerances remain unvalidated diagnostics."
+  ]
+}
