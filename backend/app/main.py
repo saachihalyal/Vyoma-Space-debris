@@ -36,6 +36,7 @@ from app.models import (
     ConjunctionAssessmentEvent,
     ManeuverAssessmentResponse,
     ReferenceManeuverRequest,
+    ResearchPcScenarioRequest,
     Provenance,
     ScenarioPcRequest,
     SnapshotStats,
@@ -1381,6 +1382,22 @@ async def calculate_event_scenario_pc(job_id: str, event_id: str, request: Scena
         "job_id": job_id,
         "data": stored,
         "message": "Scenario output uses explicit user-entered assumptions and is separate from source-supported physical Pc.",
+    }
+
+
+@app.post("/api/conjunction-jobs/{job_id}/events/{event_id}/research-pc-scenario")
+async def calculate_research_pc_scenario(job_id: str, event_id: str, request: ResearchPcScenarioRequest) -> dict:
+    _, _, event = _completed_job_event(job_id, event_id)
+    assessment = assess_automatic_research_pc(
+        event.physics_result, event.collision_probability, event.review_priority,
+        primary=event.primary, secondary=event.secondary,
+        covariance_policy=request.covariance_policy,
+        covariance_scale=request.covariance_scale, hbr_scale=request.hbr_scale,
+    )
+    return {
+        "success": assessment.status in {"prior_based_research_estimate", "event_specific_foster_available"},
+        "job_id": job_id, "event_id": event_id,
+        "result_kind": "research_pc_scenario", "data": assessment.model_dump(mode="json"),
     }
 
 
