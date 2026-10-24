@@ -7,6 +7,12 @@ export function CollisionPcSummary({ sourceResult, scenarioResult }) {
   return h("div", { className: "readout-list", "aria-live": "polite" },
     h("h4", null, "Physical collision probability (Pc)"),
     resultLine(sourcePcLabel(sourceResult), sourceResult, "No covariance/HBR result is attached to this event."),
+    sourceResult?.risk_assessment?.status === "classified" && Number.isFinite(sourceResult.risk_assessment.risk_score)
+      ? h("span", null, "Physics Pc risk score and class", h("strong", null, `${sourceResult.risk_assessment.risk_score.toFixed(1)} / 100 · ${sourceResult.risk_assessment.final_risk_class} · based on ${sourceResult.risk_assessment.risk_score_pc_channel}`))
+      : null,
+    sourceResult?.risk_assessment?.status === "classified" && sourceResult.risk_assessment.classification_basis
+      ? h("span", null, "Final classification policy", h("strong", null, sourceResult.risk_assessment.classification_basis))
+      : null,
     sourceResult?.probability_classification?.status === "classified"
       ? h("span", null, "Pc reference category", h("strong", null, `${sourceResult.probability_classification.category} · ${sourceResult.probability_classification.explanation}`))
       : null,

@@ -93,6 +93,9 @@ class Foster2DReferenceTests(unittest.TestCase):
         self.assertEqual(result.covariance_status, "available")
         self.assertEqual(result.applicability_status, "applicable")
         self.assertGreater(result.evaluations or 0, 0)
+        self.assertEqual(result.risk_assessment.risk_score_pc_channel, "event_specific_foster_pc")
+        self.assertEqual(result.risk_assessment.physics_risk_class, "High")
+        self.assertEqual(result.risk_assessment.final_risk_class, result.risk_assessment.physics_risk_class)
 
     def test_anisotropic_centered_case_matches_independent_cartesian_reference(self) -> None:
         # Reference: 1D adaptive integration of x's marginal density times

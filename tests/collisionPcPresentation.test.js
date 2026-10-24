@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatPriorProbability, hasValidEventFosterPc, operationalFosterStatus, researchPcPresentation } from "../src/utils/collisionPcPresentation.js";
+import { formatPriorProbability, hasValidEventFosterPc, operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentation } from "../src/utils/collisionPcPresentation.js";
 
 test("ESA-prior Pc values and extreme sensitivities render in readable scientific notation", () => {
   assert.equal(formatPriorProbability("1.56e-167"), "1.56e-167");
@@ -24,6 +24,17 @@ test("event-specific Foster Pc requires a usable number and matching event ident
   assert.equal(hasValidEventFosterPc(event), true);
   assert.equal(hasValidEventFosterPc({ ...event, collision_probability: { ...event.collision_probability, event_id: "other" } }), false);
   assert.equal(hasValidEventFosterPc({ ...event, collision_probability: { ...event.collision_probability, pc: null } }), false);
+});
+
+test("physics risk presentation states the Pc channel controlling the final class", () => {
+  const display = physicsPcRiskPresentation({
+    status: "classified", risk_score: 35.2, final_risk_class: "Medium",
+    risk_score_pc_channel: "research_pc",
+    classification_basis: "Medium from research_pc under orion-physics-pc-risk-v1.",
+  });
+  assert.equal(display.value, "35.2 / 100 · Medium · based on research_pc");
+  assert.match(display.basis, /orion-physics-pc-risk-v1/);
+  assert.equal(physicsPcRiskPresentation({ status: "unavailable" }).value, "Unavailable · no class is inferred without a valid physics Pc");
 });
 
 test("TLE-only Foster Pc unavailability explains the missing covariance and HBR inputs", () => {

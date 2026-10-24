@@ -54,6 +54,11 @@ test("Pc display preserves method, units, covariance/HBR provenance and warnings
     method: "Foster 2D encounter-plane Gaussian integral",
     method_version: "1.0",
     provenance: { source: "CDM covariance calculation", source_type: "derived", is_synthetic: false },
+    risk_assessment: {
+      status: "classified", risk_score: 25, physics_risk_class: "Medium", final_risk_class: "Medium",
+      risk_score_pc_channel: "event_specific_foster_pc",
+      classification_basis: "Medium from event_specific_foster_pc under orion-physics-pc-risk-v1; this physics class controls the displayed final class.",
+    },
     covariance_sources: [{ object_id: "A", source: "declared CDM", source_type: "user_supplied", frame: "TEME", epoch: "2025-01-01T00:00:00+00:00", units: { position: "km^2" } }],
     hbr_source: "supplied",
     hbr_provenance: { source_type: "user_supplied", description: "CDM combined radius; unauthenticated", units: "km" },
@@ -74,6 +79,9 @@ test("Pc display preserves method, units, covariance/HBR provenance and warnings
   assert.match(markup, /2025-01-01T00:00:00/);
   assert.match(markup, /CDM combined radius/);
   assert.match(markup, /Source authentication was not performed/);
+  assert.match(markup, /Physics Pc risk score and class/);
+  assert.match(markup, /25\.0 \/ 100 · Medium · based on event_specific_foster_pc/);
+  assert.match(markup, /this physics class controls the displayed final class/);
   assert.match(markup, /Research scenario Pc/);
   assert.match(markup, /unavailable - HBR_UNAVAILABLE/);
   assert.doesNotMatch(markup, /Research scenario Pc[^<]*available - 1\.00000e-7/);

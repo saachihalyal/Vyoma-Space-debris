@@ -17,7 +17,7 @@ from typing import Any, Literal
 import numpy as np
 
 from app.models import CollisionProbabilityResult, CovarianceSourceProvenance, Provenance
-from app.services.probability_classification import classify_probability_pc
+from app.services.probability_classification import classify_orion_physics_pc, classify_probability_pc
 
 
 METHOD = "Foster 2D encounter-plane Gaussian integral"
@@ -653,6 +653,9 @@ def _result(
 ) -> CollisionProbabilityResult:
     if status == "available" and fields.get("pc") is not None:
         fields["probability_classification"] = classify_probability_pc(fields["pc"])
+        fields["risk_assessment"] = classify_orion_physics_pc(
+            fields["pc"], "event_specific_foster_pc",
+        )
     fields["status"] = status
     fields["covariance_status"] = covariance_status
     fields["hbr_provenance"] = hbr_provenance

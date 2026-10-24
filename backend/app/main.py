@@ -41,6 +41,7 @@ from app.services.event_pc_inputs import apply_cdm_inputs, apply_scenario_inputs
 from app.services.automatic_research_pc import assess_automatic_research_pc
 from app.services.ai_risk_prioritization import assess_live_geometry, rank_screening_events
 from app.services.probability_classification import POLICY_VERSION as PC_CLASSIFICATION_POLICY_VERSION
+from app.services.probability_classification import classify_orion_physics_pc
 from app.services.orbit import propagate_records
 from app.services.review_priority import policy_status
 from app.services.reports import conjunctions_csv, event_report_pdf, mission_report_pdf, reference_maneuver_report_pdf
@@ -853,7 +854,23 @@ def _backfill_archived_research_pc(result: dict) -> None:
         except ValidationError:
             logger.warning("Skipping research Pc backfill for malformed archived event %s", record.get("id"))
             continue
-        if (record.get("automatic_research_pc_assessment") is None
+        foster = event.collision_probability
+        foster_risk = (record.get("collision_probability") or {}).get("risk_assessment")
+        foster_risk_current = (isinstance(foster_risk, dict)
+                               and foster_risk.get("risk_score_policy_version") == "orion-physics-pc-risk-v1"
+                               and foster_risk.get("status") == "classified")
+        if (foster is not None and foster.status == "available" and foster.event_id == event.id
+                and foster.pc is not None and not foster_risk_current):
+            risk = classify_orion_physics_pc(foster.pc, "event_specific_foster_pc")
+            updated_foster = foster.model_copy(update={"risk_assessment": risk})
+            record["collision_probability"] = updated_foster.model_dump(mode="json")
+            event = event.model_copy(update={"collision_probability": updated_foster})
+        saved_risk = ((record.get("automatic_research_pc_assessment") or {}).get("risk_assessment")
+                      or (record.get("collision_probability") or {}).get("risk_assessment"))
+        risk_policy_current = (isinstance(saved_risk, dict)
+                               and saved_risk.get("risk_score_policy_version") == "orion-physics-pc-risk-v1"
+                               and saved_risk.get("status") == "classified")
+        if (not risk_policy_current
                 and event.physics_result.status == "valid" and event.physics_result.tca_status == "valid"):
             assessment = assess_automatic_research_pc(
                 event.physics_result,

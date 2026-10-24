@@ -253,6 +253,22 @@ class CovarianceSourceProvenance(BaseModel):
     normalization_operations: list[str] = Field(default_factory=list)
 
 
+class PhysicsPcRiskAssessment(BaseModel):
+    status: Literal["classified", "unavailable"]
+    risk_score: float | None = Field(default=None, ge=0, le=100)
+    risk_score_policy_name: str
+    risk_score_policy_version: str
+    risk_score_pc_channel: Literal["event_specific_foster_pc", "research_pc"]
+    physics_risk_class: Literal["Low", "Medium", "High"] | None = None
+    final_risk_class: Literal["Low", "Medium", "High"] | None = None
+    classification_basis: str | None = None
+    log10_pc: float | None = None
+    thresholds: dict[str, float] | None = None
+    boundary_policy: str | None = None
+    reason_code: str | None = None
+    limitations: list[str] = Field(default_factory=list)
+
+
 class CollisionProbabilityResult(BaseModel):
     """Foster 2D Pc result, kept independent from trajectory and proxy scores."""
 
@@ -272,6 +288,7 @@ class CollisionProbabilityResult(BaseModel):
     source_reported_event_id: str | None = None
     source_reported_pc_provenance: dict[str, Any] | None = None
     probability_classification: dict[str, Any] | None = None
+    risk_assessment: PhysicsPcRiskAssessment | None = None
     method: str = "Foster 2D encounter-plane Gaussian integral"
     method_version: str = "1.0"
     covariance_status: Literal["available", "unavailable", "invalid"] = "unavailable"
@@ -386,6 +403,7 @@ class AutomaticResearchPcAssessment(BaseModel):
     estimated_pc_scientific: str | None = None
     percentage: float | None = None
     percentage_scientific: str | None = None
+    risk_assessment: PhysicsPcRiskAssessment | None = None
     lower_sensitivity_pc: float | None = None
     upper_sensitivity_pc: float | None = None
     lower_sensitivity_pc_scientific: str | None = None

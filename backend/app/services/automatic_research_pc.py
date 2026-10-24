@@ -21,6 +21,7 @@ import numpy as np
 
 from app.models import AutomaticResearchPcAssessment, CollisionProbabilityResult, ObjectSummary, PhysicsResult, ReviewPriority
 from app.services.collision_probability import CovarianceInput, HardBodyRadiusInput, calculate_foster_2d
+from app.services.probability_classification import classify_orion_physics_pc
 
 
 METHOD_NAME = "ORION ESA population-prior Foster 2D research estimate"
@@ -142,6 +143,9 @@ def assess_automatic_research_pc(
             estimated_pc=central_pc, estimated_pc_scientific=_scientific(central_log_pc),
             percentage=(central_pc * 100.0 if central_pc is not None else None),
             percentage_scientific=_scientific(central_log_pc + math.log(100.0)),
+            risk_assessment=classify_orion_physics_pc(
+                central_pc, "research_pc", log10_pc=central_log_pc / math.log(10.0),
+            ),
             lower_sensitivity_pc=(math.exp(min(sensitivity_logs)) if min(sensitivity_logs) >= min_log else None),
             upper_sensitivity_pc=(math.exp(max(sensitivity_logs)) if max(sensitivity_logs) >= min_log else None),
             lower_sensitivity_pc_scientific=_scientific(min(sensitivity_logs)),

@@ -68,6 +68,19 @@ export function researchPcPresentation(assessment) {
   };
 }
 
+export function physicsPcRiskPresentation(assessment) {
+  if (assessment?.status !== "classified"
+      || !Number.isFinite(assessment.risk_score)
+      || !["Low", "Medium", "High"].includes(assessment.final_risk_class)
+      || !["event_specific_foster_pc", "research_pc"].includes(assessment.risk_score_pc_channel)) {
+    return { value: "Unavailable · no class is inferred without a valid physics Pc", basis: null };
+  }
+  return {
+    value: `${assessment.risk_score.toFixed(1)} / 100 · ${assessment.final_risk_class} · based on ${assessment.risk_score_pc_channel}`,
+    basis: typeof assessment.classification_basis === "string" ? assessment.classification_basis : null,
+  };
+}
+
 export function operationalFosterStatus(event, computedMatchesEvent = false) {
   if (computedMatchesEvent && isUsablePc(event?.collision_probability)) {
     return "Available (event-specific Foster Pc)";

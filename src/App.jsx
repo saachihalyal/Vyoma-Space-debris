@@ -74,7 +74,7 @@ import { ManeuverBaselineComparison } from "./components/UI/ManeuverBaselineComp
 import { ManeuverEventContext } from "./components/UI/ManeuverEventContext.js";
 import { CollisionPriorityTable } from "./components/UI/CollisionPriorityTable.js";
 import { CollisionAnalysisSummary } from "./components/UI/CollisionAnalysisSummary.js";
-import { operationalFosterStatus, researchPcPresentation } from "./utils/collisionPcPresentation.js";
+import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentation } from "./utils/collisionPcPresentation.js";
 import { ManeuverAiSummary } from "./components/UI/ManeuverAiSummary.js";
 import { ManeuverScreeningContext } from "./components/UI/ManeuverScreeningContext.js";
 import { buildSmartFilterView } from "./utils/smartFilterView";
@@ -1236,6 +1236,10 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const computedPcMatches = physical && isUsablePc(pcResult) && pcResult.event_id === event.id;
   const sourcePc = pcResult?.source_reported_event_id === event.id && isValidProbability(pcResult?.source_reported_pc) ? pcResult.source_reported_pc : null;
   const researchPcDisplay = researchPcPresentation(event.automatic_research_pc_assessment);
+  const physicsRiskAssessment = computedPcMatches
+    ? pcResult.risk_assessment
+    : event.automatic_research_pc_assessment?.risk_assessment;
+  const physicsRiskDisplay = physicsPcRiskPresentation(physicsRiskAssessment);
   const aiPriority = event.ai_risk_assessment;
   const aiScoreDisplay = Number.isFinite(aiPriority?.score) ? `${(aiPriority.score * 100).toFixed(1)} / 100` : "Unavailable";
 
@@ -1266,12 +1270,13 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
            <span>Relative speed<strong>{physical ? `${relativeSpeed} km/s` : "Unavailable · proxy only"}</strong></span>
           <span>Event-specific Foster Pc<strong>{computedPcMatches ? `${formatProbabilityScientific(pcResult.pc)} · ${formatProbabilityPercentage(pcResult.pc)}` : operationalFosterStatus(event, false)}</strong></span>
           {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>ESA-prior Pc · assumption-based research estimate<strong>{`${researchPcDisplay.value} · ${researchPcDisplay.percentage} (unvalidated research prior)`}</strong></span> : null}
+          <span>Physics Pc risk score and final class<strong>{physicsRiskDisplay.value}</strong></span>
            {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>Research Pc sensitivity scenarios<strong>{researchPcDisplay.sensitivity}</strong></span> : null}
            <span>Source-reported Pc<strong>{sourcePc != null ? `${formatProbabilityScientific(sourcePc)} · ${formatProbabilityPercentage(sourcePc)} · ${pcResult.source_reported_pc_method || "method undeclared"}` : "Not provided by this event's source"}</strong></span>
            <span>AI queue index and category<strong>{physical ? `${aiScoreDisplay} · ${aiPriority?.category || "Unavailable"} · ${aiPriority?.prediction_method || "method unavailable"}; not Pc` : "Unavailable · proxy-only record"}</strong></span>
            <span>Final ranking basis<strong>{physical ? aiPriority?.ranking_explanation || evidencePriority.basis : "Catalog heuristic only; not a probability"}</strong></span>
         </div>
-         {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <details className="selected-research-assumptions"><summary>Research estimate assumptions and provenance</summary><p>{(event.automatic_research_pc_assessment.assumptions || []).join(" ")}</p><p>{event.automatic_research_pc_assessment.provenance?.source || "ESA population prior"} · model {event.automatic_research_pc_assessment.provenance?.prior_model_version || "unknown"}.</p></details> : null}
+         {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <details className="selected-research-assumptions"><summary>Research estimate assumptions and provenance</summary><p>{(event.automatic_research_pc_assessment.assumptions || []).join(" ")}</p><p>{event.automatic_research_pc_assessment.provenance?.source || "ESA population prior"} · model {event.automatic_research_pc_assessment.provenance?.prior_model_version || "unknown"}.</p><p>{event.automatic_research_pc_assessment.risk_assessment?.classification_basis || "Risk classification unavailable."}</p></details> : null}
       </section>
       <section className="collision-layout">
         <Panel title="Screened Events" icon={Radar}>
