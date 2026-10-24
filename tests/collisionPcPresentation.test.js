@@ -26,6 +26,18 @@ test("event-specific Foster Pc requires a usable number and matching event ident
   assert.equal(hasValidEventFosterPc({ ...event, collision_probability: { ...event.collision_probability, pc: null } }), false);
 });
 
+test("negligible research Pc uses the declared floor while retaining exact log details", () => {
+  const display = researchPcPresentation({
+    status: "prior_based_research_estimate", negligible: true, log10_pc: -167.8,
+    estimated_pc_scientific: "< 1e-30", percentage_scientific: "< 1e-28",
+    lower_sensitivity_pc_scientific: "< 1e-30", upper_sensitivity_pc_scientific: "2e-20",
+  });
+  assert.equal(display.value, "< 1e-30 (negligible)");
+  assert.equal(display.percentage, "< 1e-28%");
+  assert.match(display.sensitivity, /< 1e-30 to 2e-20 Pc/);
+  assert.equal(formatPriorProbability("< 1e-30", 2), "< 1e-28");
+});
+
 test("physics risk presentation states the Pc channel controlling the final class", () => {
   const display = physicsPcRiskPresentation({
     status: "classified", risk_score: 35.2, final_risk_class: "Medium",

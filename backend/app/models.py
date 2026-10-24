@@ -401,6 +401,8 @@ class AutomaticResearchPcAssessment(BaseModel):
     quality_status: Literal["validated_event_inputs", "prior_based_unvalidated", "insufficient_inputs", "not_assessed"]
     estimated_pc: float | None = None
     estimated_pc_scientific: str | None = None
+    log10_pc: float | None = None
+    negligible: bool = False
     percentage: float | None = None
     percentage_scientific: str | None = None
     risk_assessment: PhysicsPcRiskAssessment | None = None

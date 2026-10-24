@@ -3,6 +3,10 @@ import { isUsablePc } from "../components/UI/CollisionPcSummary.js";
 const SUPERSCRIPT = Object.freeze({ "-": "⁻", "+": "⁺", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" });
 
 export function formatPriorProbability(value, exponentShift = 0) {
+  if (typeof value === "string" && /^< 1e[+-]?\d+$/i.test(value.trim())) {
+    const exponent = Number(value.trim().slice(4)) + exponentShift;
+    return Number.isFinite(exponent) ? `< 1e${exponent}` : "Unavailable";
+  }
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     if (value === 0) return "0";
     return formatPriorProbability((value * (10 ** exponentShift)).toExponential(3));
@@ -61,7 +65,7 @@ export function researchPcPresentation(assessment) {
     ? formatPriorProbability(assessment.upper_sensitivity_pc_scientific, 2)
     : formatPriorProbability(assessment.upper_sensitivity_pc, 2);
   return {
-    value: pc,
+    value: assessment.negligible ? `${pc} (negligible)` : pc,
     percentage,
     sensitivity: `${low} to ${high} Pc (${lowPercent}% to ${highPercent}%)`,
     reason: assessment.sensitivity_reason || "Prior-based p10/p50/p90 scenario range; not a confidence interval.",

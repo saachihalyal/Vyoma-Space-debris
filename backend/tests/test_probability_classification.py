@@ -12,15 +12,15 @@ class OrionPhysicsPcRiskPolicyTests(unittest.TestCase):
         high = classify_orion_physics_pc(1e-4, "research_pc")
         medium = classify_orion_physics_pc(1e-7, "research_pc")
         low = classify_orion_physics_pc(1e-8, "research_pc")
-        self.assertEqual((high["risk_score"], high["physics_risk_class"]), (100.0, "High"))
-        self.assertEqual((medium["risk_score"], medium["physics_risk_class"]), (25.0, "Medium"))
-        self.assertEqual((low["risk_score"], low["physics_risk_class"]), (0.0, "Low"))
+        self.assertEqual((high["risk_score"], high["physics_risk_class"]), (80.0, "High"))
+        self.assertEqual((medium["risk_score"], medium["physics_risk_class"]), (50.0, "Medium"))
+        self.assertEqual((low["risk_score"], low["physics_risk_class"]), (40.0, "Low"))
         self.assertEqual(high["risk_score_pc_channel"], "research_pc")
         self.assertEqual(high["final_risk_class"], high["physics_risk_class"])
 
     def test_score_uses_documented_logarithmic_mapping(self):
         result = classify_orion_physics_pc(1e-6, "event_specific_foster_pc")
-        expected = min(100.0, max(0.0, ((math.log10(1e-6) + 8.0) / 4.0) * 100.0))
+        expected = min(100.0, max(0.0, ((math.log10(1e-6) + 12.0) / 10.0) * 100.0))
         self.assertAlmostEqual(result["risk_score"], expected)
         self.assertEqual(result["risk_score_pc_channel"], "event_specific_foster_pc")
 

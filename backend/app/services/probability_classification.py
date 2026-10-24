@@ -13,7 +13,7 @@ ATTENTION_THRESHOLD = 1e-7
 MITIGATION_THRESHOLD = 1e-4
 REFERENCE_URL = "https://www.nasa.gov/cara/step-2-close-approach-risk-assessment/"
 ORION_RISK_POLICY_NAME = "ORION Physics Pc Risk Policy"
-ORION_RISK_POLICY_VERSION = "orion-physics-pc-risk-v1"
+ORION_RISK_POLICY_VERSION = "orion-physics-pc-risk-v2"
 DEFAULT_HIGH_PC_THRESHOLD = 1e-4
 DEFAULT_MEDIUM_PC_THRESHOLD = 1e-7
 
@@ -48,14 +48,17 @@ def classify_orion_physics_pc(pc: Any, pc_channel: str, *, log10_pc: float | Non
 
     try:
         high_threshold = float(os.environ.get("ORION_RISK_HIGH_PC", str(DEFAULT_HIGH_PC_THRESHOLD)))
+        score_floor = float(os.environ.get("ORION_RISK_SCORE_LOG10_FLOOR", "-12"))
+        score_ceiling = float(os.environ.get("ORION_RISK_SCORE_LOG10_CEILING", "-2"))
         medium_threshold = float(os.environ.get("ORION_RISK_MEDIUM_PC", str(DEFAULT_MEDIUM_PC_THRESHOLD)))
         if not (math.isfinite(high_threshold) and math.isfinite(medium_threshold)
-                and 0 < medium_threshold < high_threshold <= 1):
+                and 0 < medium_threshold < high_threshold <= 1
+                and math.isfinite(score_floor) and math.isfinite(score_ceiling) and score_floor < score_ceiling):
             raise ValueError
     except (TypeError, ValueError, OverflowError):
         return _orion_unavailable("RISK_THRESHOLD_CONFIGURATION_INVALID", pc_channel)
 
-    score = 0.0 if log10_value == float("-inf") else min(100.0, max(0.0, ((log10_value + 8.0) / 4.0) * 100.0))
+    score = 0.0 if log10_value == float("-inf") else min(100.0, max(0.0, ((log10_value - score_floor) / (score_ceiling - score_floor)) * 100.0))
     high_log = math.log10(high_threshold)
     medium_log = math.log10(medium_threshold)
     risk_class = "High" if log10_value >= high_log else "Medium" if log10_value >= medium_log else "Low"
@@ -70,6 +73,7 @@ def classify_orion_physics_pc(pc: Any, pc_channel: str, *, log10_pc: float | Non
         "classification_basis": f"{risk_class} from {pc_channel} under {ORION_RISK_POLICY_VERSION}; this physics class controls the displayed final class.",
         "log10_pc": log10_value if math.isfinite(log10_value) else None,
         "thresholds": {"high_pc_inclusive": high_threshold, "medium_pc_inclusive": medium_threshold},
+        "score_window_log10_pc": {"floor": score_floor, "ceiling": score_ceiling},
         "boundary_policy": "Pc=0 is classified by the Pc->0 limit with score 0; no positive Pc is substituted." if pc == 0 else None,
         "limitations": [
             "Thresholds are ORION project policy, not universal safety standards.",

@@ -25,7 +25,8 @@ from app.services.probability_classification import classify_orion_physics_pc
 
 
 METHOD_NAME = "ORION ESA population-prior Foster 2D research estimate"
-METHOD_VERSION = "1.1.0"
+METHOD_VERSION = "1.2.0"
+LOG10_PC_FLOOR = float(os.getenv("ORION_LOG10_PC_FLOOR", "-30"))
 PRIOR_PATH = Path(__file__).resolve().parents[1] / "ai" / "artifacts" / "esa_research_uncertainty_prior_v1.json"
 DEFAULT_CONFIG: dict[str, Any] = {
     "age_inflation_per_day": 0.05,
@@ -131,6 +132,9 @@ def assess_automatic_research_pc(
             values.append((numeric_pc, hbr_km, log_pc))
 
         central_pc, central_hbr, central_log_pc = values[1]
+        negligible = central_log_pc / math.log(10.0) < LOG10_PC_FLOOR
+        floor_pc = f"< 1e{LOG10_PC_FLOOR:g}"
+        floor_percent = f"< 1e{LOG10_PC_FLOOR + 2:g}"
         sensitivity_logs = [item[2] for item in values]
         source_hash = hashlib.sha256(PRIOR_PATH.read_bytes()).hexdigest()
         age_days = [spec[4] for spec in specs]
@@ -149,16 +153,17 @@ def assess_automatic_research_pc(
         ]
         return AutomaticResearchPcAssessment(
             status="prior_based_research_estimate", quality_status="prior_based_unvalidated",
-            estimated_pc=central_pc, estimated_pc_scientific=_scientific(central_log_pc),
+            estimated_pc=central_pc, estimated_pc_scientific=(floor_pc if negligible else _scientific(central_log_pc)),
+            log10_pc=central_log_pc / math.log(10.0), negligible=negligible,
             percentage=(central_pc * 100.0 if central_pc is not None else None),
-            percentage_scientific=_scientific(central_log_pc + math.log(100.0)),
+            percentage_scientific=(floor_percent if negligible else _scientific(central_log_pc + math.log(100.0))),
             risk_assessment=classify_orion_physics_pc(
                 central_pc, "research_pc", log10_pc=central_log_pc / math.log(10.0),
             ),
             lower_sensitivity_pc=(math.exp(min(sensitivity_logs)) if min(sensitivity_logs) >= min_log else None),
             upper_sensitivity_pc=(math.exp(max(sensitivity_logs)) if max(sensitivity_logs) >= min_log else None),
-            lower_sensitivity_pc_scientific=_scientific(min(sensitivity_logs)),
-            upper_sensitivity_pc_scientific=_scientific(max(sensitivity_logs)),
+            lower_sensitivity_pc_scientific=(floor_pc if min(sensitivity_logs) / math.log(10.0) < LOG10_PC_FLOOR else _scientific(min(sensitivity_logs))),
+            upper_sensitivity_pc_scientific=(floor_pc if max(sensitivity_logs) / math.log(10.0) < LOG10_PC_FLOOR else _scientific(max(sensitivity_logs))),
             hbr_km=central_hbr, hbr_sensitivity_km=[min(v[1] for v in values), max(v[1] for v in values)],
             covariance_method="ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors.",
             hbr_method="ESA target/chaser span population prior by ORION object class; assumed span diameter converted to a per-object radius and combined; not an authenticated object dimension.",

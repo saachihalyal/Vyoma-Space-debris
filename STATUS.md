@@ -5,7 +5,16 @@
 | Stage | Status | Evidence |
 |---|---|---|
 | 1. Environment and housekeeping | Complete | Code commits `a8e1300` and `e1e6573` on `feature/orion-completion`; the Stage 1 checkpoint record is this commit. |
-| 2. Uncertainty model and Pc numerics | Awaiting approval | Next action: compare the ESA-prior and TLE-age policies on the same real events, then implement the selected log-domain Pc contract. |
+| 2. Uncertainty model and Pc numerics | In progress (partial checkpoint) | Added the declared Pc display floor and revised, configurable risk-score window. Remaining acceptance work is listed below; no Stage 2 completion is claimed. |
+
+## Stage 2 partial checkpoint (not complete)
+
+- Added finite exact `log10_pc` and a `negligible` flag to the research-Pc record. Primary Pc and sensitivity displays use the configurable default `LOG10_PC_FLOOR=-30`; the exact log10 value remains in the technical record. Percent display uses the corresponding `< 1e-28%` floor.
+- Revised the default risk score to `clip(((log10 Pc + 12) / 10) × 100, 0, 100)`, version `orion-physics-pc-risk-v2`; High ≥ 1e-4 and Medium ≥ 1e-7 remain project policy. The score window is configurable via `ORION_RISK_SCORE_LOG10_FLOOR` and `ORION_RISK_SCORE_LOG10_CEILING`.
+- Focused checks: backend probability-classification and automatic-research-Pc tests: 12 passed; frontend Pc presentation tests: 6 passed.
+- Archive evidence: `screening-job-8fa7230ce99e4182afc2c1a8506130bf` (saved snapshot dated 2026-10-13) contains 52 events and a repeated SL-3 R/B group against four ISS modules at TCA `2026-10-13T12:56:17.152617Z`, miss `1.764890 km`, speed `7.202890 km/s`. This verifies an identical-geometry co-location pattern in this snapshot, but not the directive's stated 21.842 km case. Other groups in this snapshot vary by TCA and geometry and are not grouped by this evidence alone.
+- The larger 2026-10-19 snapshot contains 120 records, including 118 valid-status records, but its closest records include boundary solutions and legacy records lack the current research-Pc fields. Restore/backfill was attempted through the current local API; the response still did not attach research-Pc records, so it cannot support the requested comparable 10-event table yet.
+- Remaining Stage 2 acceptance: implement and compare the three covariance policies on ten same real events; select and expose a TLE-derived default with alternatives labelled; prove full/log-domain overlap and API exponent bounds; add exact Pc sorting, distribution, what-if scale, valid-event coverage and encounter-group cards; provide a full event Pc record; run the complete backend/frontend suites and production build. Do not begin Stage 3 before Stage 2 acceptance and user approval.
 
 ## Stage 1 verification
 
