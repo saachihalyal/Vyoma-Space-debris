@@ -7,9 +7,11 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from app.services.automatic_research_pc import _integrate_log_disk, assess_automatic_research_pc
+import numpy as np
+
+from app.services.automatic_research_pc import _integrate_log_disk, _log_foster_pc, assess_automatic_research_pc
 from app.main import event_dicts
-from app.services.collision_probability import _integrate_circular_region
+from app.services.collision_probability import CovarianceInput, HardBodyRadiusInput, _integrate_circular_region, calculate_foster_2d
 from app.services.orbit import propagate_records
 from app.services.tle_provider import parse_tle_text
 from app.services.trajectory_screening import screen_tle_records
@@ -22,6 +24,28 @@ class AutomaticResearchPcQualityTests(unittest.TestCase):
         log_result = _integrate_log_disk(mean, 1.0, 0.8, 0.5)
         self.assertIsNotNone(direct)
         self.assertAlmostEqual(math.exp(log_result), direct, delta=1e-12)
+
+    def test_small_hbr_log_formula_agrees_with_full_foster_integral_in_overlap(self):
+        tca = "2025-01-01T00:00:00+00:00"
+        covs = [
+            CovarianceInput(object_id=oid, frame="TEME", epoch=tca, matrix=[[0.5,0,0],[0,0.5,0],[0,0,0.5]],
+                            units={"position":"km^2"}, source="test covariance", source_type="derived")
+            for oid in ("A", "B")
+        ]
+        states = ((np.array([0.0,0.0,0.0]),np.array([0.0,0.0,0.0])), (np.array([10.0,0.0,0.0]),np.array([0.0,7.0,0.0])))
+        hbr = 1e-4
+        log_value = _log_foster_pc(None, covs, states, hbr)
+        full = calculate_foster_2d(
+            event_id="overlap", object_1_id="A", object_2_id="B", tca_utc=tca,
+            position_1_km=states[0][0], velocity_1_km_s=states[0][1],
+            position_2_km=states[1][0], velocity_2_km_s=states[1][1], state_frame="TEME",
+            tca_status="valid", covariance_1=covs[0], covariance_2=covs[1],
+            hbr=HardBodyRadiusInput(value_km=hbr, source="configured", source_type="derived", description="test"),
+            assume_independent_covariances=True, relative_tolerance=1e-6, max_quadrature_order=2048,
+        )
+        self.assertEqual(full.status, "available")
+        self.assertIsNotNone(full.pc)
+        self.assertAlmostEqual(log_value, math.log(full.pc), delta=1e-5)
 
     def test_live_tle_event_gets_prior_based_research_pc_and_sensitivity(self):
         event = _real_screened_event()
@@ -53,13 +77,29 @@ class AutomaticResearchPcQualityTests(unittest.TestCase):
         self.assertEqual(api_event["automatic_research_pc_assessment"]["estimated_pc_scientific"], "< 1e-30")
         self.assertIsNone(api_event["collision_probability"]["pc"])
 
+    def test_tle_age_covariance_is_default_and_all_policies_are_selectable(self):
+        event = _real_screened_event()
+        results = {
+            policy: assess_automatic_research_pc(
+                event.physics_result, event.collision_probability, event.review_priority,
+                primary=event.primary, secondary=event.secondary, covariance_policy=policy,
+            )
+            for policy in ("esa_population_prior", "tle_age_baseline", "tle_age_baseline_2x")
+        }
+        self.assertEqual(event.automatic_research_pc_assessment.covariance_policy_id, "tle_age_baseline")
+        self.assertEqual(set(results), {item.covariance_policy_id for item in results.values()})
+        self.assertTrue(all(item.status == "prior_based_research_estimate" for item in results.values()))
+        self.assertTrue(all(item.log10_pc is not None for item in results.values()))
+        self.assertNotEqual(results["esa_population_prior"].log10_pc, results["tle_age_baseline"].log10_pc)
+        self.assertNotEqual(results["tle_age_baseline"].log10_pc, results["tle_age_baseline_2x"].log10_pc)
+
     def test_archived_real_celestrak_event_replays_reproducibly_through_screening(self):
         first = _real_screened_event()
         second = _real_screened_event()
         self.assertEqual(first.id, second.id)
         self.assertEqual(first.physics_result.tca.value, second.physics_result.tca.value)
         self.assertEqual(first.physics_result.miss_distance.value, second.physics_result.miss_distance.value)
-        self.assertEqual(first.automatic_research_pc_assessment.method_version, "1.2.0")
+        self.assertEqual(first.automatic_research_pc_assessment.method_version, "2.0.0")
         self.assertEqual(first.automatic_research_pc_assessment.model_dump(), second.automatic_research_pc_assessment.model_dump())
         self.assertEqual(first.physics_result.status, "valid")
         self.assertEqual(first.primary.provenance.source_type, "live")

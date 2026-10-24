@@ -327,6 +327,6 @@ test("Smart Filter renders backend deterministic AI score and final priority for
   assert.match(markup, /Live Event Queue · Deterministic AI Fallback/);
   assert.match(markup, /High[\s\S]{0,20}73\.1 \/ 100/);
   assert.match(markup, /Final priority #2/);
-  assert.match(markup, /ESA-prior Pc #1/);
+  assert.match(markup, /research Pc #1/);
   assert.match(markup, /not Pc/);
 });

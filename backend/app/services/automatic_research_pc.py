@@ -24,9 +24,15 @@ from app.services.collision_probability import CovarianceInput, HardBodyRadiusIn
 from app.services.probability_classification import classify_orion_physics_pc
 
 
-METHOD_NAME = "ORION ESA population-prior Foster 2D research estimate"
-METHOD_VERSION = "1.2.0"
+METHOD_NAME = "ORION TLE-age baseline Foster 2D research estimate"
+METHOD_VERSION = "2.0.0"
 LOG10_PC_FLOOR = float(os.getenv("ORION_LOG10_PC_FLOOR", "-30"))
+DEFAULT_COVARIANCE_POLICY = "tle_age_baseline"
+COVARIANCE_POLICIES = {
+    "esa_population_prior": "ESA Kelvins population-prior covariance (TLE-derived state; unvalidated mapping)",
+    "tle_age_baseline": "TLE-age position-sigma baseline (0.1/0.5/0.2 km plus 0.1/1.5/0.2 km/day)",
+    "tle_age_baseline_2x": "2× TLE-age position-sigma baseline",
+}
 PRIOR_PATH = Path(__file__).resolve().parents[1] / "ai" / "artifacts" / "esa_research_uncertainty_prior_v1.json"
 DEFAULT_CONFIG: dict[str, Any] = {
     "age_inflation_per_day": 0.05,
@@ -53,10 +59,17 @@ def assess_automatic_research_pc(
     *,
     covariance_scale: float = 1.0,
     hbr_scale: float = 1.0,
+    covariance_policy: str | None = None,
 ) -> AutomaticResearchPcAssessment:
+    selected_policy = covariance_policy or os.getenv("ORION_RESEARCH_PC_COVARIANCE_POLICY", DEFAULT_COVARIANCE_POLICY)
+    if selected_policy not in COVARIANCE_POLICIES:
+        selected_policy = "invalid"
     shared = {
-        "method_name": METHOD_NAME,
+        "method_name": ("ORION ESA population-prior Foster 2D research estimate"
+                        if selected_policy == "esa_population_prior" else METHOD_NAME),
         "method_version": METHOD_VERSION,
+        "covariance_policy_id": selected_policy,
+        "covariance_policy_name": COVARIANCE_POLICIES.get(selected_policy, "Unsupported covariance policy"),
         "geometry_review_category": review_priority.category,
         "geometry_review_policy_version": review_priority.policy_version,
         "ranking_basis": f"{review_priority.category} under {review_priority.policy_version}; geometry-only queue rank, separate from Pc",
@@ -93,6 +106,8 @@ def assess_automatic_research_pc(
             or isinstance(hbr_scale, bool) or not isinstance(hbr_scale, (int, float))
             or not math.isfinite(hbr_scale) or hbr_scale <= 0):
         return _unavailable(shared, "INVALID_RESEARCH_SCENARIO_SCALE")
+    if selected_policy == "invalid":
+        return _unavailable(shared, "UNSUPPORTED_COVARIANCE_POLICY")
     try:
         prior = json.loads(PRIOR_PATH.read_text(encoding="utf-8"))
         config = _config()
@@ -112,13 +127,23 @@ def assess_automatic_research_pc(
         specs = [spec for spec in object_specs if spec is not None]
         event_id = physics.event_id
         values: list[tuple[float | None, float, float]] = []
+        central_plane_terms = None
         for quantile in ("p10", "p50", "p90"):
-            covariances = [
-                _covariance(obj.id, tca, state, spec[0], quantile, spec[2] * covariance_scale, spec[4])
-                for obj, state, spec in zip((primary, secondary), states, specs)
-            ]
+            if selected_policy == "esa_population_prior":
+                covariances = [
+                    _covariance(obj.id, tca, state, spec[0], quantile, spec[2] * covariance_scale, spec[4])
+                    for obj, state, spec in zip((primary, secondary), states, specs)
+                ]
+            else:
+                baseline_multiplier = 2.0 if selected_policy == "tle_age_baseline_2x" else 1.0
+                covariances = [
+                    _tle_age_position_covariance(obj.id, obj, tca, state, baseline_multiplier * covariance_scale, selected_policy)
+                    for obj, state in zip((primary, secondary), states)
+                ]
             hbr_km = (sum(spec[3][quantile] for spec in specs) / 1000.0) * hbr_scale
             result = _calculate(physics, primary.id, secondary.id, tca, states, covariances, hbr_km)
+            if quantile == "p50":
+                central_plane_terms = _encounter_plane_terms(physics, covariances, states)
             if result.status == "available" and result.pc is not None:
                 log_pc = math.log(float(result.pc))
             elif result.reason_codes == ["NUMERICAL_FAILURE"]:
@@ -140,14 +165,16 @@ def assess_automatic_research_pc(
         age_days = [spec[4] for spec in specs]
         assumptions = [
             "This is a prior-based research estimate, not an event-specific or operationally validated Pc.",
-            "ESA Kelvins CDM-derived population p10/p50/p90 component sigmas are used as per-object priors; they are not live-object measurements.",
+            ("ESA Kelvins CDM-derived population p10/p50/p90 component sigmas are used as per-object priors; they are not live-object measurements."
+             if selected_policy == "esa_population_prior" else
+             "The selected TLE-age covariance is a configured uncertainty model, not measured object-specific covariance."),
             "ESA r/t/n sigma labels are mapped to local RTN at TCA, then rotated to TEME using each propagated SGP4 state; this frame interpretation is an explicit model assumption.",
             "Covariance is diagonal in RTN; ESA correlations and cross-object covariance are unavailable and omitted.",
             "The covariance is assigned at TCA; no covariance propagation from TLE epoch is performed.",
             "ESA target/chaser roles are mapped from ORION object class: active/payload to target; debris/rocket body/unknown to chaser.",
             "ESA span inputs are treated as diameters and converted to radius; this is an assumed size mapping, not authenticated object dimensions.",
             "Object covariances are assumed independent for the Foster relative covariance.",
-            "p10/p50/p90 joint scenarios vary all component sigmas and span together; the resulting sensitivity endpoints are not confidence bounds.",
+            "p10/p50/p90 HBR scenarios vary the ESA span prior; the resulting sensitivity endpoints are not confidence bounds.",
             f"Scenario covariance multiplier: {covariance_scale:g}; scenario HBR multiplier: {hbr_scale:g}. Both are explicit research-scenario controls, not measured inputs.",
             "When a result is below binary64's representable range, the same Foster disk integral is evaluated in log space and reported in scientific notation rather than substituted with zero.",
         ]
@@ -165,7 +192,12 @@ def assess_automatic_research_pc(
             lower_sensitivity_pc_scientific=(floor_pc if min(sensitivity_logs) / math.log(10.0) < LOG10_PC_FLOOR else _scientific(min(sensitivity_logs))),
             upper_sensitivity_pc_scientific=(floor_pc if max(sensitivity_logs) / math.log(10.0) < LOG10_PC_FLOOR else _scientific(max(sensitivity_logs))),
             hbr_km=central_hbr, hbr_sensitivity_km=[min(v[1] for v in values), max(v[1] for v in values)],
-            covariance_method="ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors.",
+            encounter_plane_sigma_min_km=(central_plane_terms or {}).get("sigma_min_km"),
+            encounter_plane_sigma_max_km=(central_plane_terms or {}).get("sigma_max_km"),
+            miss_sigma_ratio=(central_plane_terms or {}).get("miss_sigma_ratio"),
+            covariance_method=("ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors."
+                               if selected_policy == "esa_population_prior" else
+                               f"{COVARIANCE_POLICIES[selected_policy]} assigned in RTN at TCA and rotated to TEME; no covariance propagation is performed."),
             hbr_method="ESA target/chaser span population prior by ORION object class; assumed span diameter converted to a per-object radius and combined; not an authenticated object dimension.",
             sensitivity_status="available",
             sensitivity_reason="Range is the min/max of coupled ESA p10, p50 and p90 prior scenarios; it is not a statistical confidence interval.",
@@ -180,6 +212,10 @@ def assess_automatic_research_pc(
                 "object_metadata": {obj.id: {"band": obj.band, "category": obj.category, "tle_age_days": age}
                                     for obj, age in zip((primary, secondary), age_days)},
                 "scenario_quantiles": ["p10", "p50", "p90"],
+                "covariance_policy_id": selected_policy,
+                "covariance_policy_name": COVARIANCE_POLICIES[selected_policy],
+                "covariance_policy_options": COVARIANCE_POLICIES,
+                "tle_age_sigma_model_km": {"radial": [0.1, 0.1], "in_track": [0.5, 1.5], "cross_track": [0.2, 0.2], "age_epoch": "TCA"},
                 "quadrature_relative_tolerance": 1e-6,
                 "log_domain_fallback": "same Foster circular Gaussian integral, used only when probability-domain Foster quadrature fails",
             }, **shared,
@@ -204,15 +240,42 @@ def _calculate(physics, id1, id2, tca, states, covariances, hbr_km):
     )
 
 
-def _log_foster_pc(physics, covariances, states, hbr_km):
-    """Log-domain evaluation of the same 2D circular Gaussian Foster integral."""
+def _tle_age_position_covariance(object_id, obj, tca, state, scale=1.0, policy_id="tle_age_baseline"):
+    age = _tle_age_days(obj, tca)
+    sigmas_km = np.asarray([
+        0.1 + 0.1 * age,
+        0.5 + 1.5 * age,
+        0.2 + 0.2 * age,
+    ], dtype=float) * float(scale)
+    if not np.isfinite(sigmas_km).all() or np.any(sigmas_km <= 0):
+        raise ValueError("TLE-age sigma invalid")
+    r = np.asarray(state[0], dtype=float)
+    v = np.asarray(state[1], dtype=float)
+    rnorm = float(np.linalg.norm(r))
+    h = np.cross(r, v)
+    hnorm = float(np.linalg.norm(h))
+    if not math.isfinite(rnorm) or rnorm <= 1e-12 or not math.isfinite(hnorm) or hnorm <= 1e-12:
+        raise ValueError("invalid propagated state for RTN covariance frame")
+    rhat = r / rnorm
+    nhat = h / hnorm
+    that = np.cross(nhat, rhat)
+    rotation = np.column_stack((rhat, that, nhat))
+    matrix = rotation @ np.diag(sigmas_km**2) @ rotation.T
+    return CovarianceInput(
+        object_id=object_id, frame="TEME", epoch=tca.isoformat(), matrix=matrix,
+        units={"position": "km^2"}, source=COVARIANCE_POLICIES[policy_id],
+        source_type="derived", is_synthetic=False,
+    )
+
+
+def _encounter_plane_terms(physics, covariances, states):
     r1, v1 = states[0]
     r2, v2 = states[1]
     relative_position = r2 - r1
     relative_velocity = v2 - v1
     speed = float(np.linalg.norm(relative_velocity))
-    if speed <= 1e-8 or hbr_km <= 0:
-        return float("nan")
+    if speed <= 1e-8:
+        return None
     ev = relative_velocity / speed
     transverse = relative_position - float(np.dot(relative_position, ev)) * ev
     if np.linalg.norm(transverse) > 1e-9:
@@ -224,16 +287,48 @@ def _log_foster_pc(physics, covariances, states, hbr_km):
     e2 = np.cross(ev, e1)
     e2_norm = float(np.linalg.norm(e2))
     if not math.isfinite(e2_norm) or e2_norm <= 1e-12:
-        return float("nan")
+        return None
     e2 /= e2_norm
     plane = np.vstack((e1, e2))
     covariance = np.asarray(covariances[0].matrix)[:3, :3] + np.asarray(covariances[1].matrix)[:3, :3]
     encounter_cov = plane @ covariance @ plane.T
     eigenvalues, eigenvectors = np.linalg.eigh((encounter_cov + encounter_cov.T) * 0.5)
     if not np.isfinite(eigenvalues).all() or np.min(eigenvalues) <= 0:
-        return float("nan")
+        return None
     miss = eigenvectors.T @ (plane @ relative_position)
-    return _integrate_log_disk(miss, math.sqrt(float(eigenvalues[0])), math.sqrt(float(eigenvalues[1])), hbr_km)
+    sigma_x, sigma_y = math.sqrt(float(eigenvalues[0])), math.sqrt(float(eigenvalues[1]))
+    maha_squared = float(np.sum((miss**2) / eigenvalues))
+    if not math.isfinite(maha_squared):
+        return None
+    return {
+        "sigma_min_km": sigma_x, "sigma_max_km": sigma_y,
+        "miss_km": float(np.linalg.norm(miss)),
+        "miss_sigma_ratio": math.sqrt(max(0.0, maha_squared)),
+        "maha_squared": maha_squared,
+        "mean": miss,
+    }
+
+
+def _log_foster_pc(physics, covariances, states, hbr_km):
+    """Log-domain Foster evaluation, with a checked small-disc asymptote."""
+    terms = _encounter_plane_terms(physics, covariances, states)
+    if terms is None or hbr_km <= 0:
+        return float("nan")
+    sigma_x, sigma_y = terms["sigma_min_km"], terms["sigma_max_km"]
+    maha = terms["miss_sigma_ratio"]
+    scaled_radius = hbr_km / min(sigma_x, sigma_y)
+    # When the disk is small relative to the Gaussian scale even at the
+    # displaced density, its density is effectively constant over the disk.
+    if maha >= 8.0 and scaled_radius * (1.0 + maha) <= 0.02:
+        return _small_hbr_log_pc(terms, hbr_km)
+    return _integrate_log_disk(terms["mean"], sigma_x, sigma_y, hbr_km)
+
+
+def _small_hbr_log_pc(terms, hbr_km):
+    """Small-disc Gaussian-density limit in natural-log probability space."""
+    return (2.0 * math.log(hbr_km) - math.log(2.0)
+            - math.log(terms["sigma_min_km"]) - math.log(terms["sigma_max_km"])
+            - 0.5 * terms["maha_squared"])
 
 
 def _integrate_log_disk(mean, sigma_x, sigma_y, radius, tolerance=1e-6, max_order=4096):

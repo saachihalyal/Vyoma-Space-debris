@@ -40,7 +40,7 @@ test("responsive conjunction cards separate Pc provenance, show AI prioritizatio
     },
   };
   const markup = render([event]);
-  for (const label of ["Source-reported Pc", "Event-specific Foster Pc", "ESA-prior research Pc", "Risk prioritization score", "Technical details and assessment evidence"]) assert.match(markup, new RegExp(label));
+  for (const label of ["Source-reported Pc", "Event-specific Foster Pc", "Assumption-based research Pc", "Risk prioritization score", "Technical details and assessment evidence"]) assert.match(markup, new RegExp(label));
   assert.match(markup, /1\.000 × 10\^-4 Pc/);
   assert.match(markup, /1\.000e-2%/);
   assert.match(markup, /73\.0 \/ 100/);
@@ -56,7 +56,7 @@ test("responsive conjunction cards separate Pc provenance, show AI prioritizatio
 test("selected conjunction details keep Pc channels, AI queue and ranking basis compact while tools stay expandable", () => {
   const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   assert.match(app, /<span>Event-specific Foster Pc/);
-  assert.match(app, /<span>ESA-prior Pc · assumption-based research estimate/);
+  assert.match(app, /<span>TLE-age position-sigma baseline · assumption-based research estimate/);
   assert.match(app, /<span>Source-reported Pc/);
   assert.match(app, /<span>AI queue index and category/);
   assert.match(app, /<span>Final ranking basis/);
@@ -107,7 +107,7 @@ test("captured real screening API event keeps research Pc numerical through card
   assert.equal(researchPcPresentation(event.automatic_research_pc_assessment).value, "1.55992e-167");
 
   const markup = render([event]);
-  assert.match(markup, /ESA-prior research Pc/);
+  assert.match(markup, /Assumption-based research Pc/);
   assert.match(markup, /1\.55992e-167 Pc \(1\.55992e-165%\)/);
   assert.match(markup, /assumption-based research estimate/i);
   assert.match(markup, /33\.3 \/ 100/);

@@ -40,5 +40,5 @@ export function ManeuverEventContext({ event, context }) {
       React.createElement("span", null, "Covariance / HBR provenance", React.createElement("strong", null, pcBoundToEvent
         ? `${pc.covariance_status || "validated"} · ${pc.covariance_sources?.map?.((source) => source.source).filter(Boolean).join(", ") || "source recorded"} · HBR ${pc.hbr_km ?? "unavailable"} km (${pc.hbr_source || "source unavailable"})`
         : `${physics.covariance?.reason_code || "covariance unavailable"} · ${physics.hard_body_radius?.reason_code || "HBR unavailable"}`))),
-    React.createElement("p", { className: "muted" }, "These Pc sources and the AI queue score are separate evidence. A maneuver comparison uses an ESA-prior research covariance/HBR policy at the zero-burn and candidate TCAs; that covariance is assigned at TCA rather than dynamically propagated."));
+    React.createElement("p", { className: "muted" }, "These Pc sources and the AI queue score are separate evidence. A maneuver comparison uses the declared research covariance/HBR policy at the zero-burn and candidate TCAs; that covariance is assigned at TCA rather than dynamically propagated."));
 }

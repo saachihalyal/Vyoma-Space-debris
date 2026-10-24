@@ -149,7 +149,7 @@ export function SmartFilterPage({ snapshot, smartSnapshot, platform = {}, select
           const ai = event.ai_risk_assessment;
           return h("button", { className: "event-row", type: "button", key: event.id, onClick: () => selectEvent(event, "collision") },
             h("span", { className: `risk-badge ${queueRiskClass(ai)}` }, `${ai.category || "Unclassified"} · ${(ai.score * 100).toFixed(1)} / 100`),
-            h("span", null, h("strong", null, `${event.primary?.name || event.primary?.id} vs ${event.secondary?.name || event.secondary?.id}`), h("small", null, `Final priority #${ai.final_priority_rank} · geometry #${ai.geometry_rank} · Foster Pc #${ai.foster_pc_rank ?? "—"} · ESA-prior Pc #${ai.research_pc_rank ?? "—"}`)),
+            h("span", null, h("strong", null, `${event.primary?.name || event.primary?.id} vs ${event.secondary?.name || event.secondary?.id}`), h("small", null, `Final priority #${ai.final_priority_rank} · geometry #${ai.geometry_rank} · Foster Pc #${ai.foster_pc_rank ?? "—"} · research Pc #${ai.research_pc_rank ?? "—"}`)),
             h("b", null, "Open event"));
         }))) : h("p", { className: "muted" }, "No valid physical conjunctions with required geometry features are loaded.")),
     panel("ESA Historical Model · Log-Risk", ShieldCheck,

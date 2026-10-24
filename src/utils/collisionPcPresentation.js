@@ -36,12 +36,12 @@ export function researchPcPresentation(assessment) {
       percentage: "Unavailable",
       sensitivity: "Unavailable",
       reason: assessment?.status === "event_specific_foster_available"
-        ? assessment?.reason_message || "Not applicable: a validated event-specific Foster Pc is available; no ESA-prior substitute was generated."
+        ? assessment?.reason_message || "Not applicable: a validated event-specific Foster Pc is available; no assumption-based substitute was generated."
         : reasonDetail || (assessment?.status === "not_estimable"
-          ? "ESA-prior inputs did not produce a valid numerical estimate."
+          ? "The configured research-Pc inputs did not produce a valid numerical estimate."
           : assessment?.status === "not_applicable"
             ? "The event is not eligible for a prior-based estimate."
-            : "No valid ESA-prior research estimate for this event"),
+            : "No valid assumption-based research estimate for this event"),
     };
   }
   // Preserve the backend's full significant digits where it provides the

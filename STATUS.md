@@ -9,6 +9,12 @@
 
 ## Stage 2 partial checkpoint (not complete)
 
+### Stage 2B — covariance policy
+
+- Added three selectable research covariance policies and chose the age-adjusted TLE baseline as the TLE-derived default, with physical justification and all ten same-job comparisons in `docs/ORION_STAGE2_COVARIANCE_COMPARISON.md`.
+- Source job: fresh live CelesTrak screening `391e7c01617f4a229d38b2b3da7e6f57` on 2026-10-24, because the specified in-app job was absent from the job list and exports. The fallback job is partial (178 events; candidate-minima cap reached) and does not claim to reproduce the specified 1,932-pair/84-event snapshot.
+- Stage 2B changes are checkpointed separately. Full Stage 2 acceptance remains in progress; do not start Stage 3.
+
 - Added finite exact `log10_pc` and a `negligible` flag to the research-Pc record. Primary Pc and sensitivity displays use the configurable default `LOG10_PC_FLOOR=-30`; the exact log10 value remains in the technical record. Percent display uses the corresponding `< 1e-28%` floor.
 - Revised the default risk score to `clip(((log10 Pc + 12) / 10) × 100, 0, 100)`, version `orion-physics-pc-risk-v2`; High ≥ 1e-4 and Medium ≥ 1e-7 remain project policy. The score window is configurable via `ORION_RISK_SCORE_LOG10_FLOOR` and `ORION_RISK_SCORE_LOG10_CEILING`.
 - Focused checks: backend probability-classification and automatic-research-Pc tests: 12 passed; frontend Pc presentation tests: 6 passed.

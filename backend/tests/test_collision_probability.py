@@ -451,6 +451,17 @@ class Foster2DFailureStateTests(unittest.TestCase):
         self.assertIsNone(zero_speed.pc)
         self.assertIsNone(boundary.pc)
 
+    def test_small_tca_residual_is_accepted_with_explicit_warning(self) -> None:
+        args = assessment_args(miss_km=1.0, sigma_km=1.0, hbr_km=0.01)
+        args["position_2_km"] = (1.0, 0.0, 0.0)
+        args["velocity_2_km_s"] = (0.05, 7.0, 0.0)
+        result = calculate_foster_2d(**args)
+        self.assertEqual(result.status, "available")
+        self.assertTrue(any("TCA transversality residual" in warning for warning in result.warnings))
+        too_radial = dict(args)
+        too_radial["velocity_2_km_s"] = (0.2, 7.0, 0.0)
+        self.assertIn("PC_METHOD_NOT_APPLICABLE", calculate_foster_2d(**too_radial).reason_codes)
+
     def test_synthetic_inputs_remain_explicit_and_results_repeat(self) -> None:
         args = assessment_args(miss_km=0.4, sigma_km=0.8, hbr_km=0.25)
         first = calculate_foster_2d(**args)

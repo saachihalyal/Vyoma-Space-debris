@@ -412,6 +412,11 @@ class AutomaticResearchPcAssessment(BaseModel):
     upper_sensitivity_pc_scientific: str | None = None
     method_name: str = "ORION prior-based research Pc"
     method_version: str = "1.0.0"
+    covariance_policy_id: str | None = None
+    covariance_policy_name: str | None = None
+    encounter_plane_sigma_min_km: float | None = None
+    encounter_plane_sigma_max_km: float | None = None
+    miss_sigma_ratio: float | None = None
     covariance_method: str | None = None
     hbr_method: str | None = None
     hbr_km: float | None = None
@@ -426,6 +431,12 @@ class AutomaticResearchPcAssessment(BaseModel):
     sensitivity_reason: str = "No numerical sensitivity assessment was available."
     assumptions: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+
+
+class ResearchPcScenarioRequest(BaseModel):
+    covariance_policy: Literal["esa_population_prior", "tle_age_baseline", "tle_age_baseline_2x"] = "tle_age_baseline"
+    covariance_scale: float = Field(default=1.0, gt=0, le=10)
+    hbr_scale: float = Field(default=1.0, gt=0, le=10)
 
 
 class AiRiskAssessment(BaseModel):

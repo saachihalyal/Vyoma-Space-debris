@@ -52,5 +52,5 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
       React.createElement("span", null, "Highest-priority event in current display"),
       React.createElement("strong", null, highest ? `${pair}${Number.isInteger(ai?.final_priority_rank) ? ` | final rank #${ai.final_priority_rank}` : ""}` : pair),
       React.createElement("p", null, `Ranking basis: ${priorityReason}`),
-      React.createElement("p", { className: "muted" }, "Counts for valid events, Pc and AI use the currently displayed set. ESA-prior Pc is an assumption-based research estimate; it is never presented as or used to fill operational Foster Pc.")));
+      React.createElement("p", { className: "muted" }, "Counts for valid events, Pc and AI use the currently displayed set. The research Pc is assumption-based and is never presented as or used to fill operational Foster Pc.")));
 }

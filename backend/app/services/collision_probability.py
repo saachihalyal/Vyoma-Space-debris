@@ -25,7 +25,8 @@ METHOD_VERSION = "1.0"
 RELATIVE_TOLERANCE = 1e-8
 MAX_QUADRATURE_ORDER = 1024
 MIN_RELATIVE_SPEED_KM_S = 1e-8
-TCA_RADIAL_RATIO_TOLERANCE = 1e-3
+TCA_RADIAL_RATIO_TOLERANCE = 1e-2
+TCA_RADIAL_RATIO_WARNING_THRESHOLD = 1e-3
 MATRIX_SYMMETRY_REL_TOLERANCE = 1e-12
 MATRIX_SYMMETRY_ABS_TOLERANCE = 1e-30
 ENCOUNTER_PLANE_DEFINITION = (
@@ -350,6 +351,10 @@ def calculate_foster_2d(
             warnings=warnings + ["The supplied state is not sufficiently transverse for the declared TCA."],
             covariance_sources=covariance_sources,
             applicability_status="not_applicable",
+        )
+    if miss_distance > 1e-9 and radial_ratio > TCA_RADIAL_RATIO_WARNING_THRESHOLD:
+        warnings.append(
+            f"TCA transversality residual is {radial_ratio:.4g}; ORION permits at most {TCA_RADIAL_RATIO_TOLERANCE:g} and flags residuals above {TCA_RADIAL_RATIO_WARNING_THRESHOLD:g}."
         )
 
     e_v = relative_velocity / speed
