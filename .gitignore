@@ -30,3 +30,4 @@ Thumbs.db
 # Large ML datasets
 backend/ml_data/train_data.zip
 backend/exports/spacetrack-cdm-throttle.json
+.stage6_qa_preview/
