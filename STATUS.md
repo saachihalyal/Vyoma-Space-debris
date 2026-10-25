@@ -103,3 +103,14 @@ The pre-existing Stage 6 report changes remain uncommitted and must be completed
 - Risk test: support Low/Medium/High 272/236/158; confusion `[[272,0,0],[7,229,0],[0,6,152]]`; macro-F1 0.9801134 vs majority 0.1933191; usable.
 - Smart Filter test: support insignificant/significant 508/158; confusion `[[508,0],[6,152]]`; significant precision 1.0, recall 0.9620253, FN 6; macro-F1 0.9873872 vs majority 0.4327087 (FN 158), deterministic 1 km baseline 0.6768758 (FN 0). Model beats both macro-F1 baselines and majority FN count; the independent 1 km/physics guard remains enabled.
 - Method and final results: `docs/METHODOLOGY.md`, `docs/MODEL_METRICS.json`. No frontend files changed.
+
+## Backend hygiene and nebula theme commit (2026-10-25)
+
+- Added the Pc-surrogate limitation: `miss_sigma_ratio` and log-HBR nearly determine log-domain Pc, so low error reflects formula reproduction and is not independent predictive skill or validation against observed collisions.
+- Corrected the backend policy label to `2x TLE-age position-sigma baseline`. Rocket-body name designations now override a conflicting generic payload type; the SL-3 R/B (10114) path is covered by classification tests. Saved archive payloads were not opened during this pass, so no direct newest-job event-type inspection is claimed.
+- Refreshed stale backend assertions for the all-saved-jobs training data and uncertainty guard: backend full suite **340 passed**, 1 warning, 107 subtests; `backend/backend-suite-requested.log`.
+- Frontend suite: **187 passed, 0 failed**, `frontend-suite-requested.log`. Production build succeeded; existing large-chunk warning, `production-build-requested.log` (stderr in matching `.err.log`). Each command had a 600-second timeout.
+- Commit `cfc7891 Add nebula theme base` contains only `src/main.jsx` and `src/og-theme.css`. The live cache remains uncommitted. Backend fixes, tests, methodology, and this status update are committed as `492c173 Fix backend research hygiene checks`.
+- Metrics from `docs/MODEL_METRICS.json` (all 10 saved jobs, test split): risk support Low/Medium/High `272/236/158`; confusion matrix true rows/predicted columns `[[272,0,0],[7,229,0],[0,6,152]]`; per-class P/R/F1: Low `0.974910/1.000000/0.987296`, Medium `0.974468/0.970339/0.972399`, High `1.000000/0.962025/0.980645`; macro-F1 `0.980113`, majority baseline `0.193319`.
+- Pc regressor v2.3.0: MAE/RMSE `0.076534/0.232037` log10 Pc over 666 rows; among 459 non-negligible rows `0.109856/0.278332`. Smart Filter v2.3.0: support insignificant/significant `508/158`, confusion `[[508,0],[6,152]]`, significant precision/recall `1.000000/0.962025`, macro-F1 `0.987387`, majority macro-F1 `0.432709`, deterministic 1 km macro-F1 `0.676876`.
+- Maneuver ranker v2.0.0 test regret is `0.031142` versus baseline `0.017708` log10 Pc-reduction units (8 parents / 38 candidates); `ranking_used=false`, deterministic physics ranking remains in use.

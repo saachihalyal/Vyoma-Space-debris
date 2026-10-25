@@ -20,7 +20,8 @@ class PhysicsSmartFilterTests(unittest.TestCase):
         cls.event = cls.events[0]
 
     def test_safety_guard_retains_real_event_when_scenarios_are_uncertain(self) -> None:
-        result = smart_filter.evaluate_physical_smart_filter([self.event])
+        with patch.object(smart_filter, "_log10_pc", return_value=None):
+            result = smart_filter.evaluate_physical_smart_filter([self.event])
         row = result["decisions"][0]
         self.assertEqual(result["status"], "available")
         self.assertEqual(row["decision"], "retain")
@@ -80,8 +81,8 @@ class PhysicsSmartFilterTests(unittest.TestCase):
 
     def test_saved_scenario_labels_and_grouped_metadata_match_trained_filter(self) -> None:
         metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v4.jsonl")
-        self.assertEqual(metadata["model_version"], "2.2.0")
+        self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v5.jsonl")
+        self.assertEqual(metadata["model_version"], "2.3.0")
         self.assertTrue(metadata["usable_for_inference"])
         dataset_path = BACKEND_DIR / "ml_data" / metadata["dataset_filename"]
         self.assertEqual(metadata["dataset_sha256"], hashlib.sha256(dataset_path.read_bytes()).hexdigest())

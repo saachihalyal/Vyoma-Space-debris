@@ -24,7 +24,7 @@ class ObjectClassificationTests(unittest.TestCase):
             (classify_object(name="COSMOS 2251 DEB", source_group="stations"), "SPACE_DEBRIS", "name_pattern"),
             (classify_object(name="PAYLOAD 12345", source_group="debris"), "ACTIVE_SATELLITE", "name_pattern"),
             (classify_object(name="ISS (ZARYA)"), "SPACE_STATION", "name_pattern"),
-            (classify_object(object_type="PAYLOAD", name="SL-3 R/B"), "ACTIVE_SATELLITE", "catalog_object_type"),
+            (classify_object(object_type="PAYLOAD", name="SL-3 R/B"), "ROCKET_BODY", "name_pattern"),
             (classify_object(source_group="stations"), "ACTIVE_SATELLITE", "group_based_fallback"),
         ]
         for result, object_type, source in cases:

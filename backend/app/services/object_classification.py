@@ -50,6 +50,12 @@ def classify_object(
     catalog object type and raw source classification. Group-derived values
     are explicitly tagged so the UI can identify their weaker provenance.
     """
+    # A specific rocket-body designation in the catalog name is stronger than
+    # a broad or stale payload type supplied by a source group.
+    named = _classify_name(name)
+    if named is not None and named.object_type == "ROCKET_BODY":
+        return named
+
     for raw, source in ((object_type, "catalog_object_type"), (source_classification, "source_classification")):
         if not isinstance(raw, str) or not raw.strip():
             continue

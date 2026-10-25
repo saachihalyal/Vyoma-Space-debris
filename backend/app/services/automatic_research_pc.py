@@ -31,7 +31,7 @@ DEFAULT_COVARIANCE_POLICY = "tle_age_baseline"
 COVARIANCE_POLICIES = {
     "esa_population_prior": "ESA Kelvins population-prior covariance (TLE-derived state; unvalidated mapping)",
     "tle_age_baseline": "TLE-age position-sigma baseline (0.1/0.5/0.2 km plus 0.1/1.5/0.2 km/day)",
-    "tle_age_baseline_2x": "2× TLE-age position-sigma baseline",
+    "tle_age_baseline_2x": "2x TLE-age position-sigma baseline",
 }
 PRIOR_PATH = Path(__file__).resolve().parents[1] / "ai" / "artifacts" / "esa_research_uncertainty_prior_v1.json"
 DEFAULT_CONFIG: dict[str, Any] = {

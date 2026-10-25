@@ -117,9 +117,9 @@ class CollisionModelTests(unittest.TestCase):
         self.assertTrue(all(isinstance(value, float) for value in features.values()))
 
     def test_archived_physics_event_receives_separate_research_and_ai_channels(self) -> None:
-        snapshot, events = collision_models_event_source()
-        source_record = next(record for record in snapshot["result"]["data"]
-                             if record.get("physics_result", {}).get("status") == "valid")
+        _snapshot, events = collision_models_event_source()
+        source_record = next(event.model_dump(mode="json") for event in events
+                             if event.physics_result.status == "valid")
         result = {"data": [copy.deepcopy(source_record)]}
         _backfill_archived_research_pc(result)
         restored = result["data"][0]

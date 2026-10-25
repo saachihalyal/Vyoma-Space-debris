@@ -157,7 +157,7 @@ class ResearchManeuverTests(unittest.TestCase):
             self.assertEqual(maneuver_baseline["hbr_km"], assessment.hbr_km, event.id)
             self.assertEqual(maneuver_baseline["comparison_role"], "collision_analysis_research_pc_record", event.id)
             compared += 1
-        self.assertEqual(compared, 69)
+        self.assertEqual(compared, 219)
 
     def test_zero_burn_baseline_reuses_selected_collision_analysis_research_pc(self):
         event = _event()
