@@ -6,8 +6,8 @@
  * All components MUST use this module to determine object type labels.
  * Do NOT infer object type from display names or duplicate this logic elsewhere.
  *
- * Only explicit API/catalog classification fields are used. Names and event
- * roles do not establish object type.
+ * Catalog object type takes precedence. When absent, documented name patterns
+ * are used before any group-based fallback returned by the API.
  */
 
 /**
@@ -17,6 +17,7 @@ export const OBJECT_TYPE = {
   ACTIVE_SATELLITE: "ACTIVE SATELLITE",
   SPACE_DEBRIS: "SPACE DEBRIS",
   ROCKET_BODY: "ROCKET BODY",
+  SPACE_STATION: "STATION MODULE",
   FRAGMENT: "FRAGMENT",
   UNKNOWN: "UNKNOWN / OTHER",
 };
@@ -31,18 +32,30 @@ export const OBJECT_TYPE = {
  */
 export function getObjectTypeLabel(object) {
   if (!object) return OBJECT_TYPE.UNKNOWN;
-  const fields = [object.object_type, object.source_classification, object.category]
-    .filter((value) => typeof value === "string" && value.trim());
-  const resolved = fields.map((value) => {
-    const raw = value.trim().toUpperCase().replace(/_/g, " ");
+  const map = (value) => {
+    const raw = String(value || "").trim().toUpperCase().replace(/_/g, " ");
     if (["ACTIVE SATELLITE", "ACTIVE", "PAYLOAD", "SATELLITE", "SPACECRAFT"].includes(raw)) return OBJECT_TYPE.ACTIVE_SATELLITE;
     if (["SPACE DEBRIS", "DEBRIS", "FRAGMENT"].includes(raw)) return OBJECT_TYPE.SPACE_DEBRIS;
     if (["ROCKET BODY", "R/B", "ROCKET"].includes(raw)) return OBJECT_TYPE.ROCKET_BODY;
-    return OBJECT_TYPE.UNKNOWN;
-  });
-  const known = resolved.filter((value) => value !== OBJECT_TYPE.UNKNOWN);
-  if (known.length && (known.length !== resolved.length || new Set(known).size > 1)) return OBJECT_TYPE.UNKNOWN;
-  return known[0] || OBJECT_TYPE.UNKNOWN;
+    if (["STATION", "SPACE STATION", "STATION MODULE"].includes(raw)) return OBJECT_TYPE.SPACE_STATION;
+    if (["UNKNOWN", "OTHER", "UNKNOWN / OTHER"].includes(raw)) return OBJECT_TYPE.UNKNOWN;
+    return null;
+  };
+  for (const field of [object.object_type, object.source_classification]) {
+    const known = map(field);
+    if (known) return known;
+  }
+  const name = typeof object.name === "string" ? object.name.toUpperCase().replace(/[()]/g, " ") : "";
+  if (name.includes("R/B") || name.includes("ROCKET BODY")) return OBJECT_TYPE.ROCKET_BODY;
+  if (/(^|\s)(DEB|DEBRIS|FRAGMENT)(\s|$)/.test(name)) return OBJECT_TYPE.SPACE_DEBRIS;
+  const stationNames = ["ISS", "ZARYA", "ZVEZDA", "NAUKA", "POISK", "RASSVET", "UNITY", "DESTINY", "HARMONY", "COLUMBUS", "KIBO", "QUEST", "TRANQUILITY", "CUPOLA", "PMM", "BISHOP", "PIRS", "PROGRESS", "SOYUZ"];
+  if (stationNames.some((token) => new RegExp(`(^|\\s)${token}(\\s|$)`).test(name))) return OBJECT_TYPE.SPACE_STATION;
+  if (name.includes("PAYLOAD")) return OBJECT_TYPE.ACTIVE_SATELLITE;
+  // Category is a legacy group-derived fallback. Use it only after object type
+  // and recognized name patterns have been exhausted.
+  const category = map(object.category);
+  if (category) return category;
+  return OBJECT_TYPE.UNKNOWN;
 }
 
 export function getObjectTypeCode(object) {
@@ -50,6 +63,7 @@ export function getObjectTypeCode(object) {
   if (label === OBJECT_TYPE.ACTIVE_SATELLITE) return "ACTIVE_SATELLITE";
   if (label === OBJECT_TYPE.SPACE_DEBRIS) return "SPACE_DEBRIS";
   if (label === OBJECT_TYPE.ROCKET_BODY) return "ROCKET_BODY";
+  if (label === OBJECT_TYPE.SPACE_STATION) return "SPACE_STATION";
   return "UNKNOWN";
 }
 

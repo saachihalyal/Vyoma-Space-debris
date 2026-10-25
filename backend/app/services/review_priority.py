@@ -117,6 +117,7 @@ def classify_review_priority(
     else:
         category = "LOW"
         applied = f"miss_distance / screening_threshold > {active_policy.medium_max_fraction:g}"
+    band_number = {"CRITICAL": 1, "HIGH": 2, "MEDIUM": 3, "LOW": 4}[category]
     evidence = [
         f"Miss distance {miss:g} km against configured screening threshold {threshold:g} km (fraction {fraction:.6g}).",
         f"TCA {tca_text}.",
@@ -146,7 +147,7 @@ def classify_review_priority(
             "This geometry-only ORION internal review queue is not a physical collision-risk classification or Pc estimate.",
             "TCA, relative speed, object type, physical Pc, and ML output do not change this category; ML and Pc are reported separately.",
         ],
-        explanation=(f"{category} ORION review priority under {active_policy.version}: "
+        explanation=(f"Geometry review band {band_number} under {active_policy.version}: "
                      f"miss distance is {fraction:.3%} of the configured screening threshold; TCA is {tca_text}. "
                      "This is geometry-only triage, not a collision probability or operational risk label."),
     )

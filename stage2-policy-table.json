@@ -1,0 +1,402 @@
+﻿[
+    {
+        "id":  "CA-6D5A63B3F85D9EFECF32",
+        "primary":  "PROGRESS-MS 35",
+        "secondary":  "SL-3 R/B",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-7BBD11BEBD212013E0D2",
+        "primary":  "SL-3 R/B",
+        "secondary":  "POISK",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-168C6BBF40A405BC3696",
+        "primary":  "SL-3 R/B",
+        "secondary":  "ISS (ZARYA)",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-6847B6BAF35ED2086028",
+        "primary":  "DRAGON CRS-35",
+        "secondary":  "SL-3 R/B",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-CBAF8601B8199BB6939E",
+        "primary":  "SOYUZ-MS 29",
+        "secondary":  "SL-3 R/B",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-16B95EDD8DB5EBC94598",
+        "primary":  "SL-3 R/B",
+        "secondary":  "ISS (NAUKA)",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-A654DE2293CA4D228B26",
+        "primary":  "SL-3 R/B",
+        "secondary":  "PROGRESS-MS 34",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-AFD05AD6563A2B66E1F2",
+        "primary":  "CREW DRAGON 13",
+        "secondary":  "SL-3 R/B",
+        "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+        "miss_km":  1.5730799038098546,
+        "relative_speed_km_s":  12.121350001271997,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.009995812835326941,
+                             "sigma_max_km":  0.11006010518522504,
+                             "miss_sigma":  68.29248582515115,
+                             "log10_pc":  -990.6033836925751,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.23906848814752368,
+                             "sigma_max_km":  1.37886756042754,
+                             "miss_sigma":  2.988161049236489,
+                             "log10_pc":  -5.839383129816068,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.47813697629504737,
+                             "sigma_max_km":  2.75773512085508,
+                             "miss_sigma":  1.4940805246182445,
+                             "log10_pc":  -4.9877662395219255,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-7472FD0267A83B503907",
+        "primary":  "SOYUZ-MS 29",
+        "secondary":  "SL-3 R/B",
+        "tca_utc":  "2026-10-25T04:38:40.186341+00:00",
+        "miss_km":  4.631175414141588,
+        "relative_speed_km_s":  12.24306765554635,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.010137523512149535,
+                             "sigma_max_km":  0.10987092164260776,
+                             "miss_sigma":  385.5965785091245,
+                             "log10_pc":  -32141.92146197835,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.28016261118971875,
+                             "sigma_max_km":  1.7344035051943516,
+                             "miss_sigma":  14.001055511011698,
+                             "log10_pc":  -46.62577984439812,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.5603252223794375,
+                             "sigma_max_km":  3.468807010388703,
+                             "miss_sigma":  7.000527755505849,
+                             "log10_pc":  -15.312707198757959,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    },
+    {
+        "id":  "CA-85F121E0F15D650F969F",
+        "primary":  "SL-3 R/B",
+        "secondary":  "PROGRESS-MS 34",
+        "tca_utc":  "2026-10-25T04:38:40.186341+00:00",
+        "miss_km":  4.631175414141588,
+        "relative_speed_km_s":  12.24306765554635,
+        "policies":  [
+                         {
+                             "policy":  "esa_population_prior",
+                             "sigma_min_km":  0.010137523512149535,
+                             "sigma_max_km":  0.10987092164260776,
+                             "miss_sigma":  385.5965785091245,
+                             "log10_pc":  -32141.92146197835,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline",
+                             "sigma_min_km":  0.28016261118971875,
+                             "sigma_max_km":  1.7344035051943516,
+                             "miss_sigma":  14.001055511011698,
+                             "log10_pc":  -46.62577984439812,
+                             "reason_codes":  [
+
+                                              ]
+                         },
+                         {
+                             "policy":  "tle_age_baseline_2x",
+                             "sigma_min_km":  0.5603252223794375,
+                             "sigma_max_km":  3.468807010388703,
+                             "miss_sigma":  7.000527755505849,
+                             "log10_pc":  -15.312707198757959,
+                             "reason_codes":  [
+
+                                              ]
+                         }
+                     ]
+    }
+]

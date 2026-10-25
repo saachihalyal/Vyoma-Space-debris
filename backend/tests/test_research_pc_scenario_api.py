@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import re
+import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -46,6 +49,37 @@ class ResearchPcScenarioApiTests(unittest.TestCase):
                 self.assertEqual(invalid.status_code, 422)
         finally:
             main._screening_jobs.pop(JOB_ID, None)
+
+    def test_archived_job_what_if_is_readable_after_process_registry_is_empty(self) -> None:
+        event = _real_screened_event()
+        source_path = Path(__file__).resolve().parents[1] / "exports" / "screening-job-2a50f67a597442279de1d5178468953d.json"
+        archive = json.loads(source_path.read_text(encoding="utf-8"))
+        archive["job_id"] = JOB_ID
+        record = next(item for item in archive["result"]["data"]
+            if {str(item.get("primary", {}).get("id")), str(item.get("secondary", {}).get("id"))} == {"33762", "33776"})
+        record["id"] = event.id
+        record["physics_result"]["event_id"] = event.id
+        record["screening_job_id"] = JOB_ID
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / f"screening-job-{JOB_ID}.json"
+            archived_text = json.dumps(archive)
+            path.write_text(archived_text, encoding="utf-8")
+            with patch.object(main, "SCREENING_EXPORT_ARCHIVE_DIR", Path(temp_dir)):
+                self.assertNotIn(JOB_ID, main._screening_jobs)
+                with TestClient(main.app) as client:
+                    response = client.post(
+                        f"/api/conjunction-jobs/{JOB_ID}/events/{event.id}/research-pc-scenario",
+                        json={"covariance_scale": 2.0},
+                    )
+                self.assertEqual(response.status_code, 200, response.text)
+                payload = response.json()
+                self.assertTrue(payload["success"])
+                self.assertEqual(payload["data"]["status"], "prior_based_research_estimate")
+                self.assertEqual(payload["data"]["provenance"]["scenario_covariance_scale"], 2.0)
+                persisted = json.loads(path.read_text(encoding="utf-8"))
+                stored = next(item for item in persisted["result"]["data"] if item["id"] == event.id)
+                self.assertEqual(stored, record)
+                self.assertEqual(path.read_text(encoding="utf-8"), archived_text, "what-if must not mutate the archived job")
 
 
 if __name__ == "__main__":

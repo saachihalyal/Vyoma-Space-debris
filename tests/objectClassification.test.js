@@ -30,15 +30,19 @@ test("frontend labels only explicit metadata and agrees across Collision and Man
     [{ object_type: "SPACE_DEBRIS", category: "debris" }, "SPACE DEBRIS", "SPACE_DEBRIS"],
     [{ object_type: "ROCKET_BODY", category: "rocket_body" }, "ROCKET BODY", "ROCKET_BODY"],
     [{ object_type: "UNKNOWN", category: "unknown", name: "ISS DEBRIS ROCKET" }, "UNKNOWN / OTHER", "UNKNOWN"],
-    [{ name: "COSMOS 2251 DEB" }, "UNKNOWN / OTHER", "UNKNOWN"],
-    [{ name: "ARIANE ROCKET BODY" }, "UNKNOWN / OTHER", "UNKNOWN"],
-    [{ object_type: "SPACE_DEBRIS", category: "active" }, "UNKNOWN / OTHER", "UNKNOWN"],
+    [{ name: "COSMOS 2251 DEB" }, "SPACE DEBRIS", "SPACE_DEBRIS"],
+    [{ name: "SL-3 R/B" }, "ROCKET BODY", "ROCKET_BODY"],
+    [{ name: "DEB 33757" }, "SPACE DEBRIS", "SPACE_DEBRIS"],
+    [{ name: "PAYLOAD 12345" }, "ACTIVE SATELLITE", "ACTIVE_SATELLITE"],
+    [{ object_type: "SPACE_DEBRIS", category: "active" }, "SPACE DEBRIS", "SPACE_DEBRIS"],
   ];
   for (const [object, expectedLabel, expectedCode] of cases) {
     assert.equal(getObjectTypeLabel(object), expectedLabel);
     assert.equal(resolveObjectType(object), expectedCode);
   }
   assert.equal(getObjectTypeLabel({ name: "unclassified" }), "UNKNOWN / OTHER");
+  assert.equal(getObjectTypeLabel({ category: "debris", name: "SL-3 R/B" }), "ROCKET BODY", "name inference precedes group fallback");
+  assert.equal(getObjectTypeLabel({ object_type: "UNKNOWN", name: "ISS DEBRIS ROCKET" }), "UNKNOWN / OTHER", "explicit catalog unknown is preserved");
 });
 
 test("bundled synthetic browser fallback does not present generated labels as catalog classifications", () => {

@@ -212,7 +212,7 @@ class ArchivedJobRestoreTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         restored_event = response.json()["result"]["data"][0]
         self.assertEqual(restored_event["automatic_research_pc_assessment"]["status"], "prior_based_research_estimate")
-        self.assertEqual(restored_event["automatic_research_pc_assessment"]["method_version"], "1.2.0")
+        self.assertEqual(restored_event["automatic_research_pc_assessment"]["method_version"], "2.0.0")
         self.assertEqual(restored_event["collision_probability"]["risk_assessment"]["risk_score"], 80.0)
         self.assertEqual(self.json_path.read_bytes(), original_json)
 

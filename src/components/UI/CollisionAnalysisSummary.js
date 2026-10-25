@@ -1,15 +1,12 @@
 import React from "react";
-import { collisionEventPriority, rankCollisionEvents } from "../../utils/collisionEventDisplay.js";
+import { searchAndSortCollisionEvents } from "../../utils/collisionEventDisplay.js";
 import { hasValidEventFosterPc } from "../../utils/collisionPcPresentation.js";
+import { researchPcCatalogSummary } from "../../utils/researchPcAnalytics.js";
 
 function highestPriorityEvent(events) {
-  const ranked = events
-    .filter((event) => event?.physics_result?.status === "valid"
-      && Number.isInteger(event?.ai_risk_assessment?.final_priority_rank) && event.ai_risk_assessment.final_priority_rank > 0)
-    .slice()
-    .sort((left, right) => left.ai_risk_assessment.final_priority_rank - right.ai_risk_assessment.final_priority_rank || String(left.id).localeCompare(String(right.id)));
-  if (ranked.length) return ranked[0];
-  return rankCollisionEvents(events.filter((event) => event?.physics_result?.status === "valid"))[0] || null;
+  return searchAndSortCollisionEvents(events.filter((event) => event?.physics_result?.status === "valid"
+    && event?.physics_result?.tca_status === "valid"
+    && Number.isFinite(event?.automatic_research_pc_assessment?.log10_pc)), "", "research_pc")[0] || null;
 }
 
 export function CollisionAnalysisSummary({ events = [], displayedEvents = [], screeningStatus = {} }) {
@@ -22,17 +19,13 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
       : screened.length;
   const fosterCount = displayed.filter((event) => event?.physics_result?.status === "valid" && hasValidEventFosterPc(event)).length;
   const validCount = displayed.filter((event) => event?.physics_result?.status === "valid").length;
-  const criticalHighCount = displayed.filter((event) => ["CRITICAL", "HIGH"].includes(event?.review_priority?.category)).length;
-  const researchCount = displayed.filter((event) => event?.physics_result?.status === "valid" && event?.automatic_research_pc_assessment?.status === "prior_based_research_estimate").length;
+  const geometryReviewCount = displayed.filter((event) => event?.review_priority?.status === "classified").length;
   const aiEvents = displayed.filter((event) => event?.physics_result?.status !== "invalid"
     && Number.isFinite(event?.ai_risk_assessment?.score)
     && Number.isInteger(event?.ai_risk_assessment?.final_priority_rank)
     && event.ai_risk_assessment.final_priority_rank > 0);
   const highest = highestPriorityEvent(displayed);
-  const ai = highest?.ai_risk_assessment;
-  const priorityReason = !highest
-    ? "No valid event priority is available in the current display."
-    : ai?.ranking_explanation || ai?.explanation || `${collisionEventPriority(highest).label}: ${collisionEventPriority(highest).basis}`;
+  const researchSummary = researchPcCatalogSummary(screened);
   const pair = highest
     ? `${highest.primary?.name || highest.primary?.id || "Unknown"} (${highest.primary?.id || "ID unavailable"}) vs ${highest.secondary?.name || highest.secondary?.id || "Unknown"} (${highest.secondary?.id || "ID unavailable"})`
     : "None";
@@ -43,14 +36,27 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
         ["Total screened conjunctions", String(total)],
         ["Events currently displayed", `${displayed.length} of ${total}`],
         ["Valid physical conjunctions", `${validCount} of ${displayed.length}`],
-        ["Critical / High geometry priority", `${criticalHighCount} of ${displayed.length}`],
-        ["Numerical research Pc", `${researchCount} of ${displayed.length}`],
+        ["Geometry-review evidence available", `${geometryReviewCount} of ${displayed.length}`],
+        ["Valid events with research Pc", `${researchSummary.withResearchPc} of ${researchSummary.valid}`],
+        ["Valid events with reason code", `${researchSummary.withReasonCode} of ${researchSummary.valid}`],
+        ["Valid events without Pc or reason", String(researchSummary.withoutPcOrReason)],
+        ["Boundary TCA (not ranked)", String(researchSummary.boundary)],
         ["Event-specific Foster Pc", `${fosterCount} of ${displayed.length}`],
         ["AI-prioritized events", `${aiEvents.length} of ${displayed.length}`],
       ].map(([label, value]) => React.createElement("span", { key: label }, label, React.createElement("strong", null, value)))),
     React.createElement("div", { className: "collision-analysis-highest-priority" },
-      React.createElement("span", null, "Highest-priority event in current display"),
-      React.createElement("strong", null, highest ? `${pair}${Number.isInteger(ai?.final_priority_rank) ? ` | final rank #${ai.final_priority_rank}` : ""}` : pair),
-      React.createElement("p", null, `Ranking basis: ${priorityReason}`),
-      React.createElement("p", { className: "muted" }, "Counts for valid events, Pc and AI use the currently displayed set. The research Pc is assumption-based and is never presented as or used to fill operational Foster Pc.")));
+      React.createElement("span", null, "Highest exact research-Pc event in current screening"),
+      React.createElement("strong", null, highest ? `${pair}${Number.isFinite(highest.automatic_research_pc_assessment?.log10_pc) ? ` | log10 Pc ${highest.automatic_research_pc_assessment.log10_pc}` : ""}` : "No valid interior-TCA research Pc is available."),
+      React.createElement("p", null, "Ranking basis: exact unfloored log10 Pc, descending; miss/sigma is the tie-breaker. Boundary solutions are shown separately and excluded."),
+      React.createElement("p", { className: "muted" }, "Counts use the full current screening result. The research Pc is assumption-based and is never presented as or used to fill operational Foster Pc.")),
+    React.createElement("section", { className: "research-pc-catalog-summary", "aria-label": "Research Pc distribution and encounter groups" },
+      React.createElement("div", { className: "research-pc-class-counts", "aria-label": "Research Pc class counts by encounter group" }, Object.entries(researchSummary.classCounts).map(([name, count]) => {
+        const rawCount = researchSummary.classRawEventCounts[name] || 0;
+        return React.createElement("span", { key: name }, `${name}: ${count} ${count === 1 ? "encounter" : "encounters"} (${rawCount} raw ${rawCount === 1 ? "event" : "events"})`);
+      })),
+      React.createElement("div", { className: "research-pc-histogram", role: "img", "aria-label": "Histogram of exact research log10 Pc values" },
+        researchSummary.histogram.map((bin) => React.createElement("span", { key: bin.label, title: `${bin.label}: ${bin.count}`, className: "research-pc-histogram-bin" },
+          React.createElement("i", { style: { height: `${Math.max(3, bin.count / Math.max(1, researchSummary.valid) * 100)}%` } }),
+          React.createElement("small", null, bin.label), React.createElement("b", null, bin.count)))),
+      researchSummary.encounterGroups.length ? React.createElement("details", { className: "encounter-group-summary" }, React.createElement("summary", null, `Likely co-located encounter groups (${researchSummary.encounterGroups.length}); raw event records retained`), React.createElement("ul", null, researchSummary.encounterGroups.map((group) => React.createElement("li", { key: group.representativeEventId }, `${group.representativeEventId}: 1 encounter (${group.memberEventIds.length} raw events); +${group.coLocatedObjectCount} co-located objects`)))) : null));
 }

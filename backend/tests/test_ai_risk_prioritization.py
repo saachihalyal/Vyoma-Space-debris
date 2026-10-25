@@ -10,6 +10,7 @@ from tests.test_automatic_research_pc import _real_screened_event
 class AiRiskPrioritizationTests(unittest.TestCase):
     def test_real_screening_record_receives_numerical_separate_fallback_and_ranks(self):
         event = _real_screened_event()
+        event = rank_screening_events([event])[0]
         assessment = event.ai_risk_assessment
         self.assertIsNotNone(assessment)
         self.assertGreaterEqual(assessment.score, 0.0)
@@ -17,10 +18,45 @@ class AiRiskPrioritizationTests(unittest.TestCase):
         self.assertIn(assessment.category, {"Critical", "High", "Medium", "Low"})
         self.assertEqual(assessment.prediction_method, "deterministic_geometry_speed_fallback")
         self.assertIn("not collision probability", assessment.target_definition)
-        self.assertEqual(assessment.research_pc_rank, 1)  # single-event run has a defined rank when Pc evidence exists
+        self.assertEqual(assessment.research_pc_rank, 1)
         self.assertEqual(assessment.final_priority_rank, 1)
         self.assertEqual(event.collision_probability.pc, None)
         self.assertNotEqual(event.automatic_research_pc_assessment.estimated_pc, assessment.score)
+
+    def test_research_pc_rank_uses_exact_log10_then_miss_sigma_and_stable_id(self):
+        base = _real_screened_event()
+        research = base.automatic_research_pc_assessment
+        first = base.model_copy(update={
+            "id": "z-event",
+            "physics_result": base.physics_result.model_copy(update={"event_id": "z-event"}),
+            "automatic_research_pc_assessment": research.model_copy(update={
+                "estimated_pc": 0.0, "estimated_pc_scientific": "1e-320", "log10_pc": -320.0,
+                "miss_sigma_ratio": 3.0,
+            }),
+            "ai_risk_assessment": assess_live_geometry(base.physics_result),
+        })
+        tied_better_geometry = base.model_copy(update={
+            "id": "a-event",
+            "physics_result": base.physics_result.model_copy(update={"event_id": "a-event"}),
+            "automatic_research_pc_assessment": research.model_copy(update={
+                "estimated_pc": 0.0, "estimated_pc_scientific": "1e-320", "log10_pc": -320.0,
+                "miss_sigma_ratio": 2.0,
+            }),
+            "ai_risk_assessment": assess_live_geometry(base.physics_result),
+        })
+        stronger_pc = base.model_copy(update={
+            "id": "m-event",
+            "physics_result": base.physics_result.model_copy(update={"event_id": "m-event"}),
+            "automatic_research_pc_assessment": research.model_copy(update={
+                "estimated_pc": 0.0, "estimated_pc_scientific": "1e-320", "log10_pc": -319.0,
+                "miss_sigma_ratio": 50.0,
+            }),
+            "ai_risk_assessment": assess_live_geometry(base.physics_result),
+        })
+
+        ranked = rank_screening_events([first, tied_better_geometry, stronger_pc])
+        pc_ranks = {item.id: item.ai_risk_assessment.research_pc_rank for item in ranked}
+        self.assertEqual(pc_ranks, {"z-event": 3, "a-event": 2, "m-event": 1})
 
     def test_score_varies_with_geometry_and_is_reproducible(self):
         event = _real_screened_event()
@@ -61,7 +97,7 @@ class AiRiskPrioritizationTests(unittest.TestCase):
             "id": "event-nearer", "physics_result": other_physics,
             "collision_probability": event.collision_probability.model_copy(update={"event_id": "event-nearer"}),
             "automatic_research_pc_assessment": event.automatic_research_pc_assessment.model_copy(update={
-                "estimated_pc": 0.1, "estimated_pc_scientific": "1.0e-1",
+                "estimated_pc": 0.1, "estimated_pc_scientific": "1.0e-1", "log10_pc": -1.0,
             }),
             "ai_risk_assessment": assess_live_geometry(other_physics),
         })

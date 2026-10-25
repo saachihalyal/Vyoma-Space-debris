@@ -1,0 +1,163 @@
+﻿{
+    "screening_job_id":  "b10de1f092d5457da604249c725efefd",
+    "event_id":  "CA-6D5A63B3F85D9EFECF32",
+    "object_pair":  {
+                        "primary":  {
+                                        "id":  "100712",
+                                        "name":  "PROGRESS-MS 35"
+                                    },
+                        "secondary":  {
+                                          "id":  "10114",
+                                          "name":  "SL-3 R/B"
+                                      }
+                    },
+    "tca_utc":  "2026-10-24T21:40:22.2894070+00:00",
+    "miss_distance_km":  1.5730799038098546,
+    "relative_speed_km_s":  12.121350001271997,
+    "research_pc_record":  {
+                               "result_type":  "automatic_research_pc_assessment",
+                               "status":  "prior_based_research_estimate",
+                               "quality_status":  "prior_based_unvalidated",
+                               "estimated_pc":  1.4474943265404664E-06,
+                               "estimated_pc_scientific":  "1.44749e-6",
+                               "log10_pc":  -5.839383129816068,
+                               "negligible":  false,
+                               "percentage":  0.00014474943265404663,
+                               "percentage_scientific":  "1.44749e-4",
+                               "risk_assessment":  {
+                                                       "status":  "classified",
+                                                       "risk_score":  61.60616870183932,
+                                                       "risk_score_policy_name":  "ORION Physics Pc Risk Policy",
+                                                       "risk_score_policy_version":  "orion-physics-pc-risk-v2",
+                                                       "risk_score_pc_channel":  "research_pc",
+                                                       "physics_risk_class":  "Medium",
+                                                       "final_risk_class":  "Medium",
+                                                       "classification_basis":  "Medium from research_pc under orion-physics-pc-risk-v2; this physics class controls the displayed final class.",
+                                                       "log10_pc":  -5.839383129816068,
+                                                       "thresholds":  {
+                                                                          "high_pc_inclusive":  0.0001,
+                                                                          "medium_pc_inclusive":  1E-07
+                                                                      },
+                                                       "boundary_policy":  null,
+                                                       "reason_code":  null,
+                                                       "limitations":  [
+                                                                           "Thresholds are ORION project policy, not universal safety standards.",
+                                                                           "Risk score and class are derived from physics Pc only; AI and geometry priority remain separate."
+                                                                       ]
+                                                   },
+                               "lower_sensitivity_pc":  1.7458253900267947E-08,
+                               "upper_sensitivity_pc":  7.7500013857430069E-06,
+                               "lower_sensitivity_pc_scientific":  "1.74583e-8",
+                               "upper_sensitivity_pc_scientific":  "7.75e-6",
+                               "method_name":  "ORION TLE-age baseline Foster 2D research estimate",
+                               "method_version":  "2.0.0",
+                               "covariance_policy_id":  "tle_age_baseline",
+                               "covariance_policy_name":  "TLE-age position-sigma baseline (0.1/0.5/0.2 km plus 0.1/1.5/0.2 km/day)",
+                               "encounter_plane_sigma_min_km":  0.23906848814752368,
+                               "encounter_plane_sigma_max_km":  1.37886756042754,
+                               "miss_sigma_ratio":  2.988161049236489,
+                               "covariance_method":  "TLE-age position-sigma baseline (0.1/0.5/0.2 km plus 0.1/1.5/0.2 km/day) assigned in RTN at TCA and rotated to TEME; no covariance propagation is performed.",
+                               "hbr_method":  "ESA target/chaser span population prior by ORION object class; assumed span diameter converted to a per-object radius and combined; not an authenticated object dimension.",
+                               "hbr_km":  0.0091,
+                               "hbr_sensitivity_km":  [
+                                                          0.001,
+                                                          0.021
+                                                      ],
+                               "provenance":  {
+                                                  "source":  "backend/ml_data/train_data.zip",
+                                                  "source_archive_sha256":  "68362fe5629cc80f17291f2d73f733bf4e922675e37b91a8ee79afadb46f3edc",
+                                                  "prior_artifact":  "esa_research_uncertainty_prior_v1.json",
+                                                  "prior_artifact_sha256":  "f22c0a45285d4f2cbd721b9871d509c77d4a30c7272f4803694cbbab893789c0",
+                                                  "prior_model_version":  "1.0.0",
+                                                  "role_by_object":  {
+                                                                         "100712":  "esa_target",
+                                                                         "10114":  "esa_target"
+                                                                     },
+                                                  "tca_utc":  "2026-10-24T21:40:22.289407+00:00",
+                                                  "covariance_frame":  "TEME",
+                                                  "covariance_assignment_epoch":  "TCA",
+                                                  "covariance_independence_assumed":  true,
+                                                  "configuration":  {
+                                                                        "age_inflation_per_day":  0.05,
+                                                                        "age_inflation_cap":  10.0,
+                                                                        "band_sigma_multiplier":  {
+                                                                                                      "LEO":  1.0,
+                                                                                                      "MEO":  1.25,
+                                                                                                      "GEO":  1.5,
+                                                                                                      "HEO":  1.5
+                                                                                                  },
+                                                                        "eccentricity_sigma_multiplier":  1.0,
+                                                                        "bstar_sigma_multiplier":  0.25,
+                                                                        "bstar_reference_abs":  0.0001
+                                                                    },
+                                                  "scenario_covariance_scale":  1.0,
+                                                  "scenario_hbr_scale":  1.0,
+                                                  "object_metadata":  {
+                                                                          "100712":  {
+                                                                                         "band":  "LEO",
+                                                                                         "category":  "payload",
+                                                                                         "tle_age_days":  0.693878937025463
+                                                                                     },
+                                                                          "10114":  {
+                                                                                        "band":  "LEO",
+                                                                                        "category":  "payload",
+                                                                                        "tle_age_days":  0.6869991170254629
+                                                                                    }
+                                                                      },
+                                                  "scenario_quantiles":  [
+                                                                             "p10",
+                                                                             "p50",
+                                                                             "p90"
+                                                                         ],
+                                                  "covariance_policy_id":  "tle_age_baseline",
+                                                  "covariance_policy_name":  "TLE-age position-sigma baseline (0.1/0.5/0.2 km plus 0.1/1.5/0.2 km/day)",
+                                                  "covariance_policy_options":  {
+                                                                                    "esa_population_prior":  "ESA Kelvins population-prior covariance (TLE-derived state; unvalidated mapping)",
+                                                                                    "tle_age_baseline":  "TLE-age position-sigma baseline (0.1/0.5/0.2 km plus 0.1/1.5/0.2 km/day)",
+                                                                                    "tle_age_baseline_2x":  "2Ã TLE-age position-sigma baseline"
+                                                                                },
+                                                  "tle_age_sigma_model_km":  {
+                                                                                 "radial":  [
+                                                                                                0.1,
+                                                                                                0.1
+                                                                                            ],
+                                                                                 "in_track":  [
+                                                                                                  0.5,
+                                                                                                  1.5
+                                                                                              ],
+                                                                                 "cross_track":  [
+                                                                                                     0.2,
+                                                                                                     0.2
+                                                                                                 ],
+                                                                                 "age_epoch":  "TCA"
+                                                                             },
+                                                  "quadrature_relative_tolerance":  1E-06,
+                                                  "log_domain_fallback":  "same Foster circular Gaussian integral, used only when probability-domain Foster quadrature fails"
+                                              },
+                               "reason_codes":  [
+
+                                                ],
+                               "reason_message":  null,
+                               "geometry_review_category":  "HIGH",
+                               "geometry_review_policy_version":  "orion-geometry-review-v1",
+                               "ranking_basis":  "HIGH under orion-geometry-review-v1; geometry-only queue rank, separate from Pc",
+                               "sensitivity_status":  "available",
+                               "sensitivity_reason":  "Range is the min/max of coupled ESA p10, p50 and p90 prior scenarios; it is not a statistical confidence interval.",
+                               "assumptions":  [
+                                                   "This is a prior-based research estimate, not an event-specific or operationally validated Pc.",
+                                                   "The selected TLE-age covariance is a configured uncertainty model, not measured object-specific covariance.",
+                                                   "ESA r/t/n sigma labels are mapped to local RTN at TCA, then rotated to TEME using each propagated SGP4 state; this frame interpretation is an explicit model assumption.",
+                                                   "Covariance is diagonal in RTN; ESA correlations and cross-object covariance are unavailable and omitted.",
+                                                   "The covariance is assigned at TCA; no covariance propagation from TLE epoch is performed.",
+                                                   "ESA target/chaser roles are mapped from ORION object class: active/payload to target; debris/rocket body/unknown to chaser.",
+                                                   "ESA span inputs are treated as diameters and converted to radius; this is an assumed size mapping, not authenticated object dimensions.",
+                                                   "Object covariances are assumed independent for the Foster relative covariance.",
+                                                   "p10/p50/p90 HBR scenarios vary the ESA span prior; the resulting sensitivity endpoints are not confidence bounds.",
+                                                   "Scenario covariance multiplier: 1; scenario HBR multiplier: 1. Both are explicit research-scenario controls, not measured inputs.",
+                                                   "When a result is below binary64\u0027s representable range, the same Foster disk integral is evaluated in log space and reported in scientific notation rather than substituted with zero."
+                                               ],
+                               "limitations":  [
+
+                                               ]
+                           }
+}

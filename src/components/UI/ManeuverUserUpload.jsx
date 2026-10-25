@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { uploadManeuverEvent } from "../../api/ssaClient";
+import { selectedManeuverReportPath } from "../../api/ssaClient";
 import { ManeuverBaselineComparison } from "./ManeuverBaselineComparison.js";
 
-export function ManeuverUserUpload() {
+export function ManeuverUserUpload({ download = () => {} }) {
   const [file, setFile] = useState(null);
   const [leadSeconds, setLeadSeconds] = useState("300");
   const [burnMagnitudeMs, setBurnMagnitudeMs] = useState("0.01");
@@ -35,6 +36,9 @@ export function ManeuverUserUpload() {
     {error ? <p role="alert" className="muted">{error}</p> : null}
     {data ? <>
       <p role="status" className="muted">Validated event {data.event_id}; job {result.screening_job_id}; input provenance: user supplied. Research propagation and Pc limitations are shown below.</p>
+      <div className="report-action-group" aria-label="Uploaded maneuver report downloads">
+        {(["pdf", "csv", "json"]).map((format) => <button className="secondary-action" type="button" key={format} onClick={() => download(selectedManeuverReportPath(result.screening_job_id, data.event_id, format), `${data.event_id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>)}
+      </div>
       <ManeuverBaselineComparison comparison={data.baseline_reference_comparison} stage2aReference={data.stage2a_reference} zeroBurnBaseline={data.zero_burn_baseline} candidates={data.physics_candidates?.candidates || data.candidates || []} stage2aPhysics={data.stage2a_reference} probabilityBefore={data.probability_before} probabilityAfter={data.probability_after} probabilityComparison={data.probability_comparison} />
     </> : null}
   </section>;

@@ -498,6 +498,13 @@ export async function calculateScenarioPc({ screeningJobId, eventId, covarianceP
   );
 }
 
+export async function calculateResearchPcWhatIf({ screeningJobId, eventId, covarianceScale }) {
+  return postEventInput(
+    `/api/conjunction-jobs/${encodeURIComponent(screeningJobId)}/events/${encodeURIComponent(eventId)}/research-pc-scenario`,
+    { covariance_policy: "tle_age_baseline", covariance_scale },
+  );
+}
+
 async function postEventInput(path, body) {
   if (!path.includes("/undefined/") && !path.includes("/null/")) {
     const response = await fetch(`${API_BASE}${path}`, {
@@ -523,11 +530,19 @@ export function completedScreeningCsvPath(screeningJobId) {
   return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId)}/reports/conjunctions.csv`;
 }
 
-export function selectedEventReportPath(screeningJobId, eventId) {
+export function selectedEventReportPath(screeningJobId, eventId, format = "pdf") {
   if (typeof screeningJobId !== "string" || !screeningJobId.trim() || typeof eventId !== "string" || !eventId.trim()) {
     throw new Error("A completed screening job ID and selected event ID are required for the event report.");
   }
-  return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/events/${encodeURIComponent(eventId.trim())}/report.pdf`;
+  if (!["pdf", "csv", "json"].includes(format)) throw new Error("Selected event reports support PDF, CSV, or JSON.");
+  return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/events/${encodeURIComponent(eventId.trim())}/report.${format}`;
+}
+
+export function selectedManeuverReportPath(screeningJobId, eventId, format = "pdf") {
+  if (typeof screeningJobId !== "string" || !screeningJobId.trim() || typeof eventId !== "string" || !eventId.trim()) throw new Error("A screening job ID and event ID are required for the maneuver report.");
+  if (!["pdf", "csv", "json"].includes(format)) throw new Error("Maneuver reports support PDF, CSV, or JSON.");
+  const endpoint = format === "pdf" ? "assessment.pdf" : `assessment.${format}`;
+  return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/events/${encodeURIComponent(eventId.trim())}/${endpoint}`;
 }
 
 export async function downloadTrajectoryAssessmentCsv(screeningJobId) {

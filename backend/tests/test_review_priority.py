@@ -84,11 +84,13 @@ class ReviewPriorityTests(unittest.TestCase):
         priority = classify_review_priority(_physics(3)).model_dump(mode="json")
         event = {"id": "EV-1", "result_kind": "physics_assessment", "physics_result": {}, "review_priority": priority}
         row = next(csv.DictReader(io.StringIO(conjunctions_csv([event]))))
-        self.assertEqual(row["review_priority_category"], priority["category"])
+        expected_band = {"CRITICAL": "Band 1", "HIGH": "Band 2", "MEDIUM": "Band 3", "LOW": "Band 4"}[priority["category"]]
+        self.assertEqual(row["review_priority_category"], expected_band)
         self.assertEqual(row["review_priority_policy_version"], priority["policy_version"])
         self.assertEqual(row["review_priority_explanation"], priority["explanation"])
         pdf = event_report_pdf(event).decode("latin-1")
-        self.assertIn(priority["category"], pdf)
+        self.assertIn(f"Geometry review band: {expected_band}", pdf)
+        self.assertNotIn(priority["category"], pdf)
         self.assertIn(priority["policy_version"], pdf)
         self.assertIn("ORION internal geometry-only review priority", pdf)
 

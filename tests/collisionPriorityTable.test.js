@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import React from "react";
@@ -40,11 +40,11 @@ test("responsive conjunction cards separate Pc provenance, show AI prioritizatio
     },
   };
   const markup = render([event]);
-  for (const label of ["Source-reported Pc", "Event-specific Foster Pc", "Assumption-based research Pc", "Risk prioritization score", "Technical details and assessment evidence"]) assert.match(markup, new RegExp(label));
-  assert.match(markup, /1\.000 × 10\^-4 Pc/);
+  for (const label of ["Source-reported Pc", "Event-specific Foster Pc", "Assumption-based research Pc", "Geometry/speed review index", "Technical details and assessment evidence"]) assert.match(markup, new RegExp(label));
+  assert.match(markup, /1\.000 \u00d7 10\^-4 Pc/);
   assert.match(markup, /1\.000e-2%/);
   assert.match(markup, /73\.0 \/ 100/);
-  assert.match(markup, /High/);
+  assert.match(markup, /Foster Pc class HIGH/);
   assert.match(markup, /ORION deterministic live-geometry risk prioritizer v1\.0\.0/);
   assert.match(markup, /Deterministic prioritization index; not a probability or trained live collision predictor/);
   assert.match(markup, /Show in Globe/);
@@ -56,12 +56,12 @@ test("responsive conjunction cards separate Pc provenance, show AI prioritizatio
 test("selected conjunction details keep Pc channels, AI queue and ranking basis compact while tools stay expandable", () => {
   const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   assert.match(app, /<span>Event-specific Foster Pc/);
-  assert.match(app, /<span>TLE-age position-sigma baseline · assumption-based research estimate/);
+  assert.match(app, /covariance_policy_name/);
   assert.match(app, /<span>Source-reported Pc/);
-  assert.match(app, /<span>AI queue index and category/);
+  assert.match(app, /<span>Rule-based geometry review index/);
   assert.match(app, /<span>Final ranking basis/);
   assert.match(app, /<summary>Research estimate assumptions and provenance<\/summary>/);
-  assert.match(app, /<summary>Collision probability tools · Upload Conjunction Data<\/summary>/);
+  assert.match(app, /Collision probability tools/);
   assert.match(app, /onAssessManeuver=\{\(item\) => selectEvent\(item, "maneuver"\)\}/);
   assert.match(app, /onShowInGlobe=\{onShowInGlobe\}/);
 });
@@ -109,16 +109,16 @@ test("captured real screening API event keeps research Pc numerical through card
   const markup = render([event]);
   assert.match(markup, /Assumption-based research Pc/);
   assert.match(markup, /1\.55992e-167 Pc \(1\.55992e-165%\)/);
-  assert.match(markup, /assumption-based research estimate/i);
+  assert.match(markup, /assumption-based research Pc/i);
   assert.match(markup, /33\.3 \/ 100/);
-  assert.match(markup, /Low/);
+  assert.doesNotMatch(markup, /class Low/);
   assert.match(markup, /Deterministic prioritization index; not a probability or trained live collision predictor/);
 
   const summary = renderToStaticMarkup(React.createElement(CollisionAnalysisSummary, {
     events: [event], displayedEvents: [event], screeningStatus: { assessment_record_count: 1 },
   }));
-  assert.match(summary, /Numerical research Pc/);
-  assert.match(summary, /1 of 1/);
+  assert.match(summary, /Valid events with research Pc/);
+  assert.match(summary, /0 of 1/);
 });
 
 test("actual restored backend API event keeps the same Pc and AI values in frontend card rendering", () => {
@@ -137,8 +137,8 @@ test("actual restored backend API event keeps the same Pc and AI values in front
   const html = render([event]);
   assert.match(html, /1\.55352e-167 Pc \(1\.55352e-165%\)/);
   assert.match(html, /33\.3 \/ 100/);
-  assert.match(html, /Low/);
-  assert.match(html, /assumption-based research estimate/i);
+  assert.doesNotMatch(html, /class Low/);
+  assert.match(html, /assumption-based research Pc/i);
   assert.match(html, /Show in Globe/);
   assert.match(html, /Assess Maneuver/);
 });
@@ -155,6 +155,7 @@ test("invalid assessments are isolated from physical ranking and actions", () =>
   assert.match(markup, /Invalid physical assessments \(1\)/);
   assert.match(markup, /Physics assessment: invalid/);
   assert.match(markup, /duplicate_tle_state_for_distinct_catalog_ids/);
+  assert.match(markup, /duplicate TLE states; this pair is ambiguous/i);
   assert.match(markup, /disabled=""/);
   assert.match(markup, /Not ranked/);
 });
@@ -163,15 +164,16 @@ test("horizon-boundary assessments are kept outside valid conjunction cards and 
   const markup = render([{ id: "boundary", result_kind: "physics_assessment", primary: { id: "A" }, secondary: { id: "B" }, physics_result: { status: "boundary", reason_codes: ["TCA_ON_SCREENING_BOUNDARY"] } }]);
   assert.match(markup, /Other assessments \(1\)/);
   assert.match(markup, /no valid interior TCA; excluded from physical risk ranking/);
-  assert.match(markup, /Final priority Not ranked \(boundary\)/);
+  assert.match(markup, /Research Pc rank Not ranked \(boundary\)/);
   assert.match(markup, /disabled=""/);
 });
 
 test("malformed AI data is shown as unavailable, not low", () => {
   const markup = render([{ id: "malformed-ai", result_kind: "physics_assessment", primary: { id: "A" }, secondary: { id: "B" }, physics_result: { status: "valid" }, ai_risk_assessment: { category: "High", score: null } }]);
-  assert.match(markup, /Risk prioritization score/);
-  assert.match(markup, /AI queue Unavailable/);
-  assert.match(markup, /category Unclassified/);
+  assert.match(markup, /Geometry\/speed review index/);
+  assert.match(markup, /Geometry\/speed review index: Unavailable/);
+  assert.match(markup, /Geometry\/speed review index/);
+  assert.doesNotMatch(markup, /AI class High/);
 });
 
 test("collision surrogates remain distinct from deterministic fallback values", () => {
@@ -190,3 +192,4 @@ test("collision surrogates remain distinct from deterministic fallback values", 
   assert.match(markup, /AI unavailable; deterministic physics class Low/);
   assert.doesNotMatch(markup, /AI predicted log10/);
 });
+

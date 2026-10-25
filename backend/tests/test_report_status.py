@@ -5,6 +5,7 @@ import csv
 import copy
 import io
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,10 +16,89 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.models import ConjunctionAssessmentEvent, ObjectSummary, PhysicsResult, Provenance, ScientificField
-from app.services.reports import conjunctions_csv, event_report_pdf, mission_report_pdf
+from app.services.reports import conjunctions_csv, event_report_csv, event_report_payload, event_report_pdf, mission_report_pdf
+
+
+def pdf_text(pdf: bytes) -> str:
+    fragments = re.findall(rb"\(((?:\\.|[^\\)])*)\) Tj", pdf)
+    decoded = [part.decode("latin-1").replace(r"\(", "(").replace(r"\)", ")").replace(r"\\", "\\") for part in fragments]
+    return " ".join(decoded)
 
 
 class MissionReportStatusTests(unittest.TestCase):
+    def test_report_uses_research_uncertainty_for_negligible_pc_without_replacing_foster_channel(self) -> None:
+        event = stored_physical_event("CA-NEGLIGIBLE-RESEARCH")
+        event["automatic_research_pc_assessment"] = {
+            "status": "prior_based_research_estimate", "estimated_pc_scientific": "< 1e-30", "log10_pc": -55,
+            "covariance_method": "TLE-age model assigned at TCA", "covariance_policy_id": "tle_age_baseline",
+            "covariance_policy_name": "TLE-age position-sigma baseline", "encounter_plane_sigma_min_km": 0.24,
+            "encounter_plane_sigma_max_km": 1.37, "covariance_frame": "TEME", "covariance_epoch_utc": "2026-10-20T00:00:00+00:00",
+            "hbr_km": 0.012, "hbr_source": "assumed_object_size_override", "hbr_provenance": {"assumption": "project size proxy"},
+            "assumptions": ["Assumed covariance and HBR"],
+        }
+        payload = event_report_payload(event)
+        self.assertEqual(payload["covariance"]["policy"], "TLE-age position-sigma baseline")
+        self.assertEqual(payload["covariance"]["sigmas_encounter_plane_km"], {"minimum_km": 0.24, "maximum_km": 1.37})
+        self.assertEqual(payload["covariance"]["frame"], "TEME")
+        self.assertEqual(payload["covariance"]["epoch_utc"], "2026-10-20T00:00:00+00:00")
+        self.assertEqual(payload["hard_body_radius"]["value_km"], 0.012)
+        self.assertEqual(payload["hard_body_radius"]["source"], "assumed_object_size_override")
+        self.assertIsNone(payload["pc_channels"]["event_specific_foster_pc"])
+        row = next(csv.DictReader(io.StringIO(event_report_csv(payload))))
+        self.assertEqual(row["covariance_policy"], "TLE-age position-sigma baseline")
+        self.assertEqual(row["encounter_sigma_max_km"], "1.37")
+        pdf = pdf_text(event_report_pdf(event))
+        for term in ("TLE-age position-sigma baseline", "0.24 / 1.37", "frame: TEME", "2026-10-20T00:00:00+00:00", "HBR km: 0.012", "assumed_object_size_override"):
+            self.assertIn(term, pdf)
+
+    def test_full_screening_csv_carries_research_uncertainty_for_each_event(self) -> None:
+        event = stored_physical_event("CA-FULL-CSV-RESEARCH")
+        event["primary"].update(name="SL-3 R/B", object_type="ROCKET_BODY")
+        event["secondary"].update(name="ISS (Zarya)", object_type="SPACE_STATION")
+        event["automatic_research_pc_assessment"] = {
+            "status": "prior_based_research_estimate", "estimated_pc_scientific": "< 1e-30", "log10_pc": -45.2,
+            "covariance_policy_id": "tle_age_baseline", "encounter_plane_sigma_min_km": 0.2,
+            "encounter_plane_sigma_max_km": 1.1, "covariance_frame": "TEME", "covariance_epoch_utc": "2026-10-20T00:00:00+00:00",
+            "hbr_km": 0.019, "hbr_source": "assumed_object_size_override", "hbr_provenance": {"assumption": "documented proxy"},
+            "sensitivity_reason": "HBR-only range; covariance scale what-if is separate.",
+        }
+        row = next(csv.DictReader(io.StringIO(conjunctions_csv([event]))))
+        self.assertEqual(row["object_primary_type"], "ROCKET_BODY")
+        self.assertEqual(row["object_secondary_type"], "SPACE_STATION")
+        self.assertEqual(row["research_log10_pc_exact"], "-45.2")
+        self.assertEqual(row["research_covariance_policy"], "tle_age_baseline")
+        self.assertEqual(row["research_encounter_sigma_max_km"], "1.1")
+        self.assertEqual(row["research_covariance_frame"], "TEME")
+        self.assertEqual(row["research_covariance_epoch_utc"], "2026-10-20T00:00:00+00:00")
+        self.assertEqual(row["research_hbr_km"], "0.019")
+        self.assertEqual(row["research_hbr_source"], "assumed_object_size_override")
+
+    def test_selected_report_payload_keeps_probability_channels_and_maneuver_rows_separate(self) -> None:
+        event = stored_physical_event("CA-REPORT-CHANNELS")
+        event["collision_probability"] = {"status": "available", "event_id": event["id"], "source_reported_event_id": event["id"], "pc": 2e-7, "source_reported_pc": 1e-6, "source_reported_pc_method": "source", "covariance_status": "available", "covariance_frame": "TEME", "covariance_epoch": "2026-10-20T00:00:00+00:00", "hbr_km": 0.001, "hbr_source": "measured"}
+        event["automatic_research_pc_assessment"] = {"status": "prior_based_research_estimate", "estimated_pc": 3e-7, "estimated_pc_scientific": "3.0e-7", "percentage": 3e-5, "percentage_scientific": "3.0e-5", "risk_assessment": {"risk_score": 38.0, "physics_risk_class": "Medium", "final_risk_class": "Medium", "classification_basis": "research_pc"}, "assumptions": ["independent"], "sensitivity_status": "available"}
+        event["collision_ai_assessment"] = {"status": "partial", "pc_surrogate": {"status": "available", "ai_predicted_log10_pc": -6.5}, "risk_classifier": {"status": "fallback", "ai_risk_class": "Low"}}
+        maneuver = {"event_id": event["id"], "status": "available", "probability_before": {"status": "available", "pc_scientific": "3.0e-7"}, "probability_after": {"status": "available", "pc_scientific": "2.0e-7"}, "zero_burn_baseline": {"miss_distance_km": 1.0, "candidate": {"closest_approach_utc": "2026-10-20T00:00:00+00:00", "relative_velocity_km_s": [1, 2, 3]}}, "physics_candidates": {"candidates": [{"direction": "along-track +", "research_pc_after": {"pc_scientific": "2.0e-7"}, "absolute_research_pc_reduction_scientific": "1.0e-7", "percentage_research_pc_reduction": 33.3, "fuel": {"status": "estimated", "initial_mass_kg": 500, "specific_impulse_s": 220, "propellant_consumption_kg": 0.002, "assumption_status": "estimated_from_default_assumptions"}}]}}
+        payload = event_report_payload(event, maneuver, screening_job_id="JOB-REPORT")
+        self.assertEqual(payload["screening_job_id"], "JOB-REPORT")
+        self.assertEqual(payload["pc_channels"]["source_reported_pc"], 1e-6)
+        self.assertEqual(payload["pc_channels"]["event_specific_foster_pc"], 2e-7)
+        self.assertEqual(payload["pc_channels"]["research_pc_scientific"], "3.0e-7")
+        rows = list(csv.DictReader(io.StringIO(event_report_csv(payload))))
+        self.assertEqual([row["record_type"] for row in rows], ["collision_event", "maneuver_candidate"])
+        self.assertEqual(rows[1]["pc_before_scientific"], "3.0e-7")
+        self.assertEqual(rows[1]["pc_after_scientific"], "2.0e-7")
+        self.assertEqual(rows[1]["fuel_assumption_status"], "estimated_from_default_assumptions")
+        pdf = pdf_text(event_report_pdf(event, maneuver))
+        for text in ("Source-reported Pc:", "Event-specific Foster Pc:", "Research Pc:", "Physics risk score/class:", "Pc reduction: absolute", "Fuel:", "physics research-Pc rank"):
+            self.assertIn(text, pdf)
+
+        stale_event = copy.deepcopy(event)
+        stale_event["collision_probability"].update(event_id="CA-OTHER", source_reported_event_id="CA-OTHER")
+        stale_pdf = pdf_text(event_report_pdf(stale_event))
+        self.assertIn("Event-specific Foster Pc: unavailable | status unavailable", stale_pdf)
+        self.assertIn("Source-reported Pc: not reported", stale_pdf)
+
     def render(self, completion_status: str, screening_status: str) -> str:
         pdf = mission_report_pdf(
             {"source": "Bundled fallback TLE sample"},
@@ -33,7 +113,7 @@ class MissionReportStatusTests(unittest.TestCase):
                 "refinement_count": 36,
             },
         )
-        return pdf.decode("latin-1")
+        return pdf_text(pdf)
 
     def test_valid_empty_screening_is_reported_as_completed_empty(self) -> None:
         report = self.render("complete", "valid")
@@ -46,7 +126,8 @@ class MissionReportStatusTests(unittest.TestCase):
         report = event_report_pdf(
             event,
             screening_summary={"screening_job_id": "accepted-screen-job", "completion_status": "partial"},
-        ).decode("latin-1")
+        )
+        report = pdf_text(report)
         self.assertIn("Deterministic event key: CA-REPORT-JOB", report)
         self.assertIn("Screening job ID: accepted-screen-job", report)
         self.assertIn("Screening run completion: partial", report)
@@ -72,7 +153,8 @@ class MissionReportStatusTests(unittest.TestCase):
             "objects_requested": 20, "catalog_records_received": 19, "objects_used": 18,
             "candidate_pairs": 4, "refinements": 3, "physical_events": 1,
             "caps_hit": ["candidate_minimum_limit"], "partial_reasons": ["catalog_objects_rejected"],
-        }).decode("latin-1")
+        })
+        report = pdf_text(report)
         for value in (
             "CA-REPORT-COMPLETE", job_id, "Primary | ID 25544", "Secondary | ID 36086",
             "PAYLOAD", "SPACE_DEBRIS", "TCA UTC:", "TCA epoch:", "Relative velocity at TCA:",
@@ -159,7 +241,7 @@ class MissionReportStatusTests(unittest.TestCase):
         self.assertEqual(row["anomaly_classification"], "unusual")
         self.assertEqual(row["anomaly_reason_code"], "prediction_available")
         self.assertIn("not a probability or danger estimate", row["anomaly_score_definition"])
-        pdf = event_report_pdf(event).decode("latin-1")
+        pdf = pdf_text(event_report_pdf(event))
         self.assertIn("not a calibrated probability or Foster Pc", pdf)
         self.assertIn("exponentiated ESA event-risk estimate", pdf)
         self.assertIn("Orbital anomaly assessment", pdf)
@@ -263,7 +345,7 @@ class MissionReportStatusTests(unittest.TestCase):
         self.assertEqual(row["ml_predicted_log10_risk"], "")
         self.assertEqual(row["ml_exponentiated_esa_event_risk_estimate"], "")
 
-        pdf = event_report_pdf(event).decode("latin-1")
+        pdf = pdf_text(event_report_pdf(event))
         self.assertIn("Status: unavailable | reason: ESA_LIVE_FEATURE_SEMANTICS_UNVERIFIED", pdf)
         self.assertIn("Predicted log10 ESA event-risk: unavailable", pdf)
         self.assertNotIn("-8.0", pdf)
@@ -298,12 +380,12 @@ class MissionReportStatusTests(unittest.TestCase):
         self.assertIn("user-entered covariance and HBR assumptions", row["scenario_assumptions"])
         self.assertEqual(row["scenario_is_synthetic"], "True")
 
-        pdf = event_report_pdf(event).decode("latin-1")
-        self.assertIn("Separate research scenario Pc \\(user-assumed sensitivity result; not observed\\)", pdf)
+        pdf = pdf_text(event_report_pdf(event))
+        self.assertIn("Separate research scenario Pc (user-assumed sensitivity result; not observed)", pdf)
         self.assertIn("Status: available", pdf)
         self.assertIn("Pc: 2e-07", pdf)
         self.assertIn("user-entered covariance and HBR", pdf)
-        self.assertIn("(assumptions", pdf)
+        self.assertIn("User scenario assumptions:", pdf)
         self.assertIn("Synthetic inputs: True", pdf)
         self.assertIn("Pc: 1e-07 | status available", pdf)
         self.assertEqual(event["collision_probability"], original_source)
@@ -320,7 +402,7 @@ class MissionReportStatusTests(unittest.TestCase):
                 event["collision_probability"].update(status=status, pc=0.25, reason_codes=[reason])
                 event.pop("scenario_collision_probability")
                 row = next(csv.DictReader(io.StringIO(conjunctions_csv([event]))))
-                pdf = event_report_pdf(event).decode("latin-1")
+                pdf = pdf_text(event_report_pdf(event))
                 self.assertEqual(row["pc_status"], status)
                 self.assertEqual(row["pc"], "")
                 self.assertEqual(row["pc_reason_codes"], reason)
@@ -336,7 +418,7 @@ class MissionReportStatusTests(unittest.TestCase):
                 event = pc_report_event()
                 event["scenario_collision_probability"].update(status=status, pc=0.25, reason_codes=[reason])
                 row = next(csv.DictReader(io.StringIO(conjunctions_csv([event]))))
-                pdf = event_report_pdf(event).decode("latin-1")
+                pdf = pdf_text(event_report_pdf(event))
                 self.assertEqual(row["scenario_pc_status"], status)
                 self.assertEqual(row["scenario_pc"], "")
                 self.assertEqual(row["scenario_pc_reason_codes"], reason)
@@ -531,6 +613,25 @@ def stored_physical_event(event_id: str) -> dict:
 
 
 class SelectedJobEventReportTests(unittest.TestCase):
+    def test_selected_event_csv_and_json_downloads_use_stored_job_data(self) -> None:
+        job_id = "0123456789abcdef0123456789abcdef"
+        event_id = "CA-selected-formats"
+        stored_event = stored_physical_event(event_id)
+        candidate = {"event_id": event_id, "screening_job_id": job_id, "direction": "along-track +", "delta_v_m_s": 0.01, "predicted_miss_distance_km": 1.3, "closest_approach_utc": "2026-10-20T00:00:01+00:00", "relative_velocity_km_s": [1, 2, 3], "research_pc_after": {"status": "unavailable"}}
+        job = {"status": "complete", "result": {"data": [stored_event], "screening": {}}, "maneuver_results": {event_id: {"event_id": event_id, "screening_job_id": job_id, "status": "available", "zero_burn_baseline": {"event_id": event_id, "screening_job_id": job_id, "miss_distance_km": 1.2, "candidate": {"relative_velocity_km_s": [1, 2, 3], "closest_approach_utc": "2026-10-20T00:00:00+00:00"}}, "probability_before": {"status": "unavailable"}, "probability_after": {"status": "unavailable"}, "physics_candidates": {"event_id": event_id, "screening_job_id": job_id, "candidates": [candidate]}}}}
+        with patch.dict(main._screening_jobs, {job_id: job}), patch.object(main, "build_trajectory_context", new=AsyncMock(side_effect=AssertionError("reports must not screen again"))), TestClient(main.app) as client:
+            json_response = client.get(f"/api/conjunction-jobs/{job_id}/events/{event_id}/report.json")
+            csv_response = client.get(f"/api/conjunction-jobs/{job_id}/events/{event_id}/assessment.csv")
+        self.assertEqual(json_response.status_code, 200)
+        payload = json_response.json()
+        self.assertEqual(payload["screening_job_id"], job_id)
+        self.assertEqual(payload["event_identity"]["event_id"], event_id)
+        self.assertEqual(payload["maneuver"]["candidates"][0]["direction"], "along-track +")
+        self.assertEqual(csv_response.status_code, 200)
+        self.assertIn("event_specific_foster_pc", csv_response.text)
+        self.assertIn("maneuver_candidate", csv_response.text)
+        self.assertIn(job_id, json_response.headers["x-screening-job-id"])
+
     def test_selected_event_pdf_uses_stored_job_event_without_rescreening(self) -> None:
         job_id = "0123456789abcdef0123456789abcdef"
         event_id = "CA-selected"

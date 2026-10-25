@@ -1,5 +1,23 @@
 export const COLLISION_INVALID_ASSESSMENT_LABEL = "Invalid physics assessments in full screening result (not qualifying close approaches)";
 
+export const PHYSICS_REASON_EXPLANATIONS = Object.freeze({
+  identical_propagation_parameters_for_distinct_catalog_ids: "Different catalog IDs have identical propagation parameters, so the objects cannot be distinguished reliably.",
+  duplicate_tle_state_for_distinct_catalog_ids: "Different catalog IDs contain duplicate TLE states; this pair is ambiguous.",
+  degenerate_zero_relative_state: "The relative position or velocity is degenerate, so a unique close approach cannot be calculated.",
+  no_local_minimum_in_interval: "No local minimum in separation was found inside the screening window.",
+  tca_refinement_basin_limit_exceeded: "The TCA refinement reached its configured search limit before finding a reliable minimum.",
+  non_unique_tca_flat_distance: "Separation is too flat around the minimum to identify one unique TCA.",
+  non_unique_tca_multiple_minima: "Multiple candidate minima prevent selecting one unique TCA.",
+  non_finite_state: "The propagated position or velocity contains an invalid numeric value.",
+});
+
+export function explainPhysicsReason(code) {
+  const known = PHYSICS_REASON_EXPLANATIONS[code];
+  if (known) return known;
+  if (/^SGP4/i.test(String(code))) return "Orbit propagation failed for this object under the reported SGP4 conditions.";
+  return "The trajectory assessment failed a validation or numerical check; inspect the reason code and source record.";
+}
+
 export const COLLISION_PAIR_FILTERS = Object.freeze([
   { value: "all", label: "All pair types" },
   { value: "SATELLITE vs SATELLITE", label: "Active satellite vs active satellite" },
@@ -120,7 +138,7 @@ export function rankOrbitalAnomalyEvents(events) {
   }]));
 }
 
-export function searchAndSortCollisionEvents(events, query = "", sort = "tca_soonest") {
+export function searchAndSortCollisionEvents(events, query = "", sort = "research_pc") {
   const needle = String(query || "").trim().toLocaleLowerCase();
   const filtered = getCollisionEventsForDisplay(events).filter((event) => {
     if (!needle) return true;
@@ -142,7 +160,27 @@ export function searchAndSortCollisionEvents(events, query = "", sort = "tca_soo
     const numericValue = Number(value.value);
     return Number.isFinite(numericValue) ? numericValue : NaN;
   };
+  const exactLogPc = (event) => {
+    const assessment = event?.automatic_research_pc_assessment;
+    return event?.physics_result?.status === "valid" && event?.physics_result?.tca_status === "valid"
+      && Number.isFinite(assessment?.log10_pc) ? assessment.log10_pc : NaN;
+  };
+  const missSigma = (event) => Number.isFinite(event?.automatic_research_pc_assessment?.miss_sigma_ratio)
+    ? event.automatic_research_pc_assessment.miss_sigma_ratio : Number.POSITIVE_INFINITY;
   return filtered.sort((left, right) => {
+    if (sort === "research_pc") {
+      const a = exactLogPc(left);
+      const b = exactLogPc(right);
+      const aValid = Number.isFinite(a);
+      const bValid = Number.isFinite(b);
+      if (aValid !== bValid) return aValid ? -1 : 1;
+      if (aValid && a !== b) return b - a;
+      if (aValid && missSigma(left) !== missSigma(right)) return missSigma(left) - missSigma(right);
+      const leftBoundary = left?.physics_result?.tca_status === "boundary";
+      const rightBoundary = right?.physics_result?.tca_status === "boundary";
+      if (leftBoundary !== rightBoundary) return leftBoundary ? 1 : -1;
+      return String(left?.id || "").localeCompare(String(right?.id || ""));
+    }
     if (sort === "evidence_priority") {
       const a = collisionEventPriority(left);
       const b = collisionEventPriority(right);

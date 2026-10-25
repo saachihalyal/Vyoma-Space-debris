@@ -94,9 +94,12 @@ def rank_screening_events(events: list[ConjunctionAssessmentEvent]) -> list[Conj
     geometry_rank = {event.id: index + 1 for index, event in enumerate(geometry_order)}
 
     foster_values = {event.id: _foster_pc_decimal(event) for event in eligible}
-    research_values = {event.id: _research_pc_decimal(event) for event in eligible}
+    research_values = {event.id: _research_log10_pc_decimal(event) for event in eligible}
     foster_order = sorted((e for e in eligible if foster_values[e.id] is not None), key=lambda e: (-foster_values[e.id], e.id))  # type: ignore[operator]
-    research_order = sorted((e for e in eligible if research_values[e.id] is not None), key=lambda e: (-research_values[e.id], e.id))  # type: ignore[operator]
+    research_order = sorted(
+        (e for e in eligible if research_values[e.id] is not None),
+        key=lambda e: (-research_values[e.id], _research_miss_sigma(e), e.id),  # type: ignore[operator]
+    )
     foster_rank = {event.id: index + 1 for index, event in enumerate(foster_order)}
     research_rank = {event.id: index + 1 for index, event in enumerate(research_order)}
 
@@ -171,18 +174,25 @@ def _foster_pc_decimal(event: ConjunctionAssessmentEvent) -> Decimal | None:
     return None
 
 
-def _research_pc_decimal(event: ConjunctionAssessmentEvent) -> Decimal | None:
+def _research_log10_pc_decimal(event: ConjunctionAssessmentEvent) -> Decimal | None:
     research = event.automatic_research_pc_assessment
-    if research is None or research.status != "prior_based_research_estimate":
+    if (research is None or research.status != "prior_based_research_estimate"
+            or event.physics_result.status != "valid" or event.physics_result.tca_status != "valid"):
         return None
-    text = research.estimated_pc_scientific
-    if not text and research.estimated_pc is not None:
-        text = str(research.estimated_pc)
     try:
-        value = Decimal(str(text))
+        value = Decimal(str(research.log10_pc))
     except (InvalidOperation, TypeError, ValueError):
         return None
-    return value if value.is_finite() and 0 <= value <= 1 else None
+    return value if value.is_finite() else None
+
+
+def _research_miss_sigma(event: ConjunctionAssessmentEvent) -> Decimal:
+    research = event.automatic_research_pc_assessment
+    try:
+        value = Decimal(str(research.miss_sigma_ratio if research is not None else None))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("Infinity")
+    return value if value.is_finite() and value >= 0 else Decimal("Infinity")
 
 
 def _finite_nonnegative(value: Any) -> float | None:

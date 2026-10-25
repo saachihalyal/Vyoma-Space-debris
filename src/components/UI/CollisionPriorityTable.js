@@ -1,5 +1,6 @@
 import React from "react";
-import { collisionEventPriority, rankCollisionEvents } from "../../utils/collisionEventDisplay.js";
+import { collisionEventPriority, explainPhysicsReason, searchAndSortCollisionEvents } from "../../utils/collisionEventDisplay.js";
+import { groupCoLocatedEvents } from "../../utils/researchPcAnalytics.js";
 import { formatProbabilityPercentage, formatProbabilityScientific, isValidProbability } from "./CollisionPcSummary.js";
 import { hasValidEventFosterPc, operationalFosterStatus, researchPcPresentation } from "../../utils/collisionPcPresentation.js";
 
@@ -15,7 +16,7 @@ function probability(pc) {
 }
 
 function eventPair(event) {
-  const object = (item) => `${item?.name || item?.canonicalName || "Unknown object"} (${item?.id || "ID unavailable"})`;
+  const object = (item) => `${item?.name || item?.canonicalName || "Unknown object"} (${item?.id || "ID unavailable"}; ${item?.object_type || "type unknown"}${item?.classification_source === "group_based_fallback" ? ", group-based fallback" : ""})`;
   return `${object(event.primary)} vs ${object(event.secondary)}`;
 }
 
@@ -57,8 +58,10 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
   const riskSurrogate = collisionAi?.risk_classifier;
   const valid = physics.status === "valid";
   const queueScore = Number.isFinite(ai?.score) ? `${(ai.score * 100).toFixed(1)} / 100` : "Unavailable";
-  const category = ai?.category || "Unclassified";
-  const priority = collisionEventPriority(event);
+  const deterministicGeometryIndex = !ai?.prediction_method || ai.prediction_method === "deterministic_geometry_speed_fallback";
+  // This record is a deterministic geometry queue; its category is never a
+  // Pc-derived risk class. Trained classes are shown from collisionAi below.
+  const category = null;
   const provenance = physics.provenance || event.provenance || {};
   const sourceProvenance = foster.source_reported_pc_provenance || event.source_reported_pc_provenance || {};
   const tca = physics.tca?.value || "Unavailable";
@@ -66,19 +69,19 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
   const speed = value(physics.relative_speed_at_tca, " km/s");
   const rankLabel = !valid
     ? `Not ranked (${physics.status || "assessment unavailable"})`
-    : Number.isInteger(ai?.final_priority_rank) && ai.final_priority_rank > 0
-      ? `#${ai.final_priority_rank}`
-      : rank ? `#${rank} (evidence fallback)` : "Not ranked";
+    : Number.isFinite(research?.log10_pc)
+      ? rank ? `#${rank}` : "Unranked"
+      : "Unranked (Pc unavailable)";
   const card = React.createElement("article", { className: `conjunction-card ${valid ? "is-valid" : "is-review"}`, key: event.id },
     React.createElement("header", { className: "conjunction-card-heading" },
       React.createElement("div", null,
-        React.createElement("span", { className: "conjunction-card-rank" }, `Final priority ${rankLabel}`),
+        React.createElement("span", { className: "conjunction-card-rank" }, `Research Pc rank ${rankLabel}`),
         React.createElement("h3", null, eventPair(event)),
         React.createElement("span", { className: `physics-status-badge ${valid ? "is-valid" : ""}` }, `Physics assessment: ${physics.status || "unavailable"}`)),
-      React.createElement("div", { className: "conjunction-ai-score", "aria-label": `Risk prioritization score ${queueScore}, category ${category}` },
-        React.createElement("span", null, "Risk prioritization score"),
+      React.createElement("div", { className: "conjunction-ai-score", "aria-label": `Prioritization index ${queueScore}${category ? `, model class ${category}` : ""}` },
+        React.createElement("span", null, deterministicGeometryIndex ? "Geometry/speed review index" : "AI prioritization index"),
         React.createElement("strong", null, queueScore),
-        React.createElement("b", null, category))),
+        category ? React.createElement("b", null, category) : null)),
     React.createElement("div", { className: "conjunction-card-metrics" },
       [["TCA (UTC)", tca], ["Miss distance", miss], ["Relative speed", speed]].map(([label, metric]) => React.createElement("div", { key: label }, React.createElement("span", null, label), React.createElement("strong", null, metric)))),
     React.createElement("section", { className: "conjunction-pc-primary", "aria-label": "Available collision probability" },
@@ -88,7 +91,7 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
       React.createElement(ProbabilityChannel, { label: "Event-specific Foster Pc", value: fosterAvailable ? probability(foster.pc) : "Unavailable", method: fosterAvailable ? `${foster.method || "Foster 2D"}; event-matched inputs` : "Requires compatible event covariance, frames, epochs, and sourced HBR" }),
       React.createElement(ProbabilityChannel, { label: "Assumption-based research Pc", value: research?.status === "prior_based_research_estimate" ? `${researchDisplay.value} Pc (${researchDisplay.percentage})` : "Unavailable", method: research?.status === "prior_based_research_estimate" ? `${research.covariance_policy_name || research.method_name}; sensitivity ${researchDisplay.sensitivity}` : researchDisplay.reason })),
     React.createElement("div", { className: "conjunction-card-ai" },
-      React.createElement("strong", null, `AI queue ${queueScore} · ${category}`),
+      React.createElement("strong", null, `${deterministicGeometryIndex ? "Geometry/speed review index" : "AI queue index"}: ${queueScore}${category ? ` · ${category}` : ""}`),
       React.createElement("span", null, `${ai?.model_name || "No AI prioritization assessment"}${ai?.model_version ? ` v${ai.model_version}` : ""}; ${ai?.prediction_method || "method unavailable"}`),
       React.createElement("small", null, ai ? `${ai.explanation || "No explanation supplied."} Deterministic prioritization index; not a probability or trained live collision predictor.` : "A score is withheld because valid event geometry and relative speed are unavailable.")),
     React.createElement("details", { className: "conjunction-collision-models" },
@@ -104,7 +107,9 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
           ? `AI unavailable; deterministic physics class ${riskSurrogate.deterministic_reference_risk_class} (${riskSurrogate.fallback_method}).`
           : `Unavailable (${riskSurrogate?.reason_code || "not assessed"}).`}`),
       React.createElement("small", null, "Model outputs support triage only. The physics research Pc remains authoritative; neither model is validated against observed collisions.")),
-    React.createElement("p", { className: "conjunction-ranking-basis" }, React.createElement("b", null, "Ranking basis: "), ai?.ranking_explanation || priority.basis),
+    React.createElement("p", { className: "conjunction-ranking-basis" }, React.createElement("b", null, "Ranking basis: "), Number.isFinite(research?.log10_pc)
+      ? `Exact unfloored log10 Pc ${research.log10_pc}, descending; miss/sigma ${Number.isFinite(research.miss_sigma_ratio) ? research.miss_sigma_ratio : "unavailable"} breaks ties.`
+      : "Research Pc unavailable; shown for geometry review only and not as a calibrated collision-risk probability."),
     React.createElement("div", { className: "conjunction-card-actions" },
       React.createElement("button", { type: "button", className: "secondary-action", onClick: () => onSelect?.(event), "aria-label": `Open details for ${eventPair(event)}` }, "Details"),
       React.createElement("button", { type: "button", className: "secondary-action", disabled: !valid || !onShowInGlobe, title: valid ? "Show both event identities and focus the selected object in Visualization." : "A valid physical conjunction is required.", onClick: () => valid && onShowInGlobe?.(event.primary?.id, event, screeningJobId) }, "Show in Globe"),
@@ -113,25 +118,48 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
       React.createElement("summary", null, "Technical details and assessment evidence"),
       React.createElement("dl", null,
         React.createElement("dt", null, "Event identity"), React.createElement("dd", null, `${event.id || "Unavailable"}; ${event.primary?.id || "?"} / ${event.secondary?.id || "?"}`),
-        React.createElement("dt", null, "Assessment validity"), React.createElement("dd", null, `${physics.status || "unavailable"}; ${(physics.reason_codes || []).join(", ") || "no validation errors reported"}`),
+        React.createElement("dt", null, "Assessment validity"), React.createElement("dd", null, `${physics.status || "unavailable"}; ${(physics.reason_codes || []).map((code) => `${code}: ${explainPhysicsReason(code)}`).join("; ") || "no validation errors reported"}`),
         React.createElement("dt", null, "Foster Pc availability"), React.createElement("dd", null, operationalFosterStatus(event, fosterAvailable)),
         React.createElement("dt", null, "Foster method and provenance"), React.createElement("dd", null, fosterAvailable ? `${foster.method || "Foster 2D"}; event ID ${foster.event_id}; ${JSON.stringify(foster.provenance || {})}` : `${operationalFosterStatus(event, fosterAvailable)} Reason codes: ${(foster.reason_codes || []).join(", ") || "not supplied"}. No covariance, HBR, or Pc was inferred.`),
         React.createElement("dt", null, "Research estimate assumptions"), React.createElement("dd", null, research?.status === "prior_based_research_estimate" ? `${(research.assumptions || []).join(" ")} ${researchDisplay.reason} Provenance: ${research.provenance?.source || "ESA-derived prior"}; ${research.method_name || "research method"} v${research.method_version || "unknown"}. Not operational Pc.` : `${researchDisplay.reason} ${(research?.reason_codes || []).join(", ")}`),
         React.createElement("dt", null, "Source Pc provenance"), React.createElement("dd", null, sourcePc !== null ? `${foster.source_reported_pc_method || event.source_reported_pc_method || "method undeclared"}; ${sourceProvenance.source || "source unavailable"}; authenticated ${sourceProvenance.authenticated === true ? "yes" : "no / unverified"}` : "No event-matched source value."),
-        React.createElement("dt", null, "Priorities and classification"), React.createElement("dd", null, `AI queue index ${queueScore}, category ${category} (${ai?.model_name || "method unavailable"}); geometry category ${event.review_priority?.category || "Unclassified"}; Foster Pc category ${fosterAvailable ? foster.probability_classification?.category || "not classified" : "not available"}; final ranking basis: ${ai?.ranking_explanation || priority.basis}`),
+        React.createElement("dt", null, "Priorities and classification"), React.createElement("dd", null, `${deterministicGeometryIndex ? "Geometry/speed review index" : "AI queue index"} ${queueScore}${category ? `, AI class ${category}` : ""} (${ai?.model_name || "method unavailable"}); Foster Pc class ${fosterAvailable ? foster.probability_classification?.category || "not classified" : "not available"}; geometry review priority is not a Pc class.`),
         React.createElement("dt", null, "Trajectory source"), React.createElement("dd", null, `${provenance.source || "source unavailable"}; ${provenance.propagator || provenance.method || "propagator unavailable"}; frame ${provenance.reference_frame || physics.encounter_geometry?.frame || "unavailable"}; catalog timestamp ${provenance.source_timestamp || "unavailable"}`))));
   return card;
 }
 
 export function CollisionPriorityTable({ events = [], onSelect, onShowInGlobe, onAssessManeuver, screeningJobId, anomalyRanks: _anomalyRanks = new Map() }) {
   if (!events.length) return React.createElement("p", { className: "muted" }, "No screening events are available.");
-  const ranked = rankCollisionEvents(events);
-  const rankById = new Map(ranked.map((event, index) => [event.id, index + 1]));
+  const ranked = searchAndSortCollisionEvents(events.filter((item) => item?.physics_result?.status === "valid" && item?.physics_result?.tca_status === "valid"), "", "research_pc");
   const invalid = events.filter((event) => event?.physics_result?.status === "invalid");
-  const validEvents = events.filter((event) => event?.physics_result?.status === "valid");
-  const needsReview = events.filter((event) => !["valid", "invalid"].includes(event?.physics_result?.status));
+  const validEvents = events.filter((event) => event?.physics_result?.status === "valid" && event?.physics_result?.tca_status !== "boundary");
+  const boundaryEvents = events.filter((event) => event?.physics_result?.tca_status === "boundary");
+  const needsReview = events.filter((event) => !["valid", "invalid"].includes(event?.physics_result?.status)
+    || event?.physics_result?.status === "valid" && !["valid", "boundary"].includes(event?.physics_result?.tca_status));
+  const groups = groupCoLocatedEvents(validEvents);
+  const groupByRepresentative = new Map(groups.map((group) => [group.representative.id, group]));
+  const groupedIds = new Set(groups.flatMap((group) => group.members.map((member) => member.id)));
+  const rankedIds = new Set(ranked.map((event) => event.id));
+  const cards = [
+    ...ranked.filter((event) => !groupedIds.has(event.id) || groupByRepresentative.has(event.id)),
+    ...validEvents.filter((event) => !rankedIds.has(event.id) && (!groupedIds.has(event.id) || groupByRepresentative.has(event.id))),
+  ];
+  const rankById = new Map(cards.map((event, index) => [event.id, index + 1]));
+  const renderCard = (event, index, boundary = false) => {
+    const group = groupByRepresentative.get(event.id);
+    return React.createElement(React.Fragment, { key: event.id || index },
+      group ? React.createElement("p", { className: "encounter-group-label" }, `Encounter group: 1 encounter (${group.members.length} raw events) · +${group.coLocatedObjectCount} co-located objects; raw records retained`) : null,
+      boundary ? React.createElement("p", { className: "boundary-solution-caveat", role: "note" }, "Boundary solution — TCA is at the screening-window edge; shown for review and excluded from ranking.") : null,
+      React.createElement(EventCard, { event, rank: boundary ? null : rankById.get(event.id), onSelect, onShowInGlobe, onAssessManeuver, screeningJobId }),
+      group ? React.createElement("details", { className: "encounter-group-members" },
+        React.createElement("summary", null, `Show ${group.members.length} raw event records`),
+        React.createElement("ul", null, group.members.map((member) => React.createElement("li", { key: member.id }, `${member.primary?.name || member.primary?.id} / ${member.secondary?.name || member.secondary?.id} · ${member.id}`)))) : null);
+  };
   return React.createElement("div", { className: "conjunction-card-list" },
-    validEvents.length ? validEvents.map((event, index) => React.createElement(EventCard, { key: event.id || index, event, rank: rankById.get(event.id), onSelect, onShowInGlobe, onAssessManeuver, screeningJobId })) : null,
+    validEvents.length ? cards.map((event, index) => renderCard(event, index)) : null,
+    boundaryEvents.length ? React.createElement("details", { className: "invalid-assessment-group boundary-assessment-group" },
+      React.createElement("summary", null, `Boundary solutions (${boundaryEvents.length}) — TCA at window edge; not ranked`),
+      boundaryEvents.map((event, index) => renderCard(event, index, true))) : null,
     needsReview.length ? React.createElement("details", { className: "invalid-assessment-group" },
       React.createElement("summary", null, `Other assessments (${needsReview.length}) — no valid interior TCA; excluded from physical risk ranking`),
       React.createElement("div", { className: "conjunction-card-list invalid-assessment-list" }, needsReview.map((event, index) => React.createElement(EventCard, { key: event.id || index, event, rank: null, onSelect, onShowInGlobe, onAssessManeuver, screeningJobId })))) : null,

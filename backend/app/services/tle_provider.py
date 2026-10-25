@@ -637,6 +637,7 @@ def _records_from_omm_fields(
             source_type=source_type, source_timestamp=timestamp, source_url=source_url,
             retrieval_http_status=retrieval_http_status, raw_response_hash=raw_response_hash,
             raw_record_hash=hashlib.sha256(json.dumps(item, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+            object_type=str(item.get("OBJECT_TYPE") or item.get("OBJECT_TYPE_CODE") or "").strip() or None,
             source_format=source_format, omm_fields=fields,
         )
         if not _valid_omm_record(record):
@@ -748,6 +749,7 @@ def is_debris_record(record: TleRecord) -> bool:
         object_type=record.object_type,
         source_classification=record.source_classification,
         source_group=record.source_group,
+        name=record.name,
     ).category == "debris"
 
 

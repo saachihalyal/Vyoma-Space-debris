@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { downloadReport, downloadTrajectoryAssessmentCsv, getManeuver, restoreArchivedScreeningJob, selectedEventReportPath } from "../src/api/ssaClient.js";
+import { downloadReport, downloadTrajectoryAssessmentCsv, getManeuver, restoreArchivedScreeningJob, selectedEventReportPath, selectedManeuverReportPath } from "../src/api/ssaClient.js";
 import { captureGlobeEventSelection, downloadGlobeEventReport, resolveGlobeEventSelection } from "../src/utils/globeEventReport.js";
 
 test("Globe physical-event report stays bound to its originating screening job", () => {
@@ -83,6 +83,15 @@ test("selected physical event report path is bound to its screening job", () => 
     "/api/conjunction-jobs/0123456789abcdef0123456789abcdef/events/CA-selected/report.pdf",
   );
   assert.throws(() => selectedEventReportPath(null, "CA-selected"), /screening job ID and selected event ID/);
+});
+
+test("selected event and maneuver reports expose matching PDF, CSV, and JSON formats", () => {
+  const jobId = "0123456789abcdef0123456789abcdef";
+  assert.equal(selectedEventReportPath(jobId, "CA-selected", "csv"), `/api/conjunction-jobs/${jobId}/events/CA-selected/report.csv`);
+  assert.equal(selectedEventReportPath(jobId, "CA-selected", "json"), `/api/conjunction-jobs/${jobId}/events/CA-selected/report.json`);
+  assert.equal(selectedManeuverReportPath(jobId, "CA-selected", "pdf"), `/api/conjunction-jobs/${jobId}/events/CA-selected/assessment.pdf`);
+  assert.equal(selectedManeuverReportPath(jobId, "CA-selected", "csv"), `/api/conjunction-jobs/${jobId}/events/CA-selected/assessment.csv`);
+  assert.equal(selectedManeuverReportPath(jobId, "CA-selected", "json"), `/api/conjunction-jobs/${jobId}/events/CA-selected/assessment.json`);
 });
 
 test("downloadReport keeps the object URL alive until the browser has started the download", async () => {

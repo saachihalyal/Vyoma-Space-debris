@@ -51,7 +51,7 @@ from app.services.probability_classification import POLICY_VERSION as PC_CLASSIF
 from app.services.probability_classification import ORION_RISK_POLICY_VERSION, classify_orion_physics_pc
 from app.services.orbit import propagate_records
 from app.services.review_priority import policy_status
-from app.services.reports import conjunctions_csv, event_report_pdf, mission_report_pdf, reference_maneuver_report_pdf
+from app.services.reports import conjunctions_csv, event_report_csv, event_report_payload, event_report_pdf, mission_report_pdf, reference_maneuver_report_pdf
 from app.services.reference_maneuver import assess_reference_maneuver
 from app.services.risk import build_forecast, build_risk_cells, derived_provenance
 from app.services.tle_provider import CELESTRAK_CACHE_PATH, TleProvider, TleRecord
@@ -1107,11 +1107,15 @@ async def get_conjunction_job_assessments(
     }
 
 
-def _completed_job_event(job_id: str, event_id: str) -> tuple[dict, int, ConjunctionAssessmentEvent]:
+def _completed_job_event(job_id: str, event_id: str, *, allow_archived_read: bool = False) -> tuple[dict, int, ConjunctionAssessmentEvent]:
     job = _screening_jobs.get(job_id)
+    if job is None and allow_archived_read:
+        job = _screening_job_for_export(job_id)
+        if job is not None:
+            _backfill_archived_research_pc(job.get("result") or {})
     if not job or job.get("status") not in {"complete", "partial"} or not job.get("result"):
         raise HTTPException(status_code=404, detail="Completed screening job was not found or has expired.")
-    if job.get("restored_from_archive"):
+    if job.get("restored_from_archive") and not allow_archived_read:
         raise HTTPException(status_code=409, detail="Archived screening results are read-only; restore a live job to submit new assessment inputs.")
     data = job["result"].get("data")
     if not isinstance(data, list):
@@ -1387,7 +1391,7 @@ async def calculate_event_scenario_pc(job_id: str, event_id: str, request: Scena
 
 @app.post("/api/conjunction-jobs/{job_id}/events/{event_id}/research-pc-scenario")
 async def calculate_research_pc_scenario(job_id: str, event_id: str, request: ResearchPcScenarioRequest) -> dict:
-    _, _, event = _completed_job_event(job_id, event_id)
+    _, _, event = _completed_job_event(job_id, event_id, allow_archived_read=True)
     assessment = assess_automatic_research_pc(
         event.physics_result, event.collision_probability, event.review_priority,
         primary=event.primary, secondary=event.secondary,
@@ -1711,7 +1715,26 @@ async def selected_event_assessment_pdf(job_id: str, event_id: str) -> Streaming
     )
 
 
+@app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/report.json")
+@app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/assessment.json")
+async def selected_event_report_json(job_id: str, event_id: str) -> JSONResponse:
+    job, event = _stored_physical_event_for_report(job_id, event_id)
+    maneuver_result = _maneuver_result_for_report(job, job_id, event_id)
+    payload = event_report_payload(event.model_dump(mode="json"), maneuver_result, screening_job_id=job_id)
+    return JSONResponse(content=payload, headers={"Content-Disposition": f'attachment; filename="{event_id}-orion-report.json"', "X-Screening-Job-Id": job_id})
+
+
+@app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/report.csv")
+@app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/assessment.csv")
+async def selected_event_report_csv(job_id: str, event_id: str) -> Response:
+    job, event = _stored_physical_event_for_report(job_id, event_id)
+    maneuver_result = _maneuver_result_for_report(job, job_id, event_id)
+    payload = event_report_payload(event.model_dump(mode="json"), maneuver_result, screening_job_id=job_id)
+    return Response(content=event_report_csv(payload), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{event_id}-orion-report.csv"', "X-Screening-Job-Id": job_id})
+
+
 @app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/report.pdf")
+@app.get("/api/conjunction-jobs/{job_id}/events/{event_id}/maneuver-report.pdf")
 async def selected_event_report_pdf(job_id: str, event_id: str) -> StreamingResponse:
     job, event = _stored_physical_event_for_report(job_id, event_id)
     result = job["result"]

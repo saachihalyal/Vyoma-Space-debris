@@ -1,0 +1,744 @@
+{
+  "job_id": "fcec3945251c45f38f215485ecbb5605",
+  "status": "partial",
+  "completion_status": "partial",
+  "screening": {
+    "status": "partial",
+    "screening_status": "partial",
+    "coverage_status": "partial",
+    "reason_code": "candidate_pair_or_minimum_limit_reached",
+    "partial_reasons": [
+      "candidate_pair_or_minimum_limit_reached"
+    ],
+    "method": "SGP4 TEME trajectory screening with bounded subdivision and golden-section TCA refinement",
+    "method_version": "1.2",
+    "screening_horizon_start": "2026-10-25T04:00:50.958667+00:00",
+    "screening_horizon_end": "2026-10-26T04:00:50.958667+00:00",
+    "horizon_hours": 24.0,
+    "requested_horizon_hours": 24.0,
+    "effective_horizon_hours": 24.0,
+    "sample_step_seconds": 60,
+    "requested_sample_step_seconds": 60,
+    "effective_sample_step_seconds": 60,
+    "sample_epoch_count": 1441,
+    "requested_sample_epoch_count": 1441,
+    "sampled_coverage_end": "2026-10-26T04:00:50.958667+00:00",
+    "screening_threshold_km": 25.0,
+    "requested_screening_threshold_km": 25.0,
+    "effective_screening_threshold_km": 25.0,
+    "synthetic_test_inputs_included": false,
+    "broad_phase_search_radius_km": 925.0,
+    "maximum_relative_speed_bound_km_s": 30.0,
+    "frame": "TEME",
+    "time_scale": "UTC calendar input converted to split Julian date for SGP4; no TEME frame transform",
+    "position_units": "km",
+    "velocity_units": "km/s",
+    "gravity_model": "WGS72",
+    "propagator": "python-sgp4 SGP4/SDP4",
+    "propagator_version": "2.27",
+    "candidate_generation_method": "per-epoch 3-D spatial hash with adjacent-cell lookup and speed-bound-expanded radius",
+    "candidate_generation_complexity": "O(N*T + Q) expected; Q is local spatial-neighbor checks; dense-cell worst case can approach O(N^2*T), guarded by explicit pair/minimum caps",
+    "candidate_pair_limit": 25000,
+    "candidate_minimum_limit": 10000,
+    "local_minima_per_pair_limit": 128,
+    "tca_refinement_subdivisions_per_bracket": 16,
+    "tca_refinement_basin_limit_per_bracket": 4,
+    "sample_epoch_limit": 10000,
+    "valid_track_count": 200,
+    "rejected_object_count": 0,
+    "rejected_objects": [],
+    "sgp4_error_object_count": 0,
+    "candidate_pair_count": 5072,
+    "candidate_pairs": 5072,
+    "candidate_local_minimum_count": 10000,
+    "refinement_count": 9962,
+    "refinements": 9962,
+    "close_approach_count": 71,
+    "physical_events": 71,
+    "invalid_assessment_count": 38,
+    "candidate_limit_reached": true,
+    "candidate_pair_limit_reached": false,
+    "candidate_minimum_limit_reached": true,
+    "local_minima_per_pair_limit_reached": false,
+    "sample_epoch_limit_reached": false,
+    "caps_hit": [
+      "candidate_minimum_limit"
+    ],
+    "completeness_claim": "conditional on the selected catalog, configured relative-speed bound, SGP4 validity, horizon, sampling interval, and resource limits; partial status is used when a known limit or input/propagation issue restricts coverage",
+    "sgp4_errors_by_object": [],
+    "broad_phase_neighbor_comparisons": 248088,
+    "assessment_diagnostic_codes": [
+      "invalid_assessments_generated"
+    ],
+    "objects_requested": 200,
+    "effective_catalog_limit": 200,
+    "catalog_records_received": 200,
+    "objects_used": 200,
+    "completion_status": "partial",
+    "catalog_record_limit": 200,
+    "assessment_record_limit": null,
+    "assessment_record_count": 109,
+    "returned_assessment_record_count": 109,
+    "assessment_records_truncated": false,
+    "computation_status": "partial",
+    "screening_execution_status": "partial",
+    "valid_assessment_record_count": 70,
+    "invalid_assessment_record_count": 38,
+    "valid_close_approach_count": 71,
+    "pc_unavailable_assessment_count": 109,
+    "review_priority_counts": {
+      "CRITICAL": 0,
+      "HIGH": 11,
+      "MEDIUM": 18,
+      "LOW": 41,
+      "REVIEW_REQUIRED": 39,
+      "UNCLASSIFIED": 0
+    },
+    "total_records_available": 109,
+    "records_returned": 109,
+    "has_more_records": false,
+    "response_page_partial": false,
+    "assessment_response_limit_reached": false
+  },
+  "returned_records": 109,
+  "invalid_events": [
+    {
+      "id": "CA-0430735E1DBEFD7565EA",
+      "pair": [
+        "SOYUZ-MS 29",
+        "PROGRESS-MS 35"
+      ],
+      "ids": [
+        "100057",
+        "100712"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-05DFFD6069A8D6A3C33A",
+      "pair": [
+        "CSS (MENGTIAN)",
+        "SHENZHOU-23 (SZ-23)"
+      ],
+      "ids": [
+        "54216",
+        "69180"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-0DF45806038CAC5D60B0",
+      "pair": [
+        "DRAGON CRS-35",
+        "ISS (NAUKA)"
+      ],
+      "ids": [
+        "101031",
+        "49044"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-18BAA19BC18630061A77",
+      "pair": [
+        "CREW DRAGON 13",
+        "ISS (ZARYA)"
+      ],
+      "ids": [
+        "100882",
+        "25544"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-1E59481F21C15FEF31AB",
+      "pair": [
+        "CSS (WENTIAN)",
+        "CSS (MENGTIAN)"
+      ],
+      "ids": [
+        "53239",
+        "54216"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-2B1C75DF7CD24697ED51",
+      "pair": [
+        "SOYUZ-MS 29",
+        "CREW DRAGON 13"
+      ],
+      "ids": [
+        "100057",
+        "100882"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-2B9EEBFFD09AD8D7FFD7",
+      "pair": [
+        "PROGRESS-MS 35",
+        "ISS (ZARYA)"
+      ],
+      "ids": [
+        "100712",
+        "25544"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-422D198D28838068ACDB",
+      "pair": [
+        "CSS (TIANHE)",
+        "CSS (WENTIAN)"
+      ],
+      "ids": [
+        "48274",
+        "53239"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-4445667E2918B214B4E8",
+      "pair": [
+        "CREW DRAGON 13",
+        "ISS (NAUKA)"
+      ],
+      "ids": [
+        "100882",
+        "49044"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-4ADE535DD04BBF7EAF16",
+      "pair": [
+        "ISS (ZARYA)",
+        "ISS (NAUKA)"
+      ],
+      "ids": [
+        "25544",
+        "49044"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-53698A60AB5C183E1E40",
+      "pair": [
+        "TIANZHOU-10",
+        "SHENZHOU-23 (SZ-23)"
+      ],
+      "ids": [
+        "69049",
+        "69180"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-56D9FEADAE744CB7E978",
+      "pair": [
+        "PROGRESS-MS 35",
+        "POISK"
+      ],
+      "ids": [
+        "100712",
+        "36086"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-5767D0ABAF4E0A050F68",
+      "pair": [
+        "SOYUZ-MS 29",
+        "POISK"
+      ],
+      "ids": [
+        "100057",
+        "36086"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-58106C2CB8F43B9C83E7",
+      "pair": [
+        "CREW DRAGON 13",
+        "DRAGON CRS-35"
+      ],
+      "ids": [
+        "100882",
+        "101031"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-5AC95277F236D4DBA376",
+      "pair": [
+        "SOYUZ-MS 29",
+        "ISS (NAUKA)"
+      ],
+      "ids": [
+        "100057",
+        "49044"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-6002AA00F4B557367CE4",
+      "pair": [
+        "CSS (TIANHE)",
+        "SHENZHOU-23 (SZ-23)"
+      ],
+      "ids": [
+        "48274",
+        "69180"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-70627ADA73A99BA856CF",
+      "pair": [
+        "PROGRESS-MS 35",
+        "CREW DRAGON 13"
+      ],
+      "ids": [
+        "100712",
+        "100882"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-73DDABD5345AE8C6D0ED",
+      "pair": [
+        "CSS (WENTIAN)",
+        "TIANZHOU-10"
+      ],
+      "ids": [
+        "53239",
+        "69049"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-790CDF474BD40DD42403",
+      "pair": [
+        "CSS (WENTIAN)",
+        "SHENZHOU-23 (SZ-23)"
+      ],
+      "ids": [
+        "53239",
+        "69180"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-8D6236A21857BCF84415",
+      "pair": [
+        "PROGRESS-MS 35",
+        "ISS (NAUKA)"
+      ],
+      "ids": [
+        "100712",
+        "49044"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-90ACE01076B01757E89D",
+      "pair": [
+        "ISS (NAUKA)",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "49044",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-9D6DDF9A057A87BF60A8",
+      "pair": [
+        "CREW DRAGON 13",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "100882",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-9DC9A5074D5E7956957B",
+      "pair": [
+        "ISS (ZARYA)",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "25544",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-AF6A446706897357BCEE",
+      "pair": [
+        "CSS (TIANHE)",
+        "CSS (MENGTIAN)"
+      ],
+      "ids": [
+        "48274",
+        "54216"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-B35971D89EEE99517811",
+      "pair": [
+        "CSS (MENGTIAN)",
+        "TIANZHOU-10"
+      ],
+      "ids": [
+        "54216",
+        "69049"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-B6BDFCD26BBE2CB07C9D",
+      "pair": [
+        "POISK",
+        "ISS (NAUKA)"
+      ],
+      "ids": [
+        "36086",
+        "49044"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-B94AD7B15057F633A0F1",
+      "pair": [
+        "SOYUZ-MS 29",
+        "ISS (ZARYA)"
+      ],
+      "ids": [
+        "100057",
+        "25544"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-C16AA0827DCCAAD5E855",
+      "pair": [
+        "DRAGON CRS-35",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "101031",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-C35510D590193D737219",
+      "pair": [
+        "POISK",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "36086",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-C670AB8AB791D6DC20D8",
+      "pair": [
+        "ISS (ZARYA)",
+        "POISK"
+      ],
+      "ids": [
+        "25544",
+        "36086"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-C75D78592BED957D8409",
+      "pair": [
+        "SOYUZ-MS 29",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "100057",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-CCB64900637EC6907FDD",
+      "pair": [
+        "CSS (TIANHE)",
+        "TIANZHOU-10"
+      ],
+      "ids": [
+        "48274",
+        "69049"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-CDC0D7ACC4757BE32ADE",
+      "pair": [
+        "SOYUZ-MS 29",
+        "DRAGON CRS-35"
+      ],
+      "ids": [
+        "100057",
+        "101031"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-CF21B707DB42FFEF7F27",
+      "pair": [
+        "PROGRESS-MS 35",
+        "PROGRESS-MS 34"
+      ],
+      "ids": [
+        "100712",
+        "68837"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-D54C24DC9B85CF249B36",
+      "pair": [
+        "DRAGON CRS-35",
+        "ISS (ZARYA)"
+      ],
+      "ids": [
+        "101031",
+        "25544"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-EF5AB7B84C9CBE57BBAD",
+      "pair": [
+        "DRAGON CRS-35",
+        "POISK"
+      ],
+      "ids": [
+        "101031",
+        "36086"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-F8D8E479525AA14B6F1F",
+      "pair": [
+        "CREW DRAGON 13",
+        "POISK"
+      ],
+      "ids": [
+        "100882",
+        "36086"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    },
+    {
+      "id": "CA-FB8FCE37289E9B7D7DF0",
+      "pair": [
+        "PROGRESS-MS 35",
+        "DRAGON CRS-35"
+      ],
+      "ids": [
+        "100712",
+        "101031"
+      ],
+      "reason_codes": [
+        "identical_propagation_parameters_for_distinct_catalog_ids"
+      ]
+    }
+  ],
+  "invalid_count": 38,
+  "sensitivity_pair": {
+    "event_id": "CA-DFF8CA7AB052112C4BA8",
+    "primary": {
+      "id": "24946",
+      "name": "IRIDIUM 33",
+      "object_type": "SPACE_DEBRIS",
+      "classification_source": "group_based_fallback"
+    },
+    "secondary": {
+      "id": "33757",
+      "name": "COSMOS 2251 DEB",
+      "object_type": "SPACE_DEBRIS",
+      "classification_source": "name_pattern"
+    },
+    "tca_utc": "2026-10-25T15:11:09.655935+00:00",
+    "miss_distance_km": 4.761498067870931,
+    "reported_range": [
+      "8.60665e-21",
+      "8.60665e-21"
+    ],
+    "covariance_scale_scenarios": [
+      {
+        "covariance_scale": 0.5,
+        "log10_pc": -63.79615639027388,
+        "hbr_km": 0.002,
+        "sigma_min_km": 0.18294014523745042,
+        "sigma_max_km": 0.5293955879221511
+      },
+      {
+        "covariance_scale": 1.0,
+        "log10_pc": -20.06516570292229,
+        "hbr_km": 0.002,
+        "sigma_min_km": 0.36588029047490084,
+        "sigma_max_km": 1.0587911758443023
+      },
+      {
+        "covariance_scale": 2.0,
+        "log10_pc": -9.583707935207855,
+        "hbr_km": 0.002,
+        "sigma_min_km": 0.7317605809498017,
+        "sigma_max_km": 2.1175823516886045
+      },
+      {
+        "covariance_scale": 3.0,
+        "log10_pc": -7.883375958989892,
+        "hbr_km": 0.002,
+        "sigma_min_km": 1.0976408714247,
+        "sigma_max_km": 3.176373527532906
+      }
+    ],
+    "hbr_km": 0.002,
+    "hbr_source": "esa_population_span_prior",
+    "hbr_by_esa_span_quantile_km": null,
+    "sensitivity_reason": "Range is the min/max of coupled ESA p10, p50 and p90 prior scenarios; it is not a statistical confidence interval.",
+    "covariance_scale_log10_pc_extrema": [
+      -63.79615639027388,
+      -7.883375958989892
+    ]
+  },
+  "screening_metrics": {
+    "completion_status": "partial",
+    "partial_reason": "candidate_pair_or_minimum_limit_reached",
+    "candidate_limit_reached": true,
+    "total_assessment_records": 109,
+    "valid_close_approaches": 70,
+    "invalid_assessments": 38,
+    "boundary_assessments": 1,
+    "research_pc_records": 69,
+    "review_priority_counts": {
+      "CRITICAL": 0,
+      "HIGH": 11,
+      "MEDIUM": 18,
+      "LOW": 41,
+      "REVIEW_REQUIRED": 39,
+      "UNCLASSIFIED": 0
+    }
+  },
+  "encounter_group_metrics": {
+    "valid_interior_tca_raw_events": 70,
+    "likely_co_located_groups": 3,
+    "raw_events_in_groups": 24,
+    "valid_display_representatives": 49,
+    "definition": "connected pairs sharing TCA to millisecond and miss distance / relative speed at 4 significant digits; raw records retained"
+  },
+  "top_iss_event_hbr_effect": {
+    "event_id": "CA-F16040F3FA2EB4615F01",
+    "object_pair": "SL-3 R/B (10114) vs ISS (NAUKA) (49044)",
+    "tca_utc": "2026-10-25T04:38:40.186462+00:00",
+    "miss_distance_km": 4.631176604033989,
+    "relative_speed_km_s": 12.24306765554469,
+    "without_override": {
+      "hbr_km": 0.00555,
+      "log10_pc": -47.06216540877546,
+      "display_pc": "< 1e-30"
+    },
+    "with_override": {
+      "hbr_km": 0.016,
+      "hbr_source": "assumed_object_size_override",
+      "log10_pc": -46.112900657561376,
+      "display_pc": "< 1e-30"
+    },
+    "log10_pc_change": 0.9492647512140877,
+    "ratio_pc": 8.895,
+    "interpretation": "the 0.015 km assumed Nauka radius replaces its ESA span-prior radius; other-object prior and covariance are unchanged. Both display below the -30 floor, with exact log10 retained."
+  }
+}

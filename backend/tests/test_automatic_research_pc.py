@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from app.services.automatic_research_pc import _integrate_log_disk, _log_foster_pc, assess_automatic_research_pc
+from app.services.automatic_research_pc import _integrate_log_disk, _log_foster_pc, _object_size_hbr_override, assess_automatic_research_pc
 from app.main import event_dicts
 from app.services.collision_probability import CovarianceInput, HardBodyRadiusInput, _integrate_circular_region, calculate_foster_2d
 from app.services.orbit import propagate_records
@@ -61,6 +61,9 @@ class AutomaticResearchPcQualityTests(unittest.TestCase):
         self.assertEqual(assessment.estimated_pc_scientific, "< 1e-30")
         self.assertEqual(assessment.percentage_scientific, "< 1e-28")
         self.assertEqual(assessment.sensitivity_status, "available")
+        self.assertEqual(assessment.hbr_provenance["combined_hbr_by_esa_span_quantile_km"], {"p10": 0.002, "p50": 0.002, "p90": 0.002})
+        self.assertIn("HBR-only", assessment.sensitivity_reason)
+        self.assertIn("covariance-scale what-if", assessment.sensitivity_reason)
         self.assertEqual(assessment.hbr_km, event.automatic_research_pc_assessment.hbr_km)
         self.assertEqual(assessment.geometry_review_category, event.review_priority.category)
         self.assertEqual(assessment.reason_codes, [])
@@ -92,6 +95,30 @@ class AutomaticResearchPcQualityTests(unittest.TestCase):
         self.assertTrue(all(item.log10_pc is not None for item in results.values()))
         self.assertNotEqual(results["esa_population_prior"].log10_pc, results["tle_age_baseline"].log10_pc)
         self.assertNotEqual(results["tle_age_baseline"].log10_pc, results["tle_age_baseline_2x"].log10_pc)
+
+    def test_known_object_hbr_override_is_explicit_and_changes_research_pc(self):
+        event = _real_screened_event()
+        primary = event.primary.model_copy(update={"name": "ISS (Zarya)"})
+        baseline = assess_automatic_research_pc(event.physics_result, event.collision_probability, event.review_priority,
+            primary=event.primary, secondary=event.secondary)
+        overridden = assess_automatic_research_pc(event.physics_result, event.collision_probability, event.review_priority,
+            primary=primary, secondary=event.secondary)
+        self.assertEqual(_object_size_hbr_override(primary)["radius_km"], 0.015)
+        self.assertEqual(overridden.hbr_source, "assumed_object_size_override")
+        self.assertEqual(overridden.hbr_provenance["objects"][primary.id]["match"], "named ISS module")
+        self.assertNotEqual(overridden.hbr_km, baseline.hbr_km)
+        self.assertNotEqual(overridden.log10_pc, baseline.log10_pc)
+        self.assertIn("assumption", overridden.hbr_provenance["assumption"].lower())
+
+    def test_covariance_scale_changes_finite_research_log_pc(self):
+        event = _real_screened_event()
+        narrow = assess_automatic_research_pc(event.physics_result, event.collision_probability, event.review_priority,
+            primary=event.primary, secondary=event.secondary, covariance_scale=0.5)
+        wide = assess_automatic_research_pc(event.physics_result, event.collision_probability, event.review_priority,
+            primary=event.primary, secondary=event.secondary, covariance_scale=2.0)
+        self.assertTrue(math.isfinite(narrow.log10_pc))
+        self.assertTrue(math.isfinite(wide.log10_pc))
+        self.assertNotEqual(narrow.log10_pc, wide.log10_pc)
 
     def test_archived_real_celestrak_event_replays_reproducibly_through_screening(self):
         first = _real_screened_event()

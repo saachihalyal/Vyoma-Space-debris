@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -20,7 +20,8 @@ test("comparison table includes zero-burn geometry and candidate output", () => 
   assert.match(markup, /21\.946217/);
   assert.match(markup, /22\.100000/);
   assert.match(markup, /0\.153783/);
-  assert.match(markup, /same ESA-prior Foster research covariance\/HBR policy/);
+  assert.match(markup, /same declared research covariance\/HBR policy/);
+  assert.doesNotMatch(markup, /same ESA-prior Foster research covariance\/HBR policy/);
   assert.match(markup, /Pc reduction/);
   assert.match(markup, /REAL_TLE_PRIOR_INPUTS_AND_VALID_CANDIDATE_TCA_REQUIRED/);
   assert.doesNotMatch(markup, /risk reduction[^<]*[0-9]+%/i);
@@ -35,3 +36,4 @@ test("Pc reduction appears only when the backend marks comparable numerical valu
   assert.match(markup, /5\.000000e-3/);
   assert.match(markup, /50%/);
 });
+

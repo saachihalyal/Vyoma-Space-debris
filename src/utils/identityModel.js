@@ -38,6 +38,7 @@ export const OBJECT_TYPE = Object.freeze({
   ACTIVE_SATELLITE: "ACTIVE_SATELLITE",
   SPACE_DEBRIS: "SPACE_DEBRIS",
   ROCKET_BODY: "ROCKET_BODY",
+  SPACE_STATION: "SPACE_STATION",
   FRAGMENT: "FRAGMENT",
   UNKNOWN: "UNKNOWN",
 });
@@ -46,6 +47,7 @@ export const OBJECT_TYPE_DISPLAY = Object.freeze({
   [OBJECT_TYPE.ACTIVE_SATELLITE]: "ACTIVE SATELLITE",
   [OBJECT_TYPE.SPACE_DEBRIS]: "SPACE DEBRIS",
   [OBJECT_TYPE.ROCKET_BODY]: "ROCKET BODY",
+  [OBJECT_TYPE.SPACE_STATION]: "STATION MODULE",
   [OBJECT_TYPE.FRAGMENT]: "FRAGMENT",
   [OBJECT_TYPE.UNKNOWN]: "UNKNOWN / OTHER",
 });
@@ -114,10 +116,11 @@ export function getPairType(primary, secondary) {
     [OBJECT_TYPE.ACTIVE_SATELLITE]: "SATELLITE",
     [OBJECT_TYPE.SPACE_DEBRIS]: "DEBRIS",
     [OBJECT_TYPE.ROCKET_BODY]: "ROCKET BODY",
+    [OBJECT_TYPE.SPACE_STATION]: "STATION",
     [OBJECT_TYPE.FRAGMENT]: "DEBRIS",
     [OBJECT_TYPE.UNKNOWN]: "UNKNOWN",
   };
-  const order = { SATELLITE: 0, DEBRIS: 1, "ROCKET BODY": 2, UNKNOWN: 3 };
+  const order = { SATELLITE: 0, STATION: 1, DEBRIS: 2, "ROCKET BODY": 3, UNKNOWN: 4 };
   const first = labels[pType] || "UNKNOWN";
   const second = labels[sType] || "UNKNOWN";
   return [first, second].sort((a, b) => order[a] - order[b]).join(" vs ");

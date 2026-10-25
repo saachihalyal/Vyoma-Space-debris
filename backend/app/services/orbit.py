@@ -31,6 +31,7 @@ def category_from_record(record: TleRecord) -> str:
         object_type=record.object_type,
         source_classification=record.source_classification,
         source_group=record.source_group,
+        name=record.name,
     ).category
 
 
@@ -78,6 +79,7 @@ def propagate_records(
             object_type=record.object_type,
             source_classification=record.source_classification,
             source_group=record.source_group,
+            name=record.name,
         )
         provenance = Provenance(
             source=(f"CelesTrak GP/{record.source_format} group={record.source_group}" if source_type == "live" else f"{record.source_group} {record.source_format} input"),
@@ -101,6 +103,7 @@ def propagate_records(
         )
         provenance.source_record = {
             "source_group": record.source_group,
+            "object_type": classification.object_type,
             "source_classification": classification.source_classification,
             "classification_source": classification.classification_source,
         }
@@ -116,6 +119,7 @@ def propagate_records(
             provenance.source_record = {
                 "source_url": record.source_url,
                 "source_group": record.source_group,
+                "object_type": classification.object_type,
                 "source_classification": classification.source_classification,
                 "classification_source": classification.classification_source,
                 "retrieval_http_status": record.retrieval_http_status,

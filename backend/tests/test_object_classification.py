@@ -18,6 +18,20 @@ from app import main
 
 
 class ObjectClassificationTests(unittest.TestCase):
+    def test_catalog_types_and_name_inference_precede_group_fallback(self):
+        cases = [
+            (classify_object(name="SL-3 R/B", source_group="stations"), "ROCKET_BODY", "name_pattern"),
+            (classify_object(name="COSMOS 2251 DEB", source_group="stations"), "SPACE_DEBRIS", "name_pattern"),
+            (classify_object(name="PAYLOAD 12345", source_group="debris"), "ACTIVE_SATELLITE", "name_pattern"),
+            (classify_object(name="ISS (ZARYA)"), "SPACE_STATION", "name_pattern"),
+            (classify_object(object_type="PAYLOAD", name="SL-3 R/B"), "ACTIVE_SATELLITE", "catalog_object_type"),
+            (classify_object(source_group="stations"), "ACTIVE_SATELLITE", "group_based_fallback"),
+        ]
+        for result, object_type, source in cases:
+            with self.subTest(result=result):
+                self.assertEqual(result.object_type, object_type)
+                self.assertEqual(result.classification_source, source)
+
     def test_authoritative_source_types_cover_supported_classes(self) -> None:
         expected = {
             "PAYLOAD": ("payload", "ACTIVE_SATELLITE"),
@@ -30,23 +44,23 @@ class ObjectClassificationTests(unittest.TestCase):
                 classified = classify_object(source_classification=source_type)
                 self.assertEqual((classified.category, classified.object_type), result)
 
-    def test_missing_metadata_and_name_only_evidence_stay_unknown(self) -> None:
+    def test_missing_metadata_stays_unknown_but_known_name_is_classified(self) -> None:
         self.assertEqual(classify_object().object_type, "UNKNOWN")
         self.assertEqual(classify_object().category, "unknown")
-        # Name is intentionally not an input to the shared rule.
+        self.assertEqual(classify_object(name="COSMOS 2251 DEB").object_type, "SPACE_DEBRIS")
         self.assertEqual(classify_object(source_group="unclassified").object_type, "UNKNOWN")
 
-    def test_conflicting_and_unsupported_metadata_stay_unknown(self) -> None:
+    def test_catalog_object_type_wins_over_conflicting_legacy_metadata(self) -> None:
         conflict = classify_object(object_type="PAYLOAD", source_classification="DEBRIS")
         unsupported = classify_object(source_classification="NONSTANDARD CLASS")
-        self.assertEqual(conflict.classification_source, "conflicting_or_unsupported_metadata")
-        self.assertEqual(conflict.object_type, "UNKNOWN")
+        self.assertEqual(conflict.classification_source, "catalog_object_type")
+        self.assertEqual(conflict.object_type, "ACTIVE_SATELLITE")
         self.assertEqual(unsupported.object_type, "UNKNOWN")
 
     def test_authoritative_metadata_precedes_catalog_group_fallback(self) -> None:
         classified = classify_object(source_classification="DEBRIS", source_group="stations")
         self.assertEqual((classified.category, classified.object_type), ("debris", "SPACE_DEBRIS"))
-        self.assertEqual(classified.classification_source, "source_metadata")
+        self.assertEqual(classified.classification_source, "source_classification")
 
     def test_pair_labels_preserve_each_objects_own_classification(self) -> None:
         self.assertEqual(pair_type_for("ACTIVE_SATELLITE", "SPACE_DEBRIS"), "SATELLITE vs DEBRIS")
@@ -60,7 +74,7 @@ class ObjectClassificationTests(unittest.TestCase):
         fallback_record = parse_tle_text(lines, "fallback", source_type="fallback")[0]
         live, _, _ = propagate_records([live_record], limit=1)
         fallback, _, _ = propagate_records([fallback_record], limit=1)
-        self.assertEqual((live[0].object_type, live[0].classification_source), ("ACTIVE_SATELLITE", "celestrak_group"))
+        self.assertEqual((live[0].object_type, live[0].classification_source), ("ACTIVE_SATELLITE", "group_based_fallback"))
         self.assertEqual((fallback[0].object_type, fallback[0].category), ("UNKNOWN", "unknown"))
         self.assertEqual(fallback[0].provenance.source_type, "fallback")
 
@@ -88,10 +102,10 @@ class ObjectClassificationTests(unittest.TestCase):
         }
         row = next(csv.DictReader(io.StringIO(conjunctions_csv([event]))))
         self.assertEqual(row["object_primary_type"], "SPACE_DEBRIS")
-        self.assertEqual(row["object_secondary_type"], "ACTIVE_SATELLITE")
+        self.assertEqual(row["object_secondary_type"], "SPACE_STATION")
         pdf = event_report_pdf(event).decode("latin-1")
         self.assertIn("SPACE_DEBRIS", pdf)
-        self.assertIn("ACTIVE_SATELLITE", pdf)
+        self.assertIn("SPACE_STATION", pdf)
         self.assertEqual(objects[0].provenance.source_type, "live")
 
     def test_catalog_api_returns_canonical_classification_fields(self) -> None:
@@ -106,7 +120,7 @@ class ObjectClassificationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         obj = response.json()["data"]["objects"][0]
         self.assertEqual(obj["object_type"], "SPACE_DEBRIS")
-        self.assertEqual(obj["classification_source"], "celestrak_group")
+        self.assertEqual(obj["classification_source"], "group_based_fallback")
         self.assertEqual(obj["provenance"]["source_record"]["source_group"], "cosmos_debris")
 
 

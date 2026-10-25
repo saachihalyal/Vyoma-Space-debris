@@ -10,6 +10,17 @@ from typing import Any
 from app.ai.evaluation_audit import eligible_legacy_diagnostic_summary
 
 
+def _geometry_review_band(category: str | None) -> str:
+    return {"CRITICAL": "Band 1", "HIGH": "Band 2", "MEDIUM": "Band 3", "LOW": "Band 4", "REVIEW_REQUIRED": "Review required"}.get(category or "", "Unclassified")
+
+
+def _geometry_review_criteria(criteria: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(criteria, dict):
+        return None
+    renamed = {"critical_max_fraction": "band_1_max_fraction", "high_max_fraction": "band_2_max_fraction", "medium_max_fraction": "band_3_max_fraction"}
+    return {renamed.get(key, key): value for key, value in criteria.items()}
+
+
 def mission_report_pdf(
     summary: dict[str, Any],
     events: list[dict[str, Any]],
@@ -123,7 +134,7 @@ def mission_report_pdf(
                 "Maneuver effects: unavailable",
             ]
         )
-    return simple_pdf(lines, footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
 
 
 def event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any] | None = None, screening_summary: dict[str, Any] | None = None, evaluation_metadata: dict[str, Any] | None = None) -> bytes:
@@ -173,7 +184,101 @@ def event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any] | None = No
                 f"Reason: {maneuver.get('reason', 'No validated maneuver result available.')}",
             ]
         )
-    return simple_pdf(lines, footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
+
+
+def event_report_payload(event: dict[str, Any], maneuver: dict[str, Any] | None = None, *, screening_job_id: str | None = None) -> dict[str, Any]:
+    """Build one provenance-preserving report object for screen, JSON, and CSV."""
+    physics = event.get("physics_result") or {}
+    collision = event.get("collision_probability") or {}
+    research = event.get("automatic_research_pc_assessment") or {}
+    collision_ai = event.get("collision_ai_assessment") or {}
+    research_pc = research.get("estimated_pc")
+    research_percentage = research.get("percentage")
+    physics_covariance = physics.get("covariance") or {}
+    research_sigma = {
+        "minimum_km": research.get("encounter_plane_sigma_min_km"),
+        "maximum_km": research.get("encounter_plane_sigma_max_km"),
+    }
+    pc_channels = {
+        "source_reported_pc": collision.get("source_reported_pc") if collision.get("source_reported_event_id") == event.get("id") else None,
+        "source_reported_pc_event_id": collision.get("source_reported_event_id"),
+        "source_reported_pc_method": collision.get("source_reported_pc_method"),
+        "event_specific_foster_pc": collision.get("pc") if collision.get("status") == "available" and collision.get("event_id") == event.get("id") else None,
+        "event_specific_foster_status": collision.get("status", "unavailable") if collision.get("event_id") == event.get("id") else "unavailable",
+        "research_pc": research_pc,
+        "research_pc_scientific": research.get("estimated_pc_scientific"),
+        "research_pc_percentage": research_percentage,
+        "research_pc_percentage_scientific": research.get("percentage_scientific"),
+    }
+    risk = (research.get("risk_assessment") or collision.get("risk_assessment") or {})
+    maneuver = maneuver or {}
+    candidates = maneuver.get("physics_candidates", {}).get("candidates") if isinstance(maneuver.get("physics_candidates"), dict) else maneuver.get("candidates")
+    return {
+        "report_type": "orion_selected_conjunction_report",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "screening_job_id": screening_job_id or event.get("screening_job_id"),
+        "event_identity": {"event_id": event.get("id"), "primary": event.get("primary"), "secondary": event.get("secondary"), "pair_type": event.get("pair_type")},
+        "trajectory": {
+            "status": physics.get("status"), "tca_utc": (physics.get("tca") or {}).get("value"),
+            "miss_distance_km": (physics.get("miss_distance") or {}).get("value"),
+            "relative_position_at_tca_km": (physics.get("relative_position_at_tca") or {}).get("value"),
+            "relative_velocity_at_tca_km_s": (physics.get("relative_velocity_at_tca") or {}).get("value"),
+            "relative_speed_at_tca_km_s": (physics.get("relative_speed_at_tca") or {}).get("value"),
+            "state_information": physics.get("state_information"),
+        },
+        "pc_channels": pc_channels,
+        "risk_assessment": {"risk_score": risk.get("risk_score"), "physics_risk_class": risk.get("physics_risk_class"), "final_risk_class": risk.get("final_risk_class"), "classification_basis": risk.get("classification_basis"), "policy_name": risk.get("risk_score_policy_name"), "policy_version": risk.get("risk_score_policy_version")},
+        "covariance": {
+            "status": collision.get("covariance_status") or physics_covariance.get("status") or ("assumed_research_model" if research.get("covariance_method") else None),
+            "frame": collision.get("covariance_frame") or research.get("covariance_frame") or physics_covariance.get("frame"),
+            "epoch_utc": collision.get("covariance_epoch") or research.get("covariance_epoch_utc") or physics_covariance.get("epoch"),
+            "sources": collision.get("covariance_sources") or research.get("covariance_method"),
+            "policy": research.get("covariance_policy_name") or research.get("covariance_policy_id"),
+            "sigmas_encounter_plane_km": research_sigma,
+            "assumptions": collision.get("assumptions") or research.get("assumptions"),
+        },
+        "hard_body_radius": {
+            "value_km": collision.get("hbr_km") if collision.get("hbr_km") is not None else research.get("hbr_km") if research.get("hbr_km") is not None else (physics.get("hard_body_radius") or {}).get("value"),
+            "source": collision.get("hbr_source") or research.get("hbr_source"),
+            "provenance": collision.get("hbr_provenance") or research.get("hbr_provenance"),
+        },
+        "ai": {"status": collision_ai.get("status", "unavailable"), "inference_provenance": collision_ai.get("inference_provenance"), "pc_surrogate": collision_ai.get("pc_surrogate"), "risk_classifier": collision_ai.get("risk_classifier"), "queue_priority": event.get("ai_risk_assessment")},
+        "methods": {"trajectory": (physics.get("provenance") or {}).get("method"), "trajectory_version": (physics.get("provenance") or {}).get("method_version"), "foster": collision.get("method"), "foster_version": collision.get("method_version"), "research_pc": research.get("method_name"), "research_pc_version": research.get("method_version")},
+        "provenance": event.get("provenance"),
+        "assumptions": {"research_pc": research.get("assumptions"), "foster": collision.get("assumptions"), "covariance": collision.get("covariance_sources"), "hbr": collision.get("hbr_provenance")},
+        "sensitivity": {"status": research.get("sensitivity_status"), "lower_pc_scientific": research.get("lower_sensitivity_pc_scientific"), "upper_pc_scientific": research.get("upper_sensitivity_pc_scientific"), "reason": research.get("sensitivity_reason")},
+        "limitations": research.get("limitations") or collision.get("limitations") or [],
+        "maneuver": {"status": maneuver.get("status", "not_run"), "event_id": maneuver.get("event_id"), "screening_job_id": maneuver.get("screening_job_id") or screening_job_id, "method": maneuver.get("method"), "probability_before": maneuver.get("probability_before"), "probability_after": maneuver.get("probability_after"), "probability_comparison": maneuver.get("probability_comparison"), "fuel": maneuver.get("fuel"), "assumptions": maneuver.get("assumptions"), "limitations": maneuver.get("limitations"), "baseline": maneuver.get("zero_burn_baseline"), "candidates": candidates or [], "ai_ranker": maneuver.get("ml_result"), "physics_rank_confirmation": maneuver.get("best_candidate")},
+        "event_record": event,
+    }
+
+
+def event_report_csv(payload: dict[str, Any]) -> str:
+    """Serialize collision channels and optional maneuver candidates as explicit rows."""
+    event = payload.get("event_identity") or {}
+    trajectory = payload.get("trajectory") or {}
+    pc = payload.get("pc_channels") or {}
+    risk = payload.get("risk_assessment") or {}
+    covariance = payload.get("covariance") or {}
+    hbr = payload.get("hard_body_radius") or {}
+    ai = payload.get("ai") or {}
+    maneuver = payload.get("maneuver") or {}
+    headers = ["record_type", "generated_at_utc", "screening_job_id", "event_id", "primary_name", "primary_id", "primary_type", "secondary_name", "secondary_id", "secondary_type", "pair_type", "tca_utc", "miss_distance_km", "relative_velocity_at_tca_km_s", "relative_speed_at_tca_km_s", "source_reported_pc", "source_reported_pc_method", "event_specific_foster_pc", "event_specific_foster_status", "research_pc", "research_pc_scientific", "research_pc_percentage", "risk_score", "physics_risk_class", "final_risk_class", "classification_basis", "covariance_status", "covariance_policy", "encounter_sigma_min_km", "encounter_sigma_max_km", "covariance_frame", "covariance_epoch_utc", "covariance_sources", "hbr_km", "hbr_source", "hbr_provenance", "ai_status", "ai_pc_prediction", "ai_risk_class", "method_provenance", "assumptions", "limitations", "maneuver_status", "candidate_burn_epoch_utc", "candidate_lead_seconds", "candidate_delta_v_rtn_m_s", "candidate_delta_v_m_s", "tca_before_utc", "tca_after_utc", "miss_distance_before_km", "miss_distance_after_km", "relative_velocity_before_km_s", "relative_velocity_after_km_s", "pc_before_scientific", "pc_after_scientific", "absolute_pc_reduction_scientific", "percentage_pc_reduction", "fuel_mass_kg", "initial_mass_kg", "specific_impulse_s", "fuel_assumption_status", "ai_rank", "physics_research_pc_rank"]
+    primary, secondary = event.get("primary") or {}, event.get("secondary") or {}
+    sigmas = covariance.get("sigmas_encounter_plane_km") or {}
+    collision_row = {"record_type": "collision_event", "generated_at_utc": payload.get("generated_at_utc"), "screening_job_id": payload.get("screening_job_id"), "event_id": event.get("event_id"), "primary_name": primary.get("name"), "primary_id": primary.get("id"), "primary_type": primary.get("object_type"), "secondary_name": secondary.get("name"), "secondary_id": secondary.get("id"), "secondary_type": secondary.get("object_type"), "pair_type": event.get("pair_type"), "tca_utc": trajectory.get("tca_utc"), "miss_distance_km": trajectory.get("miss_distance_km"), "relative_velocity_at_tca_km_s": _csv_value(trajectory.get("relative_velocity_at_tca_km_s")), "relative_speed_at_tca_km_s": trajectory.get("relative_speed_at_tca_km_s"), "source_reported_pc": pc.get("source_reported_pc"), "source_reported_pc_method": pc.get("source_reported_pc_method"), "event_specific_foster_pc": pc.get("event_specific_foster_pc"), "event_specific_foster_status": pc.get("event_specific_foster_status"), "research_pc": pc.get("research_pc"), "research_pc_scientific": pc.get("research_pc_scientific"), "research_pc_percentage": pc.get("research_pc_percentage"), "risk_score": risk.get("risk_score"), "physics_risk_class": risk.get("physics_risk_class"), "final_risk_class": risk.get("final_risk_class"), "classification_basis": risk.get("classification_basis"), "covariance_status": covariance.get("status"), "covariance_policy": covariance.get("policy"), "encounter_sigma_min_km": sigmas.get("minimum_km"), "encounter_sigma_max_km": sigmas.get("maximum_km"), "covariance_frame": covariance.get("frame"), "covariance_epoch_utc": covariance.get("epoch_utc"), "covariance_sources": _csv_value(covariance.get("sources")), "hbr_km": hbr.get("value_km"), "hbr_source": hbr.get("source"), "hbr_provenance": _csv_value(hbr.get("provenance")), "ai_status": ai.get("status"), "ai_pc_prediction": (ai.get("pc_surrogate") or {}).get("ai_predicted_log10_pc"), "ai_risk_class": (ai.get("risk_classifier") or {}).get("ai_risk_class"), "method_provenance": _csv_value(payload.get("methods")) + " | " + _csv_value(payload.get("provenance")), "assumptions": _csv_value(payload.get("assumptions")), "limitations": _csv_value(payload.get("limitations")), "maneuver_status": maneuver.get("status")}
+    buffer = io.StringIO(newline="")
+    writer = csv.DictWriter(buffer, fieldnames=headers, extrasaction="ignore")
+    writer.writeheader(); writer.writerow(collision_row)
+    before, after = maneuver.get("probability_before") or {}, maneuver.get("probability_after") or {}
+    baseline = maneuver.get("baseline") or {}
+    baseline_candidate = baseline.get("candidate") or {}
+    for candidate in maneuver.get("candidates") or []:
+        fuel = candidate.get("fuel") or {}
+        row = dict(collision_row, record_type="maneuver_candidate", candidate_burn_epoch_utc=candidate.get("maneuver_epoch_utc"), candidate_lead_seconds=candidate.get("lead_time_seconds"), candidate_delta_v_rtn_m_s=_csv_value(candidate.get("delta_v_rtn_m_s")), candidate_delta_v_m_s=candidate.get("delta_v_m_s"), tca_before_utc=baseline_candidate.get("closest_approach_utc") or baseline.get("tca_utc"), tca_after_utc=candidate.get("closest_approach_utc"), miss_distance_before_km=baseline.get("miss_distance_km"), miss_distance_after_km=candidate.get("predicted_miss_distance_km"), relative_velocity_before_km_s=_csv_value(baseline_candidate.get("relative_velocity_km_s")), relative_velocity_after_km_s=_csv_value(candidate.get("relative_velocity_km_s")), pc_before_scientific=before.get("pc_scientific"), pc_after_scientific=(candidate.get("research_pc_after") or {}).get("pc_scientific"), absolute_pc_reduction_scientific=candidate.get("absolute_research_pc_reduction_scientific"), percentage_pc_reduction=candidate.get("percentage_research_pc_reduction"), fuel_mass_kg=fuel.get("propellant_consumption_kg"), initial_mass_kg=fuel.get("initial_mass_kg"), specific_impulse_s=fuel.get("specific_impulse_s"), fuel_assumption_status=fuel.get("assumption_status"), ai_rank=candidate.get("maneuver_ml_rank"), physics_research_pc_rank=candidate.get("physics_research_pc_rank"))
+        writer.writerow(row)
+    return buffer.getvalue()
 
 
 def reference_maneuver_report_pdf(result: dict[str, Any]) -> bytes:
@@ -220,7 +325,7 @@ def reference_maneuver_report_pdf(result: dict[str, Any]) -> bytes:
         *[f"- {item}" for item in result.get("assumptions", [])],
         *[f"- {item}" for item in result.get("limitations", [])],
     ]
-    return simple_pdf([part for line in lines for part in _wrap_report_line(line, 100)], footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([part for line in lines for part in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
 
 
 def conjunctions_csv(events: list[dict[str, Any]], *, export_metadata: dict[str, Any] | None = None) -> str:
@@ -328,6 +433,23 @@ def conjunctions_csv(events: list[dict[str, Any]], *, export_metadata: dict[str,
             "review_priority_policy_version",
             "review_priority_criteria",
             "review_priority_explanation",
+            "research_pc_status",
+            "research_pc_scientific",
+            "research_log10_pc_exact",
+            "research_covariance_policy",
+            "research_encounter_sigma_min_km",
+            "research_encounter_sigma_max_km",
+            "research_covariance_frame",
+            "research_covariance_epoch_utc",
+            "research_hbr_km",
+            "research_hbr_source",
+            "research_hbr_provenance",
+            "research_covariance_method",
+            "research_sensitivity_lower_pc",
+            "research_sensitivity_upper_pc",
+            "research_sensitivity_reason",
+            "research_pc_reason_codes",
+            "research_pc_assumptions",
         ]
     metadata_fields = [
         "record_type",
@@ -491,11 +613,28 @@ def conjunctions_csv(events: list[dict[str, Any]], *, export_metadata: dict[str,
                 _csv_value(scenario_result.get("warnings")),
                 _csv_value(scenario_result.get("provenance")),
                 (scenario_result.get("provenance") or {}).get("is_synthetic", False),
-                review_priority.get("category", "UNCLASSIFIED"),
+                _geometry_review_band(review_priority.get("category")),
                 review_priority.get("status", "unclassified"),
                 review_priority.get("policy_version"),
-                _csv_value(review_priority.get("criteria")),
+                _csv_value(_geometry_review_criteria(review_priority.get("criteria"))),
                 review_priority.get("explanation"),
+                (event.get("automatic_research_pc_assessment") or {}).get("status"),
+                (event.get("automatic_research_pc_assessment") or {}).get("estimated_pc_scientific"),
+                (event.get("automatic_research_pc_assessment") or {}).get("log10_pc"),
+                (event.get("automatic_research_pc_assessment") or {}).get("covariance_policy_name") or (event.get("automatic_research_pc_assessment") or {}).get("covariance_policy_id"),
+                (event.get("automatic_research_pc_assessment") or {}).get("encounter_plane_sigma_min_km"),
+                (event.get("automatic_research_pc_assessment") or {}).get("encounter_plane_sigma_max_km"),
+                (event.get("automatic_research_pc_assessment") or {}).get("covariance_frame"),
+                (event.get("automatic_research_pc_assessment") or {}).get("covariance_epoch_utc"),
+                (event.get("automatic_research_pc_assessment") or {}).get("hbr_km"),
+                (event.get("automatic_research_pc_assessment") or {}).get("hbr_source"),
+                _csv_value((event.get("automatic_research_pc_assessment") or {}).get("hbr_provenance")),
+                (event.get("automatic_research_pc_assessment") or {}).get("covariance_method"),
+                (event.get("automatic_research_pc_assessment") or {}).get("lower_sensitivity_pc_scientific"),
+                (event.get("automatic_research_pc_assessment") or {}).get("upper_sensitivity_pc_scientific"),
+                (event.get("automatic_research_pc_assessment") or {}).get("sensitivity_reason"),
+                ";".join((event.get("automatic_research_pc_assessment") or {}).get("reason_codes", [])),
+                _csv_value((event.get("automatic_research_pc_assessment") or {}).get("assumptions")),
             ]
         if export_metadata is not None:
             row.extend(["event"] + [""] * (len(metadata_fields) - 1))
@@ -512,8 +651,16 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
     relative_speed = physics.get("relative_speed_at_tca", {})
     provenance = physics.get("provenance", {})
     pc_result = event.get("collision_probability") or {}
-    pc_value = _available_pc_value(pc_result)
+    research_assessment = event.get("automatic_research_pc_assessment") or {}
+    review_category = (event.get("review_priority") or {}).get("category")
+    review_band = {"CRITICAL": "Band 1", "HIGH": "Band 2", "MEDIUM": "Band 3", "LOW": "Band 4", "REVIEW_REQUIRED": "Review required"}.get(review_category, "Unclassified")
+    research_risk = research_assessment.get("risk_assessment") or {}
+    pc_event_matches = pc_result.get("event_id") == event.get("id")
+    pc_status = pc_result.get("status", "unavailable") if pc_event_matches else "unavailable"
+    pc_value = _available_pc_value(pc_result) if pc_event_matches else None
     pc_reason_codes = pc_result.get("reason_codes") or ([pc_result.get("reason_code")] if pc_result.get("reason_code") else [])
+    if not pc_event_matches and pc_result.get("event_id") is not None:
+        pc_reason_codes = ["PC_EVENT_ID_MISMATCH"]
     if not pc_reason_codes and pc_result.get("status", "unavailable") != "available":
         pc_reason_codes = ["PC_RESULT_NOT_RETURNED"] if not event.get("collision_probability") else ["PC_UNAVAILABLE_REASON_NOT_RECORDED"]
     hbr_value = pc_result.get("hbr_km")
@@ -527,6 +674,28 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
     anomaly = event.get("anomaly_result") or {}
     anomaly_provenance = anomaly.get("provenance") or {}
     anomaly_associated = anomaly_provenance.get("source_physics_event_id") == event.get("id")
+    convergence = physics.get("convergence") or {}
+    convergence_summary = "; ".join(
+        f"{label} {convergence[key]}" for key, label in (
+            ("iterations", "iterations"), ("final_bracket_width_seconds", "final bracket s"),
+            ("neighbor_check_passed", "neighbor check"), ("time_tolerance_seconds", "time tolerance s"),
+        ) if convergence.get(key) is not None
+    ) or "unavailable"
+    feature_availability = ml_result.get("feature_availability") or {}
+    feature_count = sum(value is True for value in feature_availability.values())
+    feature_summary = f"{feature_count}/{len(feature_availability)} features present; imputed {ml_result.get('features_imputed', 'unavailable')}" if feature_availability else "unavailable"
+    ml_provenance_summary = "; ".join(
+        f"{label} {ml_provenance[key]}" for key, label in (
+            ("source_physics_event_id", "event"), ("feature_schema_version", "schema"),
+            ("artifact_sha256", "model SHA-256"), ("training_dataset_sha256", "dataset SHA-256"),
+        ) if ml_provenance.get(key) is not None
+    ) or "unavailable"
+    anomaly_provenance_summary = "; ".join(
+        f"{label} {anomaly_provenance[key]}" for key, label in (
+            ("source_physics_event_id", "event"), ("feature_schema_version", "schema"),
+            ("artifact_sha256", "model SHA-256"), ("training_dataset_sha256", "dataset SHA-256"),
+        ) if anomaly_provenance.get(key) is not None
+    ) or "unavailable"
     if not ml_event_matches:
         reason = "ML_EVENT_ID_MISMATCH"
         ml_result = {**ml_result, "status": "unavailable", "reason_code": reason}
@@ -563,30 +732,42 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
         *_wrap_report_line(f"State frame / units: {(physics.get('state_information') or {}).get('source_frame', 'unavailable')} | position {(physics.get('state_information') or {}).get('position_units', 'unavailable')} | velocity {(physics.get('state_information') or {}).get('velocity_units', 'unavailable')}"),
         *_wrap_report_line(f"TCA epoch: {tca.get('value', 'unavailable') if tca.get('status') == 'available' else 'unavailable'} | state epochs: primary {(event.get('primary_state_at_tca') or {}).get('epoch', 'unavailable')} | secondary {(event.get('secondary_state_at_tca') or {}).get('epoch', 'unavailable')}"),
         f"Method: {provenance.get('method', 'unavailable')} v{provenance.get('method_version', 'unavailable')}",
-        f"Convergence metadata: {_csv_value(physics.get('convergence')) or 'unavailable'}",
+        f"Convergence metadata: {convergence_summary}",
         f"Reason codes: {', '.join(physics.get('reason_codes', [])) or 'none'}",
         f"Screening job ID: {(screening_summary or {}).get('screening_job_id', 'unavailable')}",
         f"Screening job lifecycle: {(screening_summary or {}).get('screening_job_status', 'unavailable')} | archive status: {'archived / read-only snapshot' if (screening_summary or {}).get('screening_job_archived') else 'live job'}",
         f"Screening run completion: {(screening_summary or {}).get('completion_status', (screening_summary or {}).get('status', 'unavailable'))} | reason: {(screening_summary or {}).get('reason_code', 'unavailable')} | candidate cap: {(screening_summary or {}).get('candidate_limit_reached', 'unavailable')}",
         *_wrap_report_line(f"Coverage counts: requested objects {(screening_summary or {}).get('objects_requested', 'unavailable')} | records received {(screening_summary or {}).get('catalog_records_received', 'unavailable')} | objects used {(screening_summary or {}).get('objects_used', (screening_summary or {}).get('valid_track_count', 'unavailable'))} | candidate pairs {(screening_summary or {}).get('candidate_pairs', (screening_summary or {}).get('candidate_pair_count', 'unavailable'))} | refinements {(screening_summary or {}).get('refinements', (screening_summary or {}).get('refinement_count', 'unavailable'))} | physical events {(screening_summary or {}).get('physical_events', (screening_summary or {}).get('close_approach_count', 'unavailable'))}"),
         *_wrap_report_line(f"Coverage caps hit: {_csv_value((screening_summary or {}).get('caps_hit')) or 'none recorded'} | partial reasons: {_csv_value((screening_summary or {}).get('partial_reasons')) or 'none recorded'}"),
-        *_wrap_report_line(f"Input provenance: {_csv_value(event.get('provenance')) or 'unavailable'}"),
-        "ORION internal geometry-only review priority",
-        f"Category: {(event.get('review_priority') or {}).get('category', 'UNCLASSIFIED')} | policy version: {(event.get('review_priority') or {}).get('policy_version', 'unavailable')} | status: {(event.get('review_priority') or {}).get('status', 'unclassified')}",
+        *_wrap_report_line(
+            "Input provenance: "
+            f"source {(event.get('provenance') or {}).get('source', 'unavailable')} | "
+            f"type {(event.get('provenance') or {}).get('source_type', 'unavailable')} | "
+            f"method {(event.get('provenance') or {}).get('method', 'unavailable')} | "
+            f"version {(event.get('provenance') or {}).get('method_version', 'unavailable')} | "
+            f"input hash {(event.get('provenance') or {}).get('input_hash', 'unavailable')}"
+        ),
+        "ORION internal geometry-only review priority (not a Pc risk class)",
+        f"Geometry review band: {review_band} | policy version: {(event.get('review_priority') or {}).get('policy_version', 'unavailable')} | status: {(event.get('review_priority') or {}).get('status', 'unclassified')}",
         f"Explanation: {(event.get('review_priority') or {}).get('explanation', 'unavailable')}",
-        f"Criteria: {_csv_value((event.get('review_priority') or {}).get('criteria')) or 'unavailable'} | reasons: {', '.join((event.get('review_priority') or {}).get('reason_codes', [])) or 'none'}",
+        f"Criteria: {_csv_value(_geometry_review_criteria((event.get('review_priority') or {}).get('criteria'))) or 'unavailable'} | reasons: {', '.join((event.get('review_priority') or {}).get('reason_codes', [])) or 'none'}",
         f"Limitations: {_csv_value((event.get('review_priority') or {}).get('limitations')) or 'unavailable'}",
         *_wrap_report_line("Scientific scope: research trajectory screening; not an operational warning. TLE uncertainty is not quantified here; live TLE-only inputs have no covariance or measured HBR."),
         "Maneuver scope: exploratory two-body simulation; perturbations, covariance, burn execution error, attitude, and propulsion constraints are omitted.",
         "Collision probability assessment",
-        f"Pc: {pc_value if pc_value is not None else 'unavailable'} | status {pc_result.get('status', 'unavailable')}",
-        f"Method: {pc_result.get('method', 'unavailable')} v{pc_result.get('method_version', 'unavailable')}",
+        f"Pc: {pc_value if pc_value is not None else 'unavailable'} | status {pc_status}",
+        f"Source-reported Pc: {pc_result.get('source_reported_pc') if pc_result.get('source_reported_event_id') == event.get('id') and pc_result.get('source_reported_pc') is not None else 'not reported'} | method {pc_result.get('source_reported_pc_method') or 'undeclared'}",
+        f"Event-specific Foster Pc: {pc_value if pc_value is not None else 'unavailable'} | status {pc_status}",
+        f"Research Pc: {research_assessment.get('estimated_pc_scientific') or 'unavailable'} | {research_assessment.get('percentage_scientific') or 'unavailable'}% | method {research_assessment.get('method_name', 'unavailable')} v{research_assessment.get('method_version', 'unavailable')}",
+        f"Physics risk score/class: {research_risk.get('risk_score') if research_risk.get('risk_score') is not None else 'unavailable'} / 100 | {research_risk.get('final_risk_class') or research_risk.get('physics_risk_class') or 'unavailable'} | basis {research_risk.get('classification_basis') or 'unavailable'}",
+        f"Method: {pc_result.get('method', 'unavailable') if pc_event_matches else 'unavailable'} v{pc_result.get('method_version', 'unavailable') if pc_event_matches else 'unavailable'}",
         f"Applicability: {pc_result.get('applicability_status', 'not_assessed')} | reason codes: {', '.join(pc_reason_codes) or 'none'}",
         f"Independence assumption authorized: {pc_result.get('independence_assumption_authorized', 'not recorded')}",
-        f"HBR km: {hbr_value if hbr_value is not None else 'unavailable'} | source {pc_result.get('hbr_source', 'unavailable')} | provenance: {_csv_value(pc_result.get('hbr_provenance')) or 'unavailable'}",
-        f"Covariance status: {pc_result.get('covariance_status', 'unavailable')} | frame: {pc_result.get('covariance_frame', 'unavailable')} | epoch: {pc_result.get('covariance_epoch', 'unavailable')}",
-        f"Covariance sources: {_csv_value(pc_result.get('covariance_sources')) or 'unavailable'}",
-        f"Assumptions: {_csv_value(pc_result.get('assumptions')) or 'unavailable'}",
+        f"HBR km: {hbr_value if hbr_value is not None else research_assessment.get('hbr_km', 'unavailable')} | source {pc_result.get('hbr_source') or research_assessment.get('hbr_source', 'unavailable')} | provenance: {_csv_value(pc_result.get('hbr_provenance') or research_assessment.get('hbr_provenance')) or 'unavailable'}",
+        f"Covariance policy: {research_assessment.get('covariance_policy_name') or research_assessment.get('covariance_policy_id') or 'not provided'} | encounter-plane sigmas km: {research_assessment.get('encounter_plane_sigma_min_km', 'unavailable')} / {research_assessment.get('encounter_plane_sigma_max_km', 'unavailable')}",
+        f"Covariance status: {pc_result.get('covariance_status') or ('assumed research model' if research_assessment.get('covariance_method') else 'unavailable')} | frame: {pc_result.get('covariance_frame') or research_assessment.get('covariance_frame', 'unavailable')} | epoch: {pc_result.get('covariance_epoch') or research_assessment.get('covariance_epoch_utc', 'unavailable')}",
+        f"Covariance sources: {_csv_value(pc_result.get('covariance_sources') or research_assessment.get('covariance_method')) or 'unavailable'}",
+        f"Assumptions: {_csv_value(pc_result.get('assumptions') or research_assessment.get('assumptions')) or 'unavailable'}",
         f"Warnings: {_csv_value(pc_result.get('warnings')) or 'none'}",
         f"Pc provenance: {_csv_value(pc_result.get('provenance')) or 'unavailable'}",
         f"Maneuver research assessment: {(maneuver or {}).get('status', 'unavailable')} | {(maneuver or {}).get('reason', 'unavailable')}",
@@ -599,14 +780,14 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
             evaluation_metadata,
             expected_artifact_sha256=ml_provenance.get("artifact_sha256") if ml_associated else None,
         ),
-        f"Feature availability: {_csv_value(ml_result.get('feature_availability')) or 'unavailable'} | imputed: {ml_result.get('features_imputed', 'unavailable')}",
-        f"ML provenance: {_csv_value(ml_result.get('provenance')) or 'unavailable'}",
+        f"Feature availability: {feature_summary}",
+        f"ML provenance: {ml_provenance_summary}",
         f"Physics/ML comparison: {comparison.get('status', 'unavailable')} | {comparison.get('reason_code', 'unavailable')}; no numerical agreement claim is made.",
         "Orbital anomaly assessment (historical feature unusualness; not collision risk)",
         f"Status: {anomaly.get('status', 'unavailable')} | reason: {anomaly.get('reason_code', 'ANOMALY_RESULT_NOT_RETURNED')}",
         f"Score: {anomaly.get('anomaly_score', 'unavailable') if anomaly.get('status') == 'available' else 'unavailable'} | classification: {anomaly.get('classification', 'unavailable') if anomaly.get('status') == 'available' else 'unavailable'}",
         f"Definition: {anomaly.get('score_definition', 'unavailable')}",
-        f"Anomaly provenance: {_csv_value(anomaly_provenance) or 'unavailable'}",
+        f"Anomaly provenance: {anomaly_provenance_summary}",
     ]
     scenario_result = event.get("scenario_collision_probability") or {}
     if scenario_result:
@@ -643,6 +824,11 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
         stage2a_miss = (stage2a_block.get("miss_distance") or {}).get("value", "unavailable") if isinstance(stage2a_block.get("miss_distance"), dict) else stage2a_block.get("miss_distance_km", "unavailable")
         maneuver_ml = maneuver.get("ml_result") or {}
         maneuver_ml_evaluation = maneuver_ml.get("evaluation_summary") or {}
+        probability_before = maneuver.get("probability_before") or {}
+        probability_after = maneuver.get("probability_after") or {}
+        probability_comparison = maneuver.get("probability_comparison") or {}
+        best_candidate = maneuver.get("best_candidate") or {}
+        best_fuel = best_candidate.get("fuel") or maneuver.get("fuel") or {}
         baseline_status = baseline.get("status", "unavailable")
         lines.extend([
             "", "Maneuver assessment",
@@ -669,16 +855,18 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
             f"Maneuver ML model: {maneuver_ml.get('model_name', 'unavailable')} v{maneuver_ml.get('model_version', 'unavailable')}",
             f"Maneuver ML score meaning: {maneuver_ml.get('score_name', 'unavailable')} ({maneuver_ml.get('score_units', 'unavailable')}); {maneuver_ml.get('score_semantics', 'unavailable')}",
             "Maneuver ML held-out evidence: " + (
-                f"{maneuver_ml_evaluation.get('held_out_scenario_count', 'unavailable')} scenarios / {maneuver_ml_evaluation.get('held_out_candidate_count', 'unavailable')} candidates; "
-                f"within-scenario Spearman {maneuver_ml_evaluation.get('mean_within_scenario_spearman', 'unavailable')}; "
-                f"top-1 agreement {maneuver_ml_evaluation.get('top1_agreement_with_simulator_best', 'unavailable')}; "
-                f"model regret {maneuver_ml_evaluation.get('model_mean_regret_km', 'unavailable')} km; "
-                f"minimum-delta-v baseline regret {maneuver_ml_evaluation.get('minimum_delta_v_baseline_mean_regret_km', 'unavailable')} km; "
+                f"{maneuver_ml_evaluation.get('held_out_scenario_count', 'unavailable')} parents / {maneuver_ml_evaluation.get('held_out_candidate_count', 'unavailable')} candidates; "
+                f"within-parent Spearman {maneuver_ml_evaluation.get('mean_within_scenario_spearman', 'unavailable')}; "
+                f"top-1 agreement {maneuver_ml_evaluation.get('top1_agreement_with_physics_best', 'unavailable')}; "
+                f"model regret {maneuver_ml_evaluation.get('model_mean_regret_log10_pc_reduction', 'unavailable')} log10 units; "
+                f"deterministic baseline regret {maneuver_ml_evaluation.get('baseline_mean_regret_log10_pc_reduction', 'unavailable')} log10 units; "
                 f"{maneuver_ml_evaluation.get('source', 'not supplied')}"
             ),
             f"Maneuver ML provenance: {_csv_value(maneuver_ml.get('provenance')) or 'unavailable'}",
-            f"Pc before/after: unavailable | {maneuver.get('probability_reason_code') or 'EVENT_MATCHED_COVARIANCE_AND_HBR_REQUIRED'}",
-            f"Fuel: unavailable | {maneuver.get('fuel_reason_code') or 'MASS_AND_PROPULSION_MODEL_REQUIRED'}",
+            f"Research Pc before: {probability_before.get('pc_scientific') or 'unavailable'} | status {probability_before.get('status', 'unavailable')} | TCA {probability_before.get('tca_utc') or baseline.get('zero_burn_closest_approach_utc') or 'unavailable'}",
+            f"Research Pc after: {probability_after.get('pc_scientific') or 'unavailable'} | status {probability_after.get('status', 'unavailable')} | TCA {probability_after.get('tca_utc') or best_candidate.get('closest_approach_utc') or 'unavailable'}",
+            f"Pc reduction: absolute {best_candidate.get('absolute_research_pc_reduction_scientific') or 'unavailable'} | percentage {maneuver.get('risk_reduction_pct') if maneuver.get('risk_reduction_pct') is not None else 'unavailable'}% | {probability_comparison.get('interpretation') or probability_comparison.get('reason_code') or maneuver.get('probability_reason_code') or 'unavailable'}",
+            f"Fuel: {best_fuel.get('propellant_consumption_kg') if best_fuel.get('propellant_consumption_kg') is not None else 'unavailable'} kg | initial mass {best_fuel.get('initial_mass_kg', 'unavailable')} kg | Isp {best_fuel.get('specific_impulse_s', 'unavailable')} s | {best_fuel.get('assumption_status') or best_fuel.get('status', 'unavailable')}",
         ])
         lines.extend(_wrap_report_line(
             "Candidate closest approaches are simulated two-body results. Change from baseline is relative to "
@@ -686,16 +874,25 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
             "post-maneuver Pc, operational safety, fuel savings, or maneuver recommendation is inferred."
         ))
         maneuver_candidates = maneuver.get("candidates") if isinstance(maneuver.get("candidates"), list) else candidate_block.get("candidates", [])
-        for candidate in maneuver_candidates:
-            lines.extend([
-                f"Candidate burn: {candidate.get('delta_v_m_s')} m/s | {candidate.get('direction')} | {candidate.get('maneuver_epoch_utc')}",
-                f"candidate simulated closest-approach TCA {candidate.get('closest_approach_utc') or 'unavailable'}",
-                f"offset from original Stage 2A TCA {candidate.get('closest_approach_offset_from_original_tca_seconds') if candidate.get('closest_approach_offset_from_original_tca_seconds') is not None else 'unavailable'} s",
-                f"Candidate miss: {candidate.get('predicted_miss_distance_km')} km",
-                f"change vs zero-burn two-body baseline: {candidate.get('change_from_zero_burn_km')} km",
-                f"ML rank {candidate.get('maneuver_ml_rank') if candidate.get('maneuver_ml_rank') is not None else 'unavailable'} | ML predicted simulator miss {candidate.get('maneuver_ml_predicted_miss_distance_km') if candidate.get('maneuver_ml_predicted_miss_distance_km') is not None else 'unavailable'} km",
-            ])
-    return simple_pdf(lines, footer="ORION SSA | Research Prototype | Not for operational decisions")
+        ranked_candidates = sorted(
+            maneuver_candidates,
+            key=lambda item: item.get("physics_research_pc_rank") if item.get("physics_research_pc_rank") is not None else float("inf"),
+        )
+        for candidate in ranked_candidates[:5]:
+            candidate_pc = candidate.get("research_pc_after") or {}
+            candidate_fuel = candidate.get("fuel") or {}
+            candidate_lines = [
+                f"Candidate burn: {candidate.get('delta_v_m_s')} m/s | RTN {candidate.get('delta_v_rtn_m_s')} m/s | {candidate.get('direction')} | burn UTC {candidate.get('maneuver_epoch_utc')} | lead {candidate.get('lead_time_seconds')} s",
+                f"Candidate TCA {candidate.get('closest_approach_utc') or 'unavailable'} | relative velocity after {candidate.get('relative_velocity_km_s') or 'unavailable'} km/s",
+                f"Miss distance after {candidate.get('predicted_miss_distance_km') if candidate.get('predicted_miss_distance_km') is not None else 'unavailable'} km | change from zero-burn {candidate.get('change_from_zero_burn_km') if candidate.get('change_from_zero_burn_km') is not None else 'unavailable'} km",
+                f"Pc after {candidate_pc.get('pc_scientific') or 'unavailable'} | absolute reduction {candidate.get('absolute_research_pc_reduction_scientific') or 'unavailable'} | percentage {candidate.get('percentage_research_pc_reduction') if candidate.get('percentage_research_pc_reduction') is not None else 'unavailable'}%",
+                f"Fuel {candidate_fuel.get('propellant_consumption_kg') if candidate_fuel.get('propellant_consumption_kg') is not None else 'unavailable'} kg | mass {candidate_fuel.get('initial_mass_kg', 'unavailable')} kg | Isp {candidate_fuel.get('specific_impulse_s', 'unavailable')} s | {candidate_fuel.get('assumption_status') or candidate_fuel.get('status', 'unavailable')}",
+                f"AI rank {candidate.get('maneuver_ml_rank') if candidate.get('maneuver_ml_rank') is not None else 'unavailable'} | physics research-Pc rank {candidate.get('physics_research_pc_rank') if candidate.get('physics_research_pc_rank') is not None else 'unavailable'} | AI predicted log10 Pc reduction {candidate.get('maneuver_ml_predicted_log10_pc_reduction') if candidate.get('maneuver_ml_predicted_log10_pc_reduction') is not None else 'unavailable'}",
+            ]
+            lines.extend([part for line in candidate_lines for part in _wrap_report_line(line, 68)])
+        if len(ranked_candidates) > 5:
+            lines.append(f"{len(ranked_candidates) - 5} additional candidates are included in the CSV and JSON downloads.")
+    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
 
 
 def _csv_value(value: Any) -> str:

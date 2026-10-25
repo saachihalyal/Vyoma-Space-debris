@@ -46,10 +46,12 @@ import {
   resumeConjunctionJob,
   importEventCdm,
   calculateScenarioPc,
+  calculateResearchPcWhatIf,
   getForecast,
   getManeuver,
   restoreArchivedScreeningJob,
   selectedEventReportPath,
+  selectedManeuverReportPath,
   getScreeningProxies,
   getSmartFilter,
   getSystemHealth,
@@ -86,7 +88,7 @@ import { EventRiskEstimate } from "./components/UI/EventRiskEstimate.js";
 import { forecastHourLabel, proxyPriorityClassIndex } from "./utils/analyticsPresentation.js";
 import { beginScreeningAttempt, collisionScreeningState, createExplicitRefreshHandler, finishScreeningAttempt, reconcilePhysicalEventSelection, resolvePhysicalEventSelection, screeningResultMatchesRun, screeningStatusForEmptyResults, screeningSummaryDisplay, shouldStartScreeningRun, updateScreeningAttempt } from "./utils/screeningRefreshPolicy.js";
 import { readWatchlist } from "./utils/watchlistStorage.js";
-import { COLLISION_INVALID_ASSESSMENT_LABEL, COLLISION_PAIR_FILTERS, collisionEventPriority, filterCollisionEvents, getCollisionEventsForDisplay, rankCollisionEvents, rankOrbitalAnomalyEvents, screeningAssessmentCounts, searchAndSortCollisionEvents } from "./utils/collisionEventDisplay.js";
+import { COLLISION_INVALID_ASSESSMENT_LABEL, COLLISION_PAIR_FILTERS, collisionEventPriority, explainPhysicsReason, filterCollisionEvents, getCollisionEventsForDisplay, rankCollisionEvents, rankOrbitalAnomalyEvents, screeningAssessmentCounts, searchAndSortCollisionEvents } from "./utils/collisionEventDisplay.js";
 import { clearActiveScreeningJobId, readActiveScreeningJobId, saveActiveScreeningJobId } from "./utils/screeningJobStorage.js";
 import {
   getObjectTypeLabel,
@@ -1062,8 +1064,8 @@ function ScreeningRunSummary({ eventStatus = {}, attemptStatus = null, screening
     ? sourceSummary.object_count ?? "Unavailable"
     : summary.valid_track_count + (summary.rejected_object_count || 0);
   const invalidCount = summary.invalid_assessment_count ?? "Unavailable";
-  const reviewPriorityCounts = Object.fromEntries(["CRITICAL", "HIGH", "MEDIUM", "LOW", "REVIEW_REQUIRED", "UNCLASSIFIED"].map((category) => [
-    category,
+  const reviewPriorityCounts = Object.fromEntries([["CRITICAL", "Band 1"], ["HIGH", "Band 2"], ["MEDIUM", "Band 3"], ["LOW", "Band 4"], ["REVIEW_REQUIRED", "Review required"], ["UNCLASSIFIED", "Unclassified"]].map(([category, label]) => [
+    label,
     assessmentEvents.filter((item) => item?.result_kind === "physics_assessment" && (item.review_priority?.category || "UNCLASSIFIED") === category).length,
   ]));
   const pcUnavailableCount = assessmentEvents.filter((item) => item?.result_kind === "physics_assessment" && item.collision_probability?.status !== "available").length;
@@ -1086,9 +1088,10 @@ function ScreeningRunSummary({ eventStatus = {}, attemptStatus = null, screening
       <span>Accepted result assessment records <strong>{recordCounts.total} total · {recordCounts.returned} returned</strong></span>
       {recordCounts.truncated ? <span>Assessment response limit <strong>Only {recordCounts.returned} of {recordCounts.total} records were returned; full-run counts follow.</strong></span> : null}
       <span>{COLLISION_INVALID_ASSESSMENT_LABEL} <strong>{recordCounts.invalidTotal ?? invalidCount}</strong></span>
+      {assessmentEvents.some((item) => item?.physics_result?.status === "invalid") ? <details className="invalid-reason-list"><summary>Invalid events and reasons ({assessmentEvents.filter((item) => item?.physics_result?.status === "invalid").length} returned)</summary><ul>{assessmentEvents.filter((item) => item?.physics_result?.status === "invalid").map((item) => <li key={item.id}><strong>{item.primary?.name || item.primary?.id} ({item.primary?.id}) vs {item.secondary?.name || item.secondary?.id} ({item.secondary?.id})</strong><span>{(item.physics_result?.reason_codes || ["ASSESSMENT_REASON_UNAVAILABLE"]).map((code) => <span key={code}><code>{code}</code> — {explainPhysicsReason(code)}</span>)}</span></li>)}</ul></details> : null}
       <span>Indistinguishable duplicate trajectories excluded from rank <strong>{duplicateTrajectoryCount}</strong></span>
       <span>Returned physical Pc unavailable <strong>{pcUnavailableCount}</strong></span>
-      <span>Returned ORION review-priority categories <strong>{Object.entries(reviewPriorityCounts).map(([category, count]) => `${category}: ${count}`).join(" · ")}</strong></span>
+      <span>Returned rule-based geometry review bands <strong>{Object.entries(reviewPriorityCounts).map(([category, count]) => `${category}: ${count}`).join(" · ")}</strong></span>
       <span>ML model / event inference <strong>{eventStatus.ml_model?.status || eventStatus.ml_status || "Unavailable"} · {eventStatus.ml_available_event_count ?? "?"} available predictions returned</strong></span>
       {recordCounts.truncated ? <span>Invalid assessments in returned records <strong>{recordCounts.returnedInvalid}</strong></span> : null}
       <span>Accepted result malformed records excluded <strong>{eventStatus.structurally_invalid_excluded_count ?? 0}</strong></span>
@@ -1130,7 +1133,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
 export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
-  const [eventSort, setEventSort] = useState("tca_soonest");
+  const [eventSort, setEventSort] = useState("research_pc");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [physicalOnly, setPhysicalOnly] = useState(true);
@@ -1149,6 +1152,9 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const [scenarioAssumeIndependent, setScenarioAssumeIndependent] = useState(false);
   const [pcInputBusy, setPcInputBusy] = useState(false);
   const [pcInputMessage, setPcInputMessage] = useState("");
+  const [uncertaintyScale, setUncertaintyScale] = useState("1");
+  const [uncertaintyWhatIf, setUncertaintyWhatIf] = useState(null);
+  const [uncertaintyWhatIfStatus, setUncertaintyWhatIfStatus] = useState("idle");
   useEffect(() => {
     setCdmXml("");
     setCdmSourceLabel("");
@@ -1158,6 +1164,16 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
     setScenarioAssumptionsText("");
     setPcInputMessage("");
   }, [event?.id]);
+  useEffect(() => {
+    let active = true;
+    setUncertaintyWhatIf(null);
+    if (!event?.id || !screeningJobId) { setUncertaintyWhatIfStatus("unavailable"); return () => { active = false; }; }
+    setUncertaintyWhatIfStatus("loading");
+    calculateResearchPcWhatIf({ screeningJobId, eventId: event.id, covarianceScale: Number(uncertaintyScale) })
+      .then((response) => { if (active) { setUncertaintyWhatIf(response?.data || null); setUncertaintyWhatIfStatus("available"); } })
+      .catch(() => { if (active) { setUncertaintyWhatIf(null); setUncertaintyWhatIfStatus("error"); } });
+    return () => { active = false; };
+  }, [event?.id, screeningJobId, uncertaintyScale]);
   const filteredEvents = filterCollisionEvents(events, {
     physicalOnly, pairFilter, statusFilter, priorityFilter, quantityFilter,
     minimumMiss, maximumMiss, fromTca, toTca,
@@ -1251,6 +1267,8 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const eventReportPath = physical
     ? screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null
     : `/api/reports/${encodeURIComponent(event.id)}.pdf`;
+  const eventReportCsvPath = physical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null;
+  const eventReportJsonPath = physical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null;
   return (
     <div className="page-stack">
       <PageHeader
@@ -1259,37 +1277,52 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
         text={physical
           ? `${pTypeDisplay} vs ${sTypeDisplay} — ${pairType}. Selected conjunction details and assessment evidence.`
           : `${pTypeDisplay} vs ${sTypeDisplay} — ${pairType}. This record is a heuristic screening proxy only; it is not a trajectory-derived conjunction assessment.`}
-        action={<button className="primary-action" type="button" disabled={!eventReportPath} title={physical && !screeningJobId ? "The selected event's completed screening job is unavailable." : undefined} onClick={() => eventReportPath && download(eventReportPath, `${event.id}-report.pdf`)}>Download Event PDF</button>}
+        action={<div className="report-action-group" aria-label="Selected collision report downloads"><button className="primary-action" type="button" disabled={!eventReportPath} title={physical && !screeningJobId ? "The selected event's completed screening job is unavailable." : undefined} onClick={() => eventReportPath && download(eventReportPath, `${event.id}-report.pdf`)}>PDF</button><button className="secondary-action" type="button" disabled={!eventReportCsvPath} onClick={() => eventReportCsvPath && download(eventReportCsvPath, `${event.id}-report.csv`)}>CSV</button><button className="secondary-action" type="button" disabled={!eventReportJsonPath} onClick={() => eventReportJsonPath && download(eventReportJsonPath, `${event.id}-report.json`)}>JSON</button></div>}
       />
       <CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} />
+      <Panel title="Selected Collision Report Preview" icon={FileText}>
+        <div className="readout-list">
+          <span>Event / object pair<strong>{event.id} · {event.primary?.name || event.primary?.id} ({event.primary?.id}, {event.primary?.object_type || "type unavailable"}) / {event.secondary?.name || event.secondary?.id} ({event.secondary?.id}, {event.secondary?.object_type || "type unavailable"})</strong></span>
+          <span>TCA / geometry<strong>{tcaValue} · {missValue} · relative speed {relativeSpeed}</strong></span>
+          <span>Source-reported Pc<strong>{sourcePc == null ? "Not reported by this event" : `${formatProbabilityScientific(sourcePc)} · ${formatProbabilityPercentage(sourcePc)} · ${pcResult.source_reported_pc_method || "method undeclared"}`}</strong></span>
+          <span>Event-specific Foster Pc<strong>{computedPcMatches ? `${formatProbabilityScientific(pcResult.pc)} · ${formatProbabilityPercentage(pcResult.pc)}` : `Unavailable · ${pcResult?.reason_code || "event-specific covariance/HBR inputs unavailable"}`}</strong></span>
+          <span>Research Pc / score / class<strong>{researchPcDisplay.value} · {researchPcDisplay.percentage} · {physicsRiskDisplay.value}</strong></span>
+          <span>Uncertainty provenance<strong>{pcResult?.covariance_status || (event.automatic_research_pc_assessment?.covariance_method ? "assumed research model" : "covariance unavailable")} · {pcResult?.covariance_frame || event.automatic_research_pc_assessment?.covariance_frame || physics.state_information?.source_frame || "frame unavailable"} · epoch {pcResult?.covariance_epoch || event.automatic_research_pc_assessment?.covariance_epoch_utc || "unavailable"} · encounter-plane σ {event.automatic_research_pc_assessment?.encounter_plane_sigma_min_km ?? "unavailable"}/{event.automatic_research_pc_assessment?.encounter_plane_sigma_max_km ?? "unavailable"} km · {event.automatic_research_pc_assessment?.covariance_policy_name || event.automatic_research_pc_assessment?.covariance_policy_id || "policy unavailable"} · HBR {pcResult?.hbr_km ?? event.automatic_research_pc_assessment?.hbr_km ?? "unavailable"} km ({pcResult?.hbr_source || event.automatic_research_pc_assessment?.hbr_source || "source unavailable"})</strong></span>
+          <span>Collision AI<strong>{event.collision_ai_assessment?.status || "unavailable"} · Pc surrogate {event.collision_ai_assessment?.pc_surrogate?.status || "unavailable"} · classifier {event.collision_ai_assessment?.risk_classifier?.status || "unavailable"}</strong></span>
+          <span>Method / provenance<strong>{physics.provenance?.method || provenance.method || "unavailable"} v{physics.provenance?.method_version || provenance.method_version || "unavailable"} · {provenance.source || provenance.source_type || "source unavailable"}</strong></span>
+        </div>
+        <p className="muted">This preview keeps reported, event-specific Foster, and assumption-based research Pc separate. The downloadable reports include full assumptions, sensitivity, covariance/HBR provenance, AI status, and limitations.</p>
+      </Panel>
       <CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />
       <details className="collision-tools-details"><summary>Collision probability tools · Upload Conjunction Data</summary><CdmReferenceAssessment onUseReferenceEvent={onUseReferenceEvent} /></details>
       <div className="collision-maneuver-entry"><span>Continue to maneuver assessment using this selected event's identity and states.</span><button className="secondary-action" type="button" onClick={() => selectEvent(event, "maneuver")}>Open Maneuver Assessment</button></div>
       <details className="advanced-screening-details"><summary>Advanced screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>
       <section className="selected-event-summary" aria-label="Selected event summary">
-         <div className="selected-event-heading"><div><span className="reference-eyebrow">Selected conjunction</span><h2>{pDisplay} vs {sDisplay}</h2><p>{physical ? `Priority #${aiPriority?.final_priority_rank || evidenceRank || "?"} · score ${aiScoreDisplay} · ${aiPriority?.category || "classification unavailable"} · ${aiPriority?.ranking_explanation || evidencePriority.basis}` : `Heuristic review only · rank ${event.risk_level || "unavailable"}`}</p></div><button className="secondary-action" type="button" onClick={() => selectEvent(event, "maneuver")}>Open Maneuver Assessment</button></div>
+         <div className="selected-event-heading"><div><span className="reference-eyebrow">Selected conjunction</span><h2>{pDisplay} vs {sDisplay}</h2><p>{physical ? `Priority #${aiPriority?.final_priority_rank || evidenceRank || "?"} · review index ${aiScoreDisplay} · ${aiPriority?.ranking_explanation || evidencePriority.basis}` : `Heuristic review only · rank ${event.risk_level || "unavailable"}`}</p></div><button className="secondary-action" type="button" onClick={() => selectEvent(event, "maneuver")}>Open Maneuver Assessment</button></div>
         <div className="selected-event-metrics">
           <span>TCA<strong>{physical ? tcaValue : "Unavailable · proxy only"}</strong></span>
           <span>Miss distance<strong>{physical ? missValue : "Unavailable · proxy only"}</strong></span>
            <span>Relative speed<strong>{physical ? `${relativeSpeed} km/s` : "Unavailable · proxy only"}</strong></span>
           <span>Event-specific Foster Pc<strong>{computedPcMatches ? `${formatProbabilityScientific(pcResult.pc)} · ${formatProbabilityPercentage(pcResult.pc)}` : operationalFosterStatus(event, false)}</strong></span>
-          {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>ESA-prior Pc · assumption-based research estimate<strong>{`${researchPcDisplay.value} · ${researchPcDisplay.percentage} (unvalidated research prior)`}</strong></span> : null}
+          {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>Assumption-based research Pc<strong>{`${researchPcDisplay.value} · ${researchPcDisplay.percentage} (unvalidated research estimate)`}</strong></span> : null}
           <span>Physics Pc risk score and final class<strong>{physicsRiskDisplay.value}</strong></span>
            {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>Research Pc sensitivity scenarios<strong>{researchPcDisplay.sensitivity}</strong></span> : null}
            <span>Source-reported Pc<strong>{sourcePc != null ? `${formatProbabilityScientific(sourcePc)} · ${formatProbabilityPercentage(sourcePc)} · ${pcResult.source_reported_pc_method || "method undeclared"}` : "Not provided by this event's source"}</strong></span>
-           <span>AI queue index and category<strong>{physical ? `${aiScoreDisplay} · ${aiPriority?.category || "Unavailable"} · ${aiPriority?.prediction_method || "method unavailable"}; not Pc` : "Unavailable · proxy-only record"}</strong></span>
+           <span>Rule-based geometry review index<strong>{physical ? `${aiScoreDisplay} · ${aiPriority?.prediction_method || "method unavailable"}; not Pc` : "Unavailable · proxy-only record"}</strong></span>
            <span>Final ranking basis<strong>{physical ? aiPriority?.ranking_explanation || evidencePriority.basis : "Catalog heuristic only; not a probability"}</strong></span>
         </div>
-         {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <details className="selected-research-assumptions"><summary>Research estimate assumptions and provenance</summary><p>{(event.automatic_research_pc_assessment.assumptions || []).join(" ")}</p><p>{event.automatic_research_pc_assessment.provenance?.source || "ESA population prior"} · model {event.automatic_research_pc_assessment.provenance?.prior_model_version || "unknown"}.</p><p>{event.automatic_research_pc_assessment.risk_assessment?.classification_basis || "Risk classification unavailable."}</p></details> : null}
+         {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <details className="selected-research-assumptions"><summary>Research estimate assumptions and provenance</summary><p>{(event.automatic_research_pc_assessment.assumptions || []).join(" ")}</p><p>{event.automatic_research_pc_assessment.covariance_policy_name || event.automatic_research_pc_assessment.method_name} · HBR source {event.automatic_research_pc_assessment.provenance?.source || "ESA population size prior"}.</p><p>{event.automatic_research_pc_assessment.risk_assessment?.classification_basis || "Risk classification unavailable."}</p></details> : null}
+          <label className="uncertainty-what-if">Uncertainty scale what-if<select value={uncertaintyScale} onChange={(e) => setUncertaintyScale(e.target.value)}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></select></label>
+          <p className="muted" role="status">{uncertaintyWhatIfStatus === "loading" ? "Recomputing research Pc with the TLE-age baseline…" : uncertaintyWhatIfStatus === "available" && uncertaintyWhatIf ? `What-if only · TLE-age position-sigma baseline scaled ${uncertaintyScale}× · exact log10 Pc ${uncertaintyWhatIf.log10_pc}` : uncertaintyWhatIfStatus === "error" ? "Uncertainty what-if could not be computed for this event." : "Uncertainty what-if requires a completed screening job."}</p>
       </section>
       <section className="collision-layout">
         <Panel title="Screened Events" icon={Radar}>
           <details className="collision-filter-details"><summary>Search and filter events</summary><div className="collision-filters">
             <label>Search events<input type="search" value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Object name, catalog ID, or event ID" /></label>
             <label>Pair type<select value={pairFilter} onChange={(e) => setPairFilter(e.target.value)}>{COLLISION_PAIR_FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-            <label>Sort events<select value={eventSort} onChange={(e) => setEventSort(e.target.value)}><option value="evidence_priority">Evidence priority, highest first</option><option value="tca_soonest">TCA, soonest first</option><option value="miss_nearest">Miss distance, nearest first</option></select></label>
+            <label>Sort events<select value={eventSort} onChange={(e) => setEventSort(e.target.value)}><option value="research_pc">Exact research log10 Pc, highest first</option><option value="evidence_priority">Evidence priority, highest first</option><option value="tca_soonest">TCA, soonest first</option><option value="miss_nearest">Miss distance, nearest first</option></select></label>
             <label>Screening status<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="all">All statuses</option><option value="valid">Valid interior TCA</option><option value="boundary">Horizon-edge minimum</option><option value="invalid">Invalid</option><option value="unavailable">Unavailable</option></select></label>
-            <label>ORION review priority<select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}><option value="all">All review states</option><option value="CRITICAL">CRITICAL</option><option value="HIGH">HIGH</option><option value="MEDIUM">MEDIUM</option><option value="LOW">LOW</option><option value="REVIEW_REQUIRED">REVIEW_REQUIRED</option><option value="UNCLASSIFIED">UNCLASSIFIED</option></select></label>
+            <label>Rule-based geometry review band<select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}><option value="all">All review states</option><option value="CRITICAL">Band 1</option><option value="HIGH">Band 2</option><option value="MEDIUM">Band 3</option><option value="LOW">Band 4</option><option value="REVIEW_REQUIRED">Review required</option><option value="UNCLASSIFIED">Unclassified</option></select></label>
             <label>Available quantities<select value={quantityFilter} onChange={(e) => setQuantityFilter(e.target.value)}><option value="all">All available / unavailable</option><option value="geometry">TCA and miss distance available</option><option value="relative_velocity">Relative velocity available</option><option value="pc">Pc available (covariance and HBR required)</option></select></label>
             <label>Min miss distance (km)<input type="number" min="0" value={minimumMiss} onChange={(e) => setMinimumMiss(e.target.value)} /></label>
             <label>Max miss distance (km)<input type="number" min="0" value={maximumMiss} onChange={(e) => setMaximumMiss(e.target.value)} /></label>
@@ -1319,7 +1352,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
               ["Relative Velocity (TEME)", physical ? formatScientificField(physics.relative_velocity_at_tca, 6) : "Unavailable — proxy only"],
               ["Evidence Priority", physical ? `#${evidenceRank || "?"} - ${evidencePriority.label}` : `Heuristic - ${event.risk_level || "unavailable"}`],
               ["Foster Pc reference category", physical ? (pcClassification?.category || "Unavailable · no event-specific Pc") : "Unavailable · proxy only"],
-              ["Geometry review category", physical ? (event.review_priority?.category || "UNCLASSIFIED") : `Proxy heuristic · ${event.risk_level || "unavailable"}`],
+              ["Geometry review band (rule-based)", physical ? ({ CRITICAL: "Band 1", HIGH: "Band 2", MEDIUM: "Band 3", LOW: "Band 4", REVIEW_REQUIRED: "Review required" }[event.review_priority?.category] || "Unclassified") : `Proxy heuristic · ${event.risk_level || "unavailable"}`],
               ["AI prioritization (not Pc)", physical && event.ai_risk_assessment ? `${(event.ai_risk_assessment.score * 100).toFixed(1)} / 100 · ${event.ai_risk_assessment.category} · ${event.ai_risk_assessment.prediction_method}` : "Unavailable · valid geometry inputs required"],
               ["Final priority rank", physical ? `#${event.ai_risk_assessment?.final_priority_rank || "?"}` : "Proxy heuristic only"],
               ]}
@@ -1335,7 +1368,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
           <details className="advanced-result-details"><summary>Advanced details: Pc inputs, covariance, HBR, AI and screening diagnostics</summary>
           {physical ? <Panel title="ORION Review Priority" icon={Cpu}>
             <div className="readout-list">
-              <span>Category <strong>{event.review_priority?.category || "UNCLASSIFIED"}</strong></span>
+              <span>Geometry review band (rule-based) <strong>{{ CRITICAL: "Band 1", HIGH: "Band 2", MEDIUM: "Band 3", LOW: "Band 4", REVIEW_REQUIRED: "Review required" }[event.review_priority?.category] || "Unclassified"}</strong></span>
               <span>Policy version <strong>{event.review_priority?.policy_version || "unavailable"}</strong></span>
               <span>Explanation <strong>{event.review_priority?.explanation || "Review priority is unclassified because required evidence is unavailable."}</strong></span>
               {event.review_priority?.reason_codes?.map((code) => <span key={code}>Reason <strong>{code}</strong></span>)}
@@ -1347,7 +1380,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
               <span>Score and category<strong>{(event.ai_risk_assessment.score * 100).toFixed(1)} / 100 · {event.ai_risk_assessment.category} (queue index; not Pc)</strong></span>
               <span>Model identity<strong>{event.ai_risk_assessment.model_name} v{event.ai_risk_assessment.model_version}; {event.ai_risk_assessment.prediction_method}</strong></span>
               <span>Final priority<strong>#{event.ai_risk_assessment.final_priority_rank || "unranked"} · {event.ai_risk_assessment.ranking_explanation || "Ranking awaits screening-set aggregation."}</strong></span>
-              <span>Ranking evidence<strong>Geometry #{event.ai_risk_assessment.geometry_rank || "—"}; Foster Pc #{event.ai_risk_assessment.foster_pc_rank || "—"}; ESA-prior Pc #{event.ai_risk_assessment.research_pc_rank || "—"}. {event.ai_risk_assessment.explanation}</strong></span>
+              <span>Ranking evidence<strong>Geometry #{event.ai_risk_assessment.geometry_rank || "—"}; Foster Pc #{event.ai_risk_assessment.foster_pc_rank || "—"}; research Pc #{event.ai_risk_assessment.research_pc_rank || "—"}. {event.ai_risk_assessment.explanation}</strong></span>
               <span>Quality and limitation<strong>{(event.ai_risk_assessment.model_quality?.limitations || []).join(" ")}</strong></span>
               <span>ESA historical model<strong>{mlResult?.model_name || "ESA log10-risk regressor"} is withheld for live inference: feature semantics remain unverified. Historical target is final ESA event log10 risk, not collision probability.</strong></span>
             </div>
@@ -1516,10 +1549,10 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
         eyebrow="Bounded two-body research simulation"
         title="Maneuver Assessment"
         text="Compare a bounded set of impulsive RTN burns against a zero-burn two-body baseline. This simplified research simulation is not an operational maneuver recommendation."
-        action={selectedEvent?.physics_result?.status === "valid" && screeningJobId ? <button className="primary-action" type="button" onClick={() => download(`/api/conjunction-jobs/${encodeURIComponent(screeningJobId)}/events/${encodeURIComponent(selectedEvent.id)}/assessment.pdf`, `${selectedEvent.id}-maneuver-assessment.pdf`)}>Download Assessment Report</button> : <button className="primary-action" type="button" disabled title="A validated physical event and its screening job are required.">Download Assessment Report</button>}
+        action={<div className="report-action-group" aria-label="Maneuver report downloads">{["pdf", "csv", "json"].map((format) => <button className={format === "pdf" ? "primary-action" : "secondary-action"} type="button" key={format} disabled={selectedEvent?.physics_result?.status !== "valid" || !screeningJobId || !["available", "available_with_warning"].includes(m.status)} title={!m.status || !["available", "available_with_warning"].includes(m.status) ? "Run and complete the maneuver assessment to export its report." : undefined} onClick={() => selectedEvent && download(selectedManeuverReportPath(screeningJobId, selectedEvent.id, format), `${selectedEvent.id}-maneuver-assessment.${format}`)}>Download {format.toUpperCase()}</button>)}</div>}
       />
       <ManeuverScreeningContext screeningJobId={screeningJobId} screeningStatus={screeningStatus} screeningAttempt={screeningAttempt} />
-      <ManeuverUserUpload />
+      <ManeuverUserUpload download={download} />
       {referenceEvent ? <ReferenceManeuverAssessment referenceEvent={referenceEvent} download={download} onClear={onClearReferenceEvent} /> : null}
       <Panel title="Accepted Stage 2A Event" icon={Rocket}>
         {selectableEvents.length ? <label className="maneuver-event-select">
@@ -1581,10 +1614,20 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
             <span>Pc reduction<strong>{m.probability_comparison?.status === "available" && Number.isFinite(m.risk_reduction_pct) ? `${m.risk_reduction_pct.toPrecision(5)}% · ${bestCandidate.absolute_research_pc_reduction_scientific || "absolute difference unavailable"}` : `Unavailable · ${m.probability_comparison?.reason_code || "comparable Pc unavailable"}`}</strong></span>
             <span>Fuel estimate<strong>{m.fuel?.status === "estimated" ? `${m.fuel.propellant_consumption_kg.toPrecision(5)} kg · ${m.fuel.assumption_status === "estimated_from_default_assumptions" ? `estimated from defaults (${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s)` : `user inputs (${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s)`}` : `Unavailable · ${m.fuel?.reason_code || "fuel inputs invalid"}`}</strong></span>
           </div> : null}
-          {bestCandidate ? <p className="muted">Selection basis: {m.best_candidate_basis || "physics-confirmed research Pc ordering"}. Research Pc uses the same ESA-prior covariance/HBR method assigned at each TCA; uncertainty is not dynamically propagated from the TLE epoch, and this is not an operational recommendation.</p> : null}
+          {bestCandidate ? <p className="muted">Selection basis: {m.best_candidate_basis || "physics-confirmed research Pc ordering"}. Research Pc uses its declared covariance and HBR policies at TCA; uncertainty is not dynamically propagated from the TLE epoch, and this is not an operational recommendation.</p> : null}
         </Panel>
       </section>
       <ManeuverBaselineComparison comparison={m.baseline_reference_comparison} stage2aReference={m.stage2a_reference} stage2aPhysics={selectedEvent.physics_result} zeroBurnBaseline={m.zero_burn_baseline} candidates={physicsCandidates} probabilityBefore={m.probability_before} probabilityAfter={m.probability_after} probabilityComparison={m.probability_comparison} />
+      <Panel title="Maneuver Report Preview" icon={FileText}>
+        <div className="readout-list">
+          <span>Selected event / TCA<strong>{selectedEvent.id} · {selectedEvent.primary?.id} / {selectedEvent.secondary?.id} · {selectedEvent.physics_result?.tca?.value || "Unavailable"}</strong></span>
+          <span>Burn epoch / RTN delta-v<strong>{bestCandidate ? `${bestCandidate.maneuver_epoch_utc} · ${bestCandidate.delta_v_rtn_m_s?.join(", ") || "Unavailable"} m/s; magnitude ${bestCandidate.delta_v_m_s} m/s` : "Run a maneuver search for candidate details"}</strong></span>
+          <span>Miss / relative velocity / TCA<strong>{bestCandidate ? `${baseline.miss_distance_km ?? "Unavailable"} → ${bestCandidate.predicted_miss_distance_km} km · ${bestCandidate.relative_velocity_km_s?.join(", ") || "Unavailable"} km/s · ${bestCandidate.closest_approach_utc || "Unavailable"}` : "Unavailable"}</strong></span>
+          <span>Research Pc before / after / reduction<strong>{m.probability_before?.pc_scientific || "Unavailable"} → {m.probability_after?.pc_scientific || "Unavailable"} · {m.best_candidate?.absolute_research_pc_reduction_scientific || "Unavailable"} · {Number.isFinite(m.risk_reduction_pct) ? `${m.risk_reduction_pct}%` : "Unavailable"}</strong></span>
+          <span>Fuel / AI and physics ranking<strong>{m.fuel?.status === "estimated" ? `${m.fuel.propellant_consumption_kg} kg · ${m.fuel.assumption_status} · mass ${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s` : "Fuel unavailable"} · AI rank {bestCandidate?.maneuver_ml_rank ?? "unavailable"} / physics rank {bestCandidate?.physics_research_pc_rank ?? "unavailable"}</strong></span>
+        </div>
+        <p className="muted">The preview and all downloads retain the two-body propagation, TCA-assigned covariance, no execution-error, and default-fuel assumption limits.</p>
+      </Panel>
       <details className="advanced-maneuver-details"><summary>Advanced propagation, baseline comparison, candidate table and provenance</summary>
       <section className="split-grid">
         <Panel title="Physics Inputs" icon={Rocket}>
@@ -1651,6 +1694,8 @@ function ReportsPage({ event, screeningJobId, csvScreeningJobId, csvJobArchived,
   const eventReportPath = event?.result_kind === "physics_assessment"
     ? screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null
     : event ? `/api/reports/${encodeURIComponent(event.id)}.pdf` : null;
+  const eventReportCsvPath = event?.result_kind === "physics_assessment" && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null;
+  const eventReportJsonPath = event?.result_kind === "physics_assessment" && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null;
   const eventReportUnavailable = event?.result_kind === "physics_assessment" && !screeningJobId;
   return (
     <div className="page-stack">
@@ -1704,7 +1749,18 @@ function ReportsPage({ event, screeningJobId, csvScreeningJobId, csvJobArchived,
         <ReportCard title="Heuristic Proxy CSV" text="Catalog-level heuristic pairs kept separate from trajectory assessments." onClick={() => download("/api/reports/screening-proxies.csv", "screening-proxies.csv")} icon={ClipboardList} />
         <ReportCard title="Mission JSON" text="Catalog provenance, separate heuristic proxies, trajectory assessments, and Pc statuses." onClick={() => download("/api/reports/mission.json", "orbital-mission-report.json")} icon={DatabaseZap} />
         <ReportCard title="Selected Event PDF" text={eventReportUnavailable ? "The completed screening job for this event is unavailable." : event ? `${event.result_kind === "physics_assessment" ? "Trajectory assessment" : "Heuristic proxy"} · ${event.id}: ${event.primary.name} vs ${event.secondary.name}` : "Select an event first."} onClick={() => eventReportPath && download(eventReportPath, `${event.id}-report.pdf`)} icon={FileText} disabled={!eventReportPath} />
+        <ReportCard title="Selected Event CSV" text={eventReportCsvPath ? "Collision channels, provenance, uncertainty, and maneuver candidate rows for the selected event." : "Select a trajectory-derived event with an available screening job."} onClick={() => eventReportCsvPath && download(eventReportCsvPath, `${event.id}-report.csv`)} icon={Download} disabled={!eventReportCsvPath} />
+        <ReportCard title="Selected Event JSON" text={eventReportJsonPath ? "Full selected-event report object including distinct Pc channels, AI status, uncertainty, provenance, and maneuver details." : "Select a trajectory-derived event with an available screening job."} onClick={() => eventReportJsonPath && download(eventReportJsonPath, `${event.id}-report.json`)} icon={DatabaseZap} disabled={!eventReportJsonPath} />
       </section>
+      <Panel title="Selected Report Preview" icon={BookOpen}>
+        {event ? <div className="readout-list">
+          <span>Event and objects<strong>{event.id} · {event.primary?.name || event.primary?.id} ({event.primary?.id}, {event.primary?.object_type || "type unavailable"}) / {event.secondary?.name || event.secondary?.id} ({event.secondary?.id}, {event.secondary?.object_type || "type unavailable"})</strong></span>
+          <span>Trajectory<strong>{event.physics_result?.tca?.value || "TCA unavailable"} · {event.physics_result?.miss_distance?.value ?? "Miss unavailable"} km · relative speed {event.physics_result?.relative_speed_at_tca?.value ?? "unavailable"} km/s</strong></span>
+          <span>Pc channels<strong>Source {event.collision_probability?.source_reported_pc ?? "not reported"} · Foster {event.collision_probability?.pc ?? "unavailable"} · research {event.automatic_research_pc_assessment?.estimated_pc_scientific || "unavailable"}</strong></span>
+          <span>Risk and model status<strong>{event.automatic_research_pc_assessment?.risk_assessment?.risk_score ?? "unavailable"} / 100 · {event.automatic_research_pc_assessment?.risk_assessment?.final_risk_class || "unavailable"} · AI {event.collision_ai_assessment?.status || "unavailable"}</strong></span>
+          <span>Covariance / HBR<strong>{event.collision_probability?.covariance_status || (event.automatic_research_pc_assessment?.covariance_method ? "assumed research model" : "unavailable")} · {event.automatic_research_pc_assessment?.covariance_policy_name || event.automatic_research_pc_assessment?.covariance_policy_id || "policy unavailable"} · σ {event.automatic_research_pc_assessment?.encounter_plane_sigma_min_km ?? "unavailable"}/{event.automatic_research_pc_assessment?.encounter_plane_sigma_max_km ?? "unavailable"} km · {event.collision_probability?.covariance_frame || event.automatic_research_pc_assessment?.covariance_frame || "frame unavailable"} at {event.collision_probability?.covariance_epoch || event.automatic_research_pc_assessment?.covariance_epoch_utc || "epoch unavailable"} · HBR {event.collision_probability?.hbr_km ?? event.automatic_research_pc_assessment?.hbr_km ?? "unavailable"} km ({event.collision_probability?.hbr_source || event.automatic_research_pc_assessment?.hbr_source || "source unavailable"})</strong></span>
+        </div> : <p className="muted">Select an event in Collision Analysis to preview its event-level report. The mission report preview remains available above.</p>}
+      </Panel>
       <Panel title="Summary" icon={BookOpen}>
         <p className="briefing-text">{smart?.briefing}</p>
       </Panel>
@@ -1840,7 +1896,7 @@ function EventList({ events, onSelect, detailed, compact }) {
               {physical ? <em>{mlSupported
                 ? `ESA log10 event-risk target: ${Number(mlPrediction.predicted_log_risk).toFixed(4)} (not Pc)`
                 : `AI classification unavailable · ${mlResult.model_name ? `${mlResult.model_name} v${mlResult.model_version || "unknown"}; ` : ""}${mlResult.reason_code || "ESA_LIVE_FEATURE_SEMANTICS_UNVERIFIED"}; bundled model is a regression estimator, not a classifier`}</em> : null}
-              {physical ? <em>ORION review priority: {event.review_priority?.category || "UNCLASSIFIED"}</em> : null}
+              {physical ? <em>ORION geometry review band: {{ CRITICAL: "Band 1", HIGH: "Band 2", MEDIUM: "Band 3", LOW: "Band 4", REVIEW_REQUIRED: "Review required" }[event.review_priority?.category] || "Unclassified"}</em> : null}
               <em>Evidence priority #{priorityRanks.get(event.id) || "?"}: {priority.label}. {priority.basis}</em>
               {detailed ? <em>{physical ? `SGP4 trajectory result · ${physics.provenance?.method || "method unavailable"}` : event.suggested_action}</em> : null}
             </span>

@@ -7,7 +7,7 @@ from app.services.object_classification import classify_object
 
 
 Band = Literal["LEO", "MEO", "GEO", "HEO"]
-Category = Literal["active", "debris", "payload", "rocket_body", "unknown"]
+Category = Literal["active", "debris", "payload", "rocket_body", "station", "unknown"]
 RiskLevel = Literal["low", "moderate", "elevated", "severe"]
 SourceType = Literal["live", "fallback", "synthetic", "derived", "user_supplied", "unavailable"]
 ValidityStatus = Literal["valid", "boundary", "invalid", "unavailable", "not_assessed"]
@@ -108,6 +108,7 @@ class SpaceObject(BaseModel):
             object_type=self.object_type,
             category=self.category,
             source_classification=self.source_classification,
+            name=self.name,
         )
         self.category = inferred.category
         self.object_type = inferred.object_type
@@ -133,6 +134,7 @@ class UnavailableCatalogObject(BaseModel):
             object_type=self.object_type,
             category=self.category,
             source_classification=self.source_classification,
+            name=self.name,
         )
         self.category = inferred.category
         self.object_type = inferred.object_type
@@ -280,7 +282,7 @@ class CollisionProbabilityResult(BaseModel):
     tca_utc: str | None = None
     miss_distance_km: float | None = None
     hbr_km: float | None = None
-    hbr_source: Literal["supplied", "configured", "synthetic", "unavailable"] = "unavailable"
+    hbr_source: str = "unavailable"
     hbr_provenance: dict[str, Any] | None = None
     pc: float | None = None
     source_reported_pc: float | None = None
@@ -420,6 +422,10 @@ class AutomaticResearchPcAssessment(BaseModel):
     covariance_method: str | None = None
     hbr_method: str | None = None
     hbr_km: float | None = None
+    hbr_source: str | None = None
+    hbr_provenance: dict[str, Any] = Field(default_factory=dict)
+    covariance_frame: str | None = None
+    covariance_epoch_utc: str | None = None
     hbr_sensitivity_km: list[float] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
     reason_codes: list[str] = Field(default_factory=list)
@@ -517,6 +523,7 @@ class ObjectSummary(BaseModel):
             object_type=self.object_type,
             category=self.category,
             source_classification=self.source_classification,
+            name=self.name,
         )
         self.category = inferred.category
         self.object_type = inferred.object_type

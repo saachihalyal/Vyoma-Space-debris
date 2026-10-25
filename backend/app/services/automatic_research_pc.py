@@ -43,6 +43,26 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "bstar_reference_abs": 0.0001,
 }
 SIGMA_KEYS = ("sigma_r_m", "sigma_t_m", "sigma_n_m", "sigma_rdot_m_s", "sigma_tdot_m_s", "sigma_ndot_m_s")
+# Assumed equivalent spherical hard-body radii, in km. These are conservative
+# project priors for recognizable large objects, not authenticated dimensions.
+OBJECT_SIZE_HBR_OVERRIDE_TABLE = {
+    "ISS": {"radius_km": 0.050, "match": "exact International Space Station name"},
+    "ISS (ZARYA)": {"radius_km": 0.015, "match": "named ISS module"},
+    "ISS (ZVEZDA)": {"radius_km": 0.015, "match": "named ISS module"},
+    "ISS (NAUKA)": {"radius_km": 0.015, "match": "named ISS module"},
+    "ISS (POISK)": {"radius_km": 0.010, "match": "named ISS module"},
+    "ISS (RASSVET)": {"radius_km": 0.010, "match": "named ISS module"},
+    "ISS (UNITY)": {"radius_km": 0.012, "match": "named ISS module"},
+    "ISS (DESTINY)": {"radius_km": 0.012, "match": "named ISS module"},
+    "ISS (HARMONY)": {"radius_km": 0.012, "match": "named ISS module"},
+    "ISS (COLUMBUS)": {"radius_km": 0.012, "match": "named ISS module"},
+    "ISS (KIBO)": {"radius_km": 0.012, "match": "named ISS module"},
+    "ISS (TRANQUILITY)": {"radius_km": 0.012, "match": "named ISS module"},
+    "HUBBLE SPACE TELESCOPE": {"radius_km": 0.007, "match": "known large observatory"},
+    "ENVISAT": {"radius_km": 0.013, "match": "known large Earth-observation spacecraft"},
+    "TERRA": {"radius_km": 0.012, "match": "known large Earth-observation spacecraft"},
+    "AQUA": {"radius_km": 0.012, "match": "known large Earth-observation spacecraft"},
+}
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +84,7 @@ def assess_automatic_research_pc(
     selected_policy = covariance_policy or os.getenv("ORION_RESEARCH_PC_COVARIANCE_POLICY", DEFAULT_COVARIANCE_POLICY)
     if selected_policy not in COVARIANCE_POLICIES:
         selected_policy = "invalid"
+    geometry_band = {"CRITICAL": "1", "HIGH": "2", "MEDIUM": "3", "LOW": "4"}.get(review_priority.category, "unclassified")
     shared = {
         "method_name": ("ORION ESA population-prior Foster 2D research estimate"
                         if selected_policy == "esa_population_prior" else METHOD_NAME),
@@ -72,7 +93,7 @@ def assess_automatic_research_pc(
         "covariance_policy_name": COVARIANCE_POLICIES.get(selected_policy, "Unsupported covariance policy"),
         "geometry_review_category": review_priority.category,
         "geometry_review_policy_version": review_priority.policy_version,
-        "ranking_basis": f"{review_priority.category} under {review_priority.policy_version}; geometry-only queue rank, separate from Pc",
+        "ranking_basis": f"Geometry review band {geometry_band} under {review_priority.policy_version}; geometry-only queue rank, separate from Pc",
     }
     if physics.status != "valid" or physics.tca_status != "valid":
         return AutomaticResearchPcAssessment(
@@ -125,6 +146,19 @@ def assess_automatic_research_pc(
         if any(spec is None for spec in object_specs):
             return _unavailable(shared, "PRIOR_INPUTS_UNAVAILABLE")
         specs = [spec for spec in object_specs if spec is not None]
+        size_overrides = [_object_size_hbr_override(obj) for obj in (primary, secondary)]
+        hbr_source = "assumed_object_size_override" if any(item is not None for item in size_overrides) else "esa_population_span_prior"
+        hbr_provenance = {
+            "source": hbr_source,
+            "units": "km",
+            "combined_radius_rule": "sum of per-object assumed equivalent-sphere radii",
+            "objects": {
+                obj.id: ({"name": obj.name, **override} if override is not None else {
+                    "name": obj.name, "source": "ESA Kelvins span prior", "assumption": "span diameter divided by two"
+                }) for obj, override in zip((primary, secondary), size_overrides)
+            },
+            "assumption": "Object sizes are assumptions for research Pc and are not authenticated dimensions or measured HBR.",
+        }
         event_id = physics.event_id
         values: list[tuple[float | None, float, float]] = []
         central_plane_terms = None
@@ -140,13 +174,17 @@ def assess_automatic_research_pc(
                     _tle_age_position_covariance(obj.id, obj, tca, state, baseline_multiplier * covariance_scale, selected_policy)
                     for obj, state in zip((primary, secondary), states)
                 ]
-            hbr_km = (sum(spec[3][quantile] for spec in specs) / 1000.0) * hbr_scale
-            result = _calculate(physics, primary.id, secondary.id, tca, states, covariances, hbr_km)
+            object_radii_km = [
+                override["radius_km"] if override is not None else spec[3][quantile] / 1000.0
+                for override, spec in zip(size_overrides, specs)
+            ]
+            hbr_km = sum(object_radii_km) * hbr_scale
+            result = _calculate(physics, primary.id, secondary.id, tca, states, covariances, hbr_km, hbr_source, hbr_provenance)
             if quantile == "p50":
                 central_plane_terms = _encounter_plane_terms(physics, covariances, states)
-            if result.status == "available" and result.pc is not None:
+            if result.status == "available" and result.pc is not None and result.pc > 0:
                 log_pc = math.log(float(result.pc))
-            elif result.reason_codes == ["NUMERICAL_FAILURE"]:
+            elif result.status == "available" and result.pc == 0 or result.reason_codes == ["NUMERICAL_FAILURE"]:
                 log_pc = _log_foster_pc(physics, covariances, states, hbr_km)
                 if not math.isfinite(log_pc) or log_pc > 1e-12:
                     return _unavailable(shared, "FOSTER_PRIOR_CALCULATION_NUMERICAL_FAILURE", prior, config)
@@ -161,6 +199,16 @@ def assess_automatic_research_pc(
         floor_pc = f"< 1e{LOG10_PC_FLOOR:g}"
         floor_percent = f"< 1e{LOG10_PC_FLOOR + 2:g}"
         sensitivity_logs = [item[2] for item in values]
+        hbr_quantiles = {quantile: value[1] for quantile, value in zip(("p10", "p50", "p90"), values)}
+        if selected_policy == "esa_population_prior":
+            sensitivity_reason = "Range is the min/max of coupled ESA p10, p50 and p90 covariance/HBR prior scenarios; it is not a statistical confidence interval."
+        else:
+            collapsed_hbr = max(hbr_quantiles.values()) - min(hbr_quantiles.values()) <= 1e-12
+            sensitivity_reason = (
+                f"HBR-only ESA span-prior sensitivity; TLE-age covariance is held fixed. The p10/p50/p90 combined HBR is {central_hbr:.6g} km for all three quantiles, so this event's range collapses to one Pc. Use the separate covariance-scale what-if control to recompute with changed covariance. This is not a statistical confidence interval."
+                if collapsed_hbr else
+                "HBR-only ESA span-prior sensitivity; TLE-age covariance is held fixed. Use the separate covariance-scale what-if control to recompute with changed covariance. This is not a statistical confidence interval."
+            )
         source_hash = hashlib.sha256(PRIOR_PATH.read_bytes()).hexdigest()
         age_days = [spec[4] for spec in specs]
         assumptions = [
@@ -174,7 +222,9 @@ def assess_automatic_research_pc(
             "ESA target/chaser roles are mapped from ORION object class: active/payload to target; debris/rocket body/unknown to chaser.",
             "ESA span inputs are treated as diameters and converted to radius; this is an assumed size mapping, not authenticated object dimensions.",
             "Object covariances are assumed independent for the Foster relative covariance.",
-            "p10/p50/p90 HBR scenarios vary the ESA span prior; the resulting sensitivity endpoints are not confidence bounds.",
+            ("p10/p50/p90 covariance and HBR scenarios vary the ESA population prior; endpoints are not confidence bounds."
+             if selected_policy == "esa_population_prior" else
+             "Sensitivity holds the selected TLE-age covariance policy fixed and varies only the ESA span-based HBR prior; endpoints are not confidence bounds. Covariance-scale what-if values are computed separately."),
             f"Scenario covariance multiplier: {covariance_scale:g}; scenario HBR multiplier: {hbr_scale:g}. Both are explicit research-scenario controls, not measured inputs.",
             "When a result is below binary64's representable range, the same Foster disk integral is evaluated in log space and reported in scientific notation rather than substituted with zero.",
         ]
@@ -198,9 +248,13 @@ def assess_automatic_research_pc(
             covariance_method=("ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors."
                                if selected_policy == "esa_population_prior" else
                                f"{COVARIANCE_POLICIES[selected_policy]} assigned in RTN at TCA and rotated to TEME; no covariance propagation is performed."),
-            hbr_method="ESA target/chaser span population prior by ORION object class; assumed span diameter converted to a per-object radius and combined; not an authenticated object dimension.",
+            hbr_method=("Documented assumed object-size HBR override where matched; remaining object uses ESA span prior. No dimension is authenticated."
+                        if any(item is not None for item in size_overrides) else
+                        "ESA target/chaser span population prior by ORION object class; assumed span diameter converted to a per-object radius and combined; not an authenticated object dimension."),
+            hbr_source=hbr_source, hbr_provenance={**hbr_provenance, "combined_hbr_km": central_hbr, "combined_hbr_by_esa_span_quantile_km": hbr_quantiles},
+            covariance_frame="TEME", covariance_epoch_utc=tca.isoformat(),
             sensitivity_status="available",
-            sensitivity_reason="Range is the min/max of coupled ESA p10, p50 and p90 prior scenarios; it is not a statistical confidence interval.",
+            sensitivity_reason=sensitivity_reason,
             reason_codes=[], assumptions=assumptions,
             provenance={
                 "source": prior.get("source_archive"), "source_archive_sha256": prior.get("source_archive_sha256"),
@@ -227,7 +281,7 @@ def assess_automatic_research_pc(
         return _unavailable(shared, f"PRIOR_ASSESSMENT_ERROR_{type(exc).__name__}")
 
 
-def _calculate(physics, id1, id2, tca, states, covariances, hbr_km):
+def _calculate(physics, id1, id2, tca, states, covariances, hbr_km, hbr_source="esa_population_span_prior", hbr_provenance=None):
     return calculate_foster_2d(
         event_id=physics.event_id, object_1_id=id1, object_2_id=id2, tca_utc=tca.isoformat(),
         position_1_km=states[0][0], velocity_1_km_s=states[0][1],
@@ -235,7 +289,7 @@ def _calculate(physics, id1, id2, tca, states, covariances, hbr_km):
         tca_status="valid", covariance_1=covariances[0], covariance_2=covariances[1],
         hbr=HardBodyRadiusInput(
             value_km=hbr_km, source="configured", source_type="derived",
-            description="Combined ESA span-derived HBR prior; span-to-diameter mapping is an explicit unvalidated assumption",
+            description="Combined assumed object-size / ESA span HBR prior; not an authenticated object dimension",
         ), assume_independent_covariances=True, relative_tolerance=1e-6, max_quadrature_order=2048,
     )
 
@@ -450,7 +504,20 @@ def _object_prior(prior, config, obj, role, tca):
 
 
 def _prior_role(obj):
-    return "esa_target" if obj.category in {"active", "payload"} else "esa_chaser"
+    return "esa_target" if obj.category in {"active", "payload", "station"} else "esa_chaser"
+
+
+def _object_size_hbr_override(obj):
+    name = " ".join((obj.name or "").upper().split())
+    entry = OBJECT_SIZE_HBR_OVERRIDE_TABLE.get(name)
+    if entry is None:
+        return None
+    return {
+        "radius_km": float(entry["radius_km"]),
+        "source": "ORION documented object-size assumption table",
+        "table_key": name,
+        "match": entry["match"],
+    }
 
 
 def _tle_age_days(obj, tca):
