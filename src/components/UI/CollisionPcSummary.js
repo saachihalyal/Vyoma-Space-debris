@@ -164,13 +164,15 @@ export function pcDisplayStatus(result) {
 }
 
 export function formatCollisionProbability(value) {
-  return Number.isFinite(value) && value > 0 && value <= 1
-    ? value.toExponential(3)
-    : "Pc unavailable";
+  if (!Number.isFinite(value) || value <= 0 || value > 1) return "Pc unavailable";
+  if (value > 0 && value < 1e-300) return "< 1e-300";
+  return value.toExponential(3);
 }
 
 export function formatProbabilityScientific(value) {
-  return isValidProbability(value) ? value.toExponential(3).replace("e", " × 10^") : "Pc unavailable";
+  if (!isValidProbability(value)) return "Pc unavailable";
+  if (value > 0 && value < 1e-300) return "< 1e-300";
+  return value.toExponential(3).replace("e", " × 10^");
 }
 
 export function formatProbabilityPercentage(value) {

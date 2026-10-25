@@ -20,10 +20,7 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
   const fosterCount = displayed.filter((event) => event?.physics_result?.status === "valid" && hasValidEventFosterPc(event)).length;
   const validCount = displayed.filter((event) => event?.physics_result?.status === "valid").length;
   const geometryReviewCount = displayed.filter((event) => event?.review_priority?.status === "classified").length;
-  const aiEvents = displayed.filter((event) => event?.physics_result?.status !== "invalid"
-    && Number.isFinite(event?.ai_risk_assessment?.score)
-    && Number.isInteger(event?.ai_risk_assessment?.final_priority_rank)
-    && event.ai_risk_assessment.final_priority_rank > 0);
+  const aiOutputs = displayed.filter((event) => event?.collision_ai_assessment?.status === "available");
   const highest = highestPriorityEvent(displayed);
   const researchSummary = researchPcCatalogSummary(screened);
   const pair = highest
@@ -42,7 +39,7 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
         ["Valid events without Pc or reason", String(researchSummary.withoutPcOrReason)],
         ["Boundary TCA (not ranked)", String(researchSummary.boundary)],
         ["Event-specific Foster Pc", `${fosterCount} of ${displayed.length}`],
-        ["AI-prioritized events", `${aiEvents.length} of ${displayed.length}`],
+        ["Events with separate AI model outputs", `${aiOutputs.length} of ${displayed.length}`],
       ].map(([label, value]) => React.createElement("span", { key: label }, label, React.createElement("strong", null, value)))),
     React.createElement("div", { className: "collision-analysis-highest-priority" },
       React.createElement("span", null, "Highest exact research-Pc event in current screening"),

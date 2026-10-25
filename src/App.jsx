@@ -76,6 +76,7 @@ import { ManeuverBaselineComparison } from "./components/UI/ManeuverBaselineComp
 import { ManeuverEventContext } from "./components/UI/ManeuverEventContext.js";
 import { CollisionPriorityTable } from "./components/UI/CollisionPriorityTable.js";
 import { CollisionAnalysisSummary } from "./components/UI/CollisionAnalysisSummary.js";
+import { CollisionWorkbench } from "./components/UI/CollisionWorkbench.jsx";
 import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentation } from "./utils/collisionPcPresentation.js";
 import { ManeuverAiSummary } from "./components/UI/ManeuverAiSummary.js";
 import { ManeuverScreeningContext } from "./components/UI/ManeuverScreeningContext.js";
@@ -752,7 +753,6 @@ export default function App() {
             smart={platform.smart}
           /> : null}
         </main>
-        <BuildVersionBadge />
       </div>
     </div>
   );
@@ -788,8 +788,15 @@ class SceneErrorBoundary extends React.Component {
 }
 
 function Sidebar({ activePage, navigate, health }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const collisionStatus = health?.collision_models?.pc_surrogate?.status
+    || health?.collision_models?.risk_classifier?.status
+    || health?.collision_models?.status
+    || health?.ml_model?.status
+    || "checking";
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
+      <button type="button" className="sidebar-collapse" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? "›" : "‹"}</button>
       <button className="brand-lockup" type="button" onClick={() => navigate("home")}>
         <span className="brand-mark"><Radar size={22} /></span>
         <span>
@@ -806,7 +813,7 @@ function Sidebar({ activePage, navigate, health }) {
         ))}
       </nav>
       <div className="sidebar-status">
-        <div><Activity size={14} /><span>ML Model</span><strong>{health?.ai_status || "unavailable"}</strong></div>
+        <div><Activity size={14} /><span>Collision Model</span><strong>{collisionStatus}</strong></div>
         <div><DatabaseZap size={14} /><span>Dataset</span><strong>{health?.dataset_source || "unavailable"}</strong></div>
       </div>
     </aside>
@@ -844,6 +851,7 @@ function TopBar({ search, setSearch, refresh, loading, notificationsOpen, setNot
           <DatabaseZap size={14} /> Source: {sourceLabel(snapshot?.source_state?.status)}
         </span>
         <span className="system-chip"><CheckCircle2 size={14} /> {datasetLabel(loading, snapshot?.source_state?.status)}</span>
+        <BuildVersionBadge />
         <button className="icon-button" type="button" aria-label="Refresh orbital data" onClick={refresh}>
           {loading ? <Loader2 className="spin" size={17} /> : <RefreshCw size={17} />}
         </button>
@@ -1182,6 +1190,22 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   });
   const availableEvents = searchAndSortCollisionEvents(filteredEvents, eventSearch, eventSort);
   const anomalyRankById = rankOrbitalAnomalyEvents(events || []);
+  const chosenPhysical = event?.result_kind === "physics_assessment";
+  const reportBase = chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null;
+  return <CollisionWorkbench
+    events={events || []} event={event} eventStatus={eventStatus} screeningStatus={screeningStatus}
+    screeningJobId={screeningJobId} selectEvent={selectEvent}
+    onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")}
+    download={download} eventReportPath={reportBase}
+    eventReportCsvPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null}
+    eventReportJsonPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null}
+    onImportCdm={onImportCdm} onScenarioPc={onScenarioPc} onUseReferenceEvent={onUseReferenceEvent}
+    uncertaintyScale={uncertaintyScale} setUncertaintyScale={setUncertaintyScale} uncertaintyWhatIf={uncertaintyWhatIf} uncertaintyWhatIfStatus={uncertaintyWhatIfStatus}
+    onStartScreening={onStartScreening}
+    screeningControls={<CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />}
+    diagnostics={<details className="og-acc"><summary>Screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>}
+  />;
+  /* Legacy stacked view retained below only as a migration reference. */
   if (!event) {
     const emptyStateStatus = screeningStatusForEmptyResults(eventStatus, attemptStatus);
     const unavailable = emptyStateStatus?.api_status === "unavailable" || emptyStateStatus?.api_status === "error";

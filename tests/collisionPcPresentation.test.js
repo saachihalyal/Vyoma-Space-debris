@@ -4,7 +4,7 @@ import { formatPriorProbability, hasValidEventFosterPc, operationalFosterStatus,
 
 test("ESA-prior Pc values and extreme sensitivities render in readable scientific notation", () => {
   assert.equal(formatPriorProbability("1.56e-167"), "1.56e-167");
-  assert.equal(formatPriorProbability("5.79e-9574", 2), "5.79e-9572");
+  assert.equal(formatPriorProbability("5.79e-9574", 2), "< 1e-300");
   const formatted = researchPcPresentation({
     status: "prior_based_research_estimate",
     estimated_pc_scientific: "1.56e-167",
@@ -15,7 +15,7 @@ test("ESA-prior Pc values and extreme sensitivities render in readable scientifi
   });
   assert.equal(formatted.value, "1.56e-167");
   assert.equal(formatted.percentage, "1.56e-165%");
-  assert.match(formatted.sensitivity, /5\.79e-9574 to 2\.72e-10 Pc/);
+  assert.match(formatted.sensitivity, /< 1e-300 to 2\.72e-10 Pc/);
   assert.match(formatted.sensitivity, /% to/);
 });
 

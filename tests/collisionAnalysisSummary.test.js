@@ -15,6 +15,7 @@ test("Collision Analysis summary reports full-screening coverage and exact resea
         status: "prior_based_research_estimate", log10_pc: -5, miss_sigma_ratio: 2,
         risk_assessment: { final_risk_class: "Medium", risk_score: 70 },
       },
+      collision_ai_assessment: { status: "available" },
       ai_risk_assessment: { score: 0.72, final_priority_rank: 1, ranking_explanation: "Composite queue rank is separate from exact research-Pc ranking." },
     },
     {
@@ -38,7 +39,7 @@ test("Collision Analysis summary reports full-screening coverage and exact resea
   assert.match(markup, /Valid events with research Pc[\s\S]*<strong>1 of 2<\/strong>/);
   assert.match(markup, /Valid events with reason code[\s\S]*<strong>1 of 2<\/strong>/);
   assert.match(markup, /Valid events without Pc or reason[\s\S]*<strong>0<\/strong>/);
-  assert.match(markup, /AI-prioritized events[\s\S]*<strong>2 of 2<\/strong>/);
+  assert.match(markup, /Events with separate AI model outputs[\s\S]*<strong>1 of 2<\/strong>/);
   assert.match(markup, /Alpha \(A\) vs Beta \(B\)[\s\S]*log10 Pc -5/);
   assert.match(markup, /Ranking basis: exact unfloored log10 Pc, descending; miss\/sigma is the tie-breaker/);
   assert.match(markup, /Medium: 1/);

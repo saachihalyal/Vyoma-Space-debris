@@ -2,10 +2,15 @@ import { isUsablePc } from "../components/UI/CollisionPcSummary.js";
 
 const SUPERSCRIPT = Object.freeze({ "-": "⁻", "+": "⁺", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" });
 
+export const compactPcText = (value) => String(value ?? "Not calculated").replace(/([\d.]+)e([+-]?\d+)/i, "$1 x 10^$2");
+
 export function formatPriorProbability(value, exponentShift = 0) {
   if (typeof value === "string" && /^< 1e[+-]?\d+$/i.test(value.trim())) {
     const exponent = Number(value.trim().slice(4)) + exponentShift;
-    return Number.isFinite(exponent) ? `< 1e${exponent}` : "Unavailable";
+    if (!Number.isFinite(exponent)) return "Unavailable";
+    if (exponent < -300) return "< 1e-300";
+    if (exponent > 300) return "> 1e300";
+    return `< 1e${exponent}`;
   }
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
     if (value === 0) return "0";
@@ -21,6 +26,8 @@ export function formatPriorProbability(value, exponentShift = 0) {
   const exponent = Number(match[2]) + exponentShift;
   const mantissa = Number(match[1]);
   if (!Number.isFinite(exponent) || !Number.isFinite(mantissa)) return "Unavailable";
+  if (exponent < -300) return "< 1e-300";
+  if (exponent > 300) return "> 1e300";
   if (mantissa === 0) return "0";
   const exponentText = exponent === 0 ? "" : `e${exponent}`;
   return `${match[1]}${exponentText}`;
