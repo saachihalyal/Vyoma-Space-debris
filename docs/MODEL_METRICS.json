@@ -510,6 +510,13 @@
   ],
   "smart_filter": {
     "artifact": "orion_smart_filter_classifier.joblib",
+    "baseline_comparison": {
+      "deterministic_miss_distance_baseline_macro_f1_beaten": true,
+      "majority_baseline_false_negatives_beaten": true,
+      "majority_baseline_macro_f1_beaten": true
+    },
+    "dataset_filename": "orion-collision-scenarios-v3.jsonl",
+    "dataset_independent_encounter_group_count": 62,
     "dataset_independent_parent_count": 118,
     "dataset_scenario_count": 1416,
     "dataset_sha256": "6d5d2d1ed0b0dfd6a97dd57d55ab7ababe1d55be70f19bb6a1fe479b137b742a",
@@ -777,6 +784,11 @@
     },
     "model_name": "ORION Physics-Supervised Smart Filter Classifier",
     "model_version": "2.1.0",
+    "safety_guard_policy": {
+      "miss_distance_threshold_km": 1.0,
+      "retain_if_any_scenario_fails_or_input_is_uncertain": true,
+      "retain_if_any_scenario_pc_at_or_above": 0.0001
+    },
     "split_counts": {
       "test": {
         "encounter_group_count": 10,

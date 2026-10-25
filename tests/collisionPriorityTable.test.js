@@ -20,7 +20,7 @@ function render(events) {
   }));
 }
 
-test("responsive conjunction cards separate Pc provenance, show AI prioritization, and expose workflow actions", () => {
+test("responsive conjunction cards separate Pc provenance, label rule-based review priority, and expose workflow actions", () => {
   const event = {
     id: "computed", result_kind: "physics_assessment",
     primary: { id: "A", name: "Alpha" }, secondary: { id: "B", name: "Beta" },
@@ -40,7 +40,7 @@ test("responsive conjunction cards separate Pc provenance, show AI prioritizatio
     },
   };
   const markup = render([event]);
-  for (const label of ["Source-reported Pc", "Event-specific Foster Pc", "Assumption-based research Pc", "Geometry/speed review index", "Technical details and assessment evidence"]) assert.match(markup, new RegExp(label));
+  for (const label of ["Source-reported Pc", "Event-specific Foster Pc", "Assumption-based research Pc", "Review priority", "Technical details and assessment evidence"]) assert.match(markup, new RegExp(label));
   assert.match(markup, /1\.000 \u00d7 10\^-4 Pc/);
   assert.match(markup, /1\.000e-2%/);
   assert.match(markup, /73\.0 \/ 100/);
@@ -170,9 +170,8 @@ test("horizon-boundary assessments are kept outside valid conjunction cards and 
 
 test("malformed AI data is shown as unavailable, not low", () => {
   const markup = render([{ id: "malformed-ai", result_kind: "physics_assessment", primary: { id: "A" }, secondary: { id: "B" }, physics_result: { status: "valid" }, ai_risk_assessment: { category: "High", score: null } }]);
-  assert.match(markup, /Geometry\/speed review index/);
-  assert.match(markup, /Geometry\/speed review index: Unavailable/);
-  assert.match(markup, /Geometry\/speed review index/);
+  assert.match(markup, /Review priority \(rule-based\)/);
+  assert.match(markup, /Review priority \(rule-based\): Unavailable/);
   assert.doesNotMatch(markup, /AI class High/);
 });
 

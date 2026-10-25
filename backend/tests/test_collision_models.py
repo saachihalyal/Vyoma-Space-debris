@@ -43,6 +43,18 @@ class CollisionModelTests(unittest.TestCase):
         self.assertFalse(group_splits[0] & group_splits[2])
         self.assertFalse(group_splits[1] & group_splits[2])
 
+    def test_saved_collision_model_split_has_no_physical_encounter_leakage(self) -> None:
+        import json
+        metadata = json.loads(collision_models.PC_METADATA.read_text(encoding="utf-8"))
+        manifest = metadata["scenario_split"]
+        encounter_splits = manifest["encounter_group_ids"]
+        self.assertEqual(manifest["grouping_key"], "encounter_group_id")
+        self.assertEqual(len(set.union(*(set(values) for values in encounter_splits.values()))), 62)
+        names = ("train", "validation", "test")
+        for left_index, left in enumerate(names):
+            for right in names[left_index + 1:]:
+                self.assertFalse(set(encounter_splits[left]) & set(encounter_splits[right]))
+
     def test_missing_models_use_explicit_deterministic_fallback_not_ai_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             missing = Path(temporary) / "missing.joblib"

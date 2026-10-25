@@ -420,7 +420,7 @@ def train_models(snapshot_path: Path = SNAPSHOT_PATH) -> dict[str, Any]:
         predictions = pc_model.predict(X[indexes])
         baseline = pc_baseline.predict(X[indexes])
         linear_predictions = linear_baseline.predict(X[indexes])
-        non_negligible = y_pc_exact[indexes] >= -30.0
+        non_negligible = y_pc_exact[indexes] > -30.0
         from scipy.stats import spearmanr
         rank = spearmanr(truth, predictions)
         target_distribution = {
@@ -474,7 +474,7 @@ def train_models(snapshot_path: Path = SNAPSHOT_PATH) -> dict[str, Any]:
         "min": float(np.min(y_pc)), "p10": float(np.percentile(y_pc, 10)),
         "median": float(np.median(y_pc)), "p90": float(np.percentile(y_pc, 90)),
         "max": float(np.max(y_pc)), "mean": float(np.mean(y_pc)),
-        "non_negligible_scenario_count": int(np.sum(y_pc_exact >= -30.0)),
+        "non_negligible_scenario_count": int(np.sum(y_pc_exact > -30.0)),
     }
 
     DATASET_PATH.parent.mkdir(parents=True, exist_ok=True)
