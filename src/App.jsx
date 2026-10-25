@@ -148,6 +148,7 @@ const NAV = [
   { id: "maneuver", label: "Maneuver", icon: Rocket },
   { id: "analytics", label: "Catalog Analytics", icon: BarChart3 },
   { id: "reports", label: "Reports", icon: FileText },
+  { id: "upload", label: "Upload CDM", icon: Download },
 ];
 
 export default function App() {
@@ -743,6 +744,8 @@ export default function App() {
           {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics} events={platform.screeningProxies} snapshot={snapshot} /> : null}
           {activePage === "reports" ? <ReportsPage
             event={topEvent}
+            maneuverEvent={maneuverEvent}
+            maneuver={maneuver}
             screeningJobId={platform.conjunctionStatus?.job_id}
             csvScreeningJobId={screeningJobSelection.jobId}
             csvJobArchived={screeningJobSelection.isArchived}
@@ -754,6 +757,7 @@ export default function App() {
             downloadTrajectoryCsv={handleTrajectoryCsvDownload}
             smart={platform.smart}
           /> : null}
+          {activePage === "upload" ? <CdmReferenceAssessment standalone /> : null}
         </main>
       </div>
     </div>
@@ -1589,7 +1593,7 @@ function AnalyticsPage({ analytics, events, snapshot }) {
   );
 }
 
-function ReportsPage({ event, screeningJobId, csvScreeningJobId, csvJobArchived, archivedJob, restoreBusy, onRestoreArchive, onClearArchivedJob, download, downloadTrajectoryCsv, smart }) {
+function ReportsPage({ event, maneuverEvent, maneuver, screeningJobId, csvScreeningJobId, csvJobArchived, archivedJob, restoreBusy, onRestoreArchive, onClearArchivedJob, download, downloadTrajectoryCsv, smart }) {
   const [archiveIdInput, setArchiveIdInput] = useState("");
   const archivedResult = archivedJob?.result;
   const archivedEvents = archivedResult?.data || [];
@@ -1603,6 +1607,13 @@ function ReportsPage({ event, screeningJobId, csvScreeningJobId, csvJobArchived,
   return (
     <div className="page-stack">
       <PageHeader eyebrow="Reports" title="Export Center" text="Download provenance-tagged research outputs from the backend report engine." />
+      <section className="og-card report-document" aria-label="Collision report"><div className="og-section-head"><div><span className="og-prov read">Selected physical event</span><h2>Collision report</h2></div>{event?.id ? <span className="og-chip">{event.id}</span> : null}</div>
+        {event ? <><ReportDocumentTiles event={event} />{screeningJobId && event.result_kind === "physics_assessment" ? <div className="report-action-group">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className="og-btn" onClick={() => download(selectedEventReportPath(screeningJobId, event.id, format), `${event.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div> : <p className="muted">Select a physical event with an available screening job for collision report downloads.</p>}</> : <p className="muted">No collision event is selected.</p>}
+      </section>
+      <section className="og-card report-document" aria-label="Maneuver report"><div className="og-section-head"><div><span className="og-prov derived">Selected event maneuver assessment</span><h2>Maneuver report</h2></div><span className="og-chip">{maneuver?.result?.status || "not run"}</span></div>
+        {maneuverEvent ? <><div className="og-kpis">{[["Objects", `${maneuverEvent.primary?.name || "Name unavailable"} (${maneuverEvent.primary?.id || "ID unavailable"}, ${maneuverEvent.primary?.object_type || "type unavailable"}) / ${maneuverEvent.secondary?.name || "Name unavailable"} (${maneuverEvent.secondary?.id || "ID unavailable"}, ${maneuverEvent.secondary?.object_type || "type unavailable"})`], ["TCA", maneuverEvent.physics_result?.tca?.value || "Not calculated: TCA unavailable"], ["Miss distance", maneuverEvent.physics_result?.miss_distance?.value == null ? "Not calculated: miss distance unavailable" : `${maneuverEvent.physics_result.miss_distance.value} km`], ["Relative speed", maneuverEvent.physics_result?.relative_speed_at_tca?.value == null ? "Not calculated: relative speed unavailable" : `${maneuverEvent.physics_result.relative_speed_at_tca.value} km/s`], ["Baseline research Pc", maneuver?.result?.probability_before?.pc == null ? "Not calculated: maneuver search required" : `${maneuver.result.probability_before.pc} (${formatProbabilityPercentage(maneuver.result.probability_before.pc)})`], ["Candidate research Pc", maneuver?.result?.probability_after?.pc == null ? "Not calculated: maneuver search required" : `${maneuver.result.probability_after.pc} (${formatProbabilityPercentage(maneuver.result.probability_after.pc)})`], ["AI ranker status", maneuver?.result?.ml_result?.status || "Not returned"], ["Method", maneuver?.result?.method || "Bounded two-body maneuver simulation"]].map(([label, value]) => <div className="og-card og-tile" key={label}><span>{label}</span><b>{value}</b></div>)}</div><p className="og-sub">Assumptions: maneuver covariance and HBR are held at baseline values where available. Sensitivity: see candidate comparison for the configured search. Limitations: bounded research simulation; not operational guidance.</p>{screeningJobId ? <div className="report-action-group">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className="og-btn" onClick={() => download(selectedManeuverReportPath(screeningJobId, maneuverEvent.id, format), `${maneuverEvent.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div> : null}</> : <p className="muted">No maneuver event is selected.</p>}
+      </section>
+      <Panel title="Saved snapshot" icon={DatabaseZap}><p className="muted">Restore the saved demo snapshot with its historical screening results.</p><button className="secondary-action" type="button" disabled={restoreBusy} onClick={() => onRestoreArchive("fcec3945251c45f38f215485ecbb5605")}>{restoreBusy ? "Restoring snapshot…" : "Load saved demo snapshot"}</button></Panel>
       <Panel title="Restore Archived Screening Job" icon={DatabaseZap}>
         <p className="muted">Restoration reads a validated archive by job ID. It does not rerun screening or replace the latest live result.</p>
         <form className="archive-restore-form" onSubmit={(e) => { e.preventDefault(); onRestoreArchive(archiveIdInput.trim()); }}>
@@ -1671,6 +1682,28 @@ function ReportsPage({ event, screeningJobId, csvScreeningJobId, csvJobArchived,
   );
 }
 
+
+function ReportDocumentTiles({ event }) {
+  const physics = event.physics_result || {};
+  const foster = event.collision_probability || {};
+  const research = event.automatic_research_pc_assessment || {};
+  const ai = event.collision_ai_assessment || {};
+  const tile = (label, value) => <div className="og-card og-tile" key={label}><span>{label}</span><b>{value}</b></div>;
+  const probability = (value) => Number.isFinite(value) ? `${value} (${formatProbabilityPercentage(value)})` : "Not reported / not calculated";
+  return <><div className="og-kpis">
+    {tile("Objects", `${event.primary?.name || "Name unavailable"} (${event.primary?.id || "ID unavailable"}, ${event.primary?.object_type || "type unavailable"}) / ${event.secondary?.name || "Name unavailable"} (${event.secondary?.id || "ID unavailable"}, ${event.secondary?.object_type || "type unavailable"})`)}
+    {tile("TCA", physics.tca?.value || "Not calculated: TCA unavailable")}
+    {tile("Miss distance", physics.miss_distance?.value == null ? "Not calculated: miss distance unavailable" : `${physics.miss_distance.value} km`)}
+    {tile("Relative speed", physics.relative_speed_at_tca?.value == null ? "Not calculated: relative speed unavailable" : `${physics.relative_speed_at_tca.value} km/s`)}
+    {tile("Source-reported Pc", probability(foster.source_reported_pc))}{tile("Event-specific Foster Pc", foster.status === "available" ? probability(foster.pc) : `Not calculated: ${(foster.reason_codes || []).join(", ") || foster.status || "input requirements not met"}`)}
+    {tile("Research Pc", probability(research.estimated_pc))}{tile("AI Pc prediction", `${probability(ai.pc_surrogate?.predicted_pc)} · model ${ai.pc_surrogate?.status || "not available"}`)}
+    {tile("Risk score and Pc class", `${research.risk_assessment?.risk_score ?? "Not calculated"} · ${research.risk_assessment?.final_risk_class || "Not classified"}`)}
+    {tile("Covariance", `${foster.covariance_status || research.covariance_status || "not available"} · ${foster.covariance_frame || research.covariance_frame || "frame unavailable"} · epoch ${foster.covariance_epoch || research.covariance_epoch_utc || "not available"} · ${JSON.stringify(foster.covariance_sources || research.covariance_sources || research.covariance_policy_name || "source unavailable")}`)}
+    {tile("HBR", `${foster.hbr_km ?? research.hbr_km ?? "Not calculated"} km · ${foster.hbr_provenance?.source || research.hbr_source || "source unavailable"}`)}
+    {tile("AI model status", `${ai.status || "not available"} · risk model ${ai.risk_classifier?.status || "not available"}`)}
+    {tile("Method", foster.method || research.method_name || physics.provenance?.method || "method unavailable")}
+  </div><div className="og-report-notes"><h3>Assumptions</h3><p>{(research.assumptions || foster.assumptions || []).join(" ") || "See calculation provenance for declared assumptions."}</p><h3>Sensitivity</h3><p>{(research.sensitivity || []).map((item) => item.label || item.description || JSON.stringify(item)).join("; ") || "No sensitivity result recorded for this event."}</p><h3>Limitations</h3><p>{(research.limitations || foster.limitations || []).join(" ") || "Research estimates depend on the stated inputs and method; they are not operational collision predictions."}</p></div></>;
+}
 
 function SceneComparison({ title, label, count, snapshot, accent, lightweight = false }) {
   return (

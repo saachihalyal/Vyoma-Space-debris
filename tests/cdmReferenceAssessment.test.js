@@ -8,7 +8,7 @@ import { calculateNasaCaraReferenceCase } from "../src/api/ssaClient.js";
 test("Collision Analysis exposes separate CCSDS and TraCSS CDM assessment with explicit provenance limits", () => {
   const source = readFileSync(new URL("../src/components/UI/CdmReferenceAssessment.jsx", import.meta.url), "utf8");
   assert.match(source, /Collision Probability Calculator/);
-  const upload = source.match(/<details className="optional-cdm-upload">([\s\S]*?)<\/details>/)?.[1] || "";
+  const upload = source.match(/<details className="optional-cdm-upload"[^>]*>([\s\S]*?)<\/details>/)?.[1] || "";
   assert.match(upload, /<summary>Upload Conjunction Data<\/summary>/);
   assert.match(upload, /Upload a CCSDS XML, KVN, or JSON conjunction message/);
   assert.doesNotMatch(upload, /NASA|TraCSS|Space-Track/);
@@ -99,5 +99,43 @@ test("external CDM retrieval is disconnected from the UI and API client", () => 
   const api = readFileSync(new URL("../src/api/ssaClient.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /Space-Track|spaceTrack|onRetrieveSpaceTrack/);
   assert.doesNotMatch(api, /Space-Track|spaceTrack|space-track/);
+});
+
+test("upload page exposes validation stages, sample file, result provenance, and downloads", () => {
+  const source = readFileSync(new URL("../src/components/UI/CdmReferenceAssessment.jsx", import.meta.url), "utf8");
+  assert.match(source, /1 · Upload/);
+  assert.match(source, /2 · Validate/);
+  assert.match(source, /3 · Results/);
+  assert.match(source, /Download sample file/);
+  assert.match(source, /Calculate Collision Probability/);
+  assert.match(source, /upload-dropzone/);
+  assert.match(source, /Print \/ Save PDF/);
+  assert.match(source, /Download CSV/);
+  assert.match(source, /Download JSON/);
+  assert.match(source, /upload-provenance-chips/);
+  assert.match(source, /Unsupported frames are explained/);
+  assert.match(source, /incompatible or unsupported reference frame/);
+  assert.match(source, /conjunction file is incomplete/);
+  assert.match(source, /malformed or invalid/);
+});
+
+test("sample conjunction download is bundled in the public directory", () => {
+  const sample = readFileSync(new URL("../public/sample_conjunction_data.cdm", import.meta.url), "utf8");
+  assert.match(sample, /CCSDS_CDM_VERS/);
+});
+
+test("reports page separates collision and maneuver documents and restores the saved snapshot", () => {
+  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(source, /Collision report/);
+  assert.match(source, /Maneuver report/);
+  assert.match(source, /Load saved demo snapshot/);
+  assert.match(source, /onRestoreArchive\("fcec3945251c45f38f215485ecbb5605"\)/);
+  assert.match(source, /Source-reported Pc/);
+  assert.match(source, /Event-specific Foster Pc/);
+  assert.match(source, /Research Pc/);
+  assert.match(source, /AI model status/);
+  assert.match(source, /Assumptions/);
+  assert.match(source, /Sensitivity/);
+  assert.match(source, /Limitations/);
 });
 

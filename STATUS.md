@@ -1,5 +1,13 @@
 # ORION Completion Status
 
+## P4 — Reports and Upload (2026-10-25)
+
+- Reports now has separate collision and maneuver document previews, provenance-aware values, and PDF/CSV/JSON downloads. The saved demo snapshot has a labeled one-click restore action using the existing restore endpoint.
+- Added an Upload CDM page with the Upload / Validate / Results stages, a dropzone-style file card, public sample CDM download, event-specific Foster Pc result, provenance chips, report downloads, and plain-language malformed/incomplete/frame error messages. The standalone upload output remains separate from live screening events.
+- Copied `backend/tests/fixtures/nasa_cara_pc_reference.cdm` to `public/sample_conjunction_data.cdm`.
+- Frontend suite: 197 passed, 0 failed (`frontend-p4-suite.log`). Backend suite: 341 passed, 2 warnings (`backend/backend-p4-suite.log`). Production build succeeded (`frontend-p4-build.log`) with the existing large-chunk warning. Commands completed under the 10-minute limit.
+- PDF visual inspection remains unverified: no installed PDF-to-image renderer was found (pdftoppm, mutool, magick, PyMuPDF, and PDFium were unavailable). No renderer was downloaded, and no browser was used.
+
 ## Backend pass: Low-class coverage, maneuver replay, methodology, and demo snapshot (2026-10-25)
 
 - Collision scenario dataset v4 now applies miss-distance values as multipliers of the saved parent encounter-plane vector. It covers `0.01x`, `0.1x`, `0.5x`, `1x`, `2x`, and `3x`; each multiplier has three covariance/HBR/TLE-age combinations. Retrained through `scripts/retrain_all.ps1`, fixed seed `20261024`, using newest saved job `fcec3945251c45f38f215485ecbb5605` (partial, 109 rows; 70 valid real parents). Across saved jobs, 49 encounter groups had scenarios. One of 1,260 proposed variants was rejected for `PC_LOG10_PC_MISMATCH`; 1,259 remained. Group split is disjoint: train 34 groups / 48 parents / 863 scenarios; validation 7 / 7 / 126; test 8 / 15 / 270.
