@@ -61,7 +61,7 @@ import { AnalyticsPanel } from "./components/UI/AnalyticsPanel";
 import { ControlPanel } from "./components/UI/ControlPanel";
 import { TelemetryStrip } from "./components/UI/TelemetryStrip";
 import { TimelinePanel } from "./components/UI/TimelinePanel";
-import { SmartFilterPage } from "./components/UI/SmartFilterPage";
+import { SmartFilterWorkbench } from "./components/UI/SmartFilterWorkbench.jsx";
 import { CollisionPcSummary, CollisionProbabilityCard, formatCollisionProbability, formatProbabilityPercentage, formatProbabilityScientific, isUsablePc, isValidProbability, pcDisplayStatus, sourcePcLabel } from "./components/UI/CollisionPcSummary.js";
 import { CdmReferenceAssessment } from "./components/UI/CdmReferenceAssessment.jsx";
 import { ReferenceManeuverAssessment } from "./components/UI/ReferenceManeuverAssessment.jsx";
@@ -710,7 +710,7 @@ export default function App() {
             />
           ) : null}
           {activePage === "smart" ? (
-            <SmartFilterPage snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} selectEvent={selectEvent} navigate={navigate} download={handleDownload} />
+            <SmartFilterWorkbench snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} download={handleDownload} />
           ) : null}
           {activePage === "collision" ? (
             <CollisionPage

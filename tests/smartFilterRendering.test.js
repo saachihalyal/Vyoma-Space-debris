@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import React from "react";
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SmartFilterPage } from "../src/components/UI/SmartFilterPage.js";
 import { eligibleManeuverEvents, maneuverPageState, selectManeuverEvent } from "../src/utils/maneuverSelection.js";
@@ -13,6 +14,22 @@ const baseSnapshot = {
   risk_cells: [],
   stats: { tracked_objects: 0 },
 };
+
+test("physical Smart Filter workbench is wired to API decisions and key science labels", () => {
+  const source = readFileSync(new URL("../src/components/UI/SmartFilterWorkbench.jsx", import.meta.url), "utf8");
+  assert.match(source, /getPhysicalSmartFilter\(jobId/);
+  assert.match(source, /physicalSmartFilterCsvPath\(jobId\)/);
+  assert.match(source, /evaluation\.before_count/);
+  assert.match(source, /evaluation\.kept_count/);
+  assert.match(source, /evaluation\.filtered_count/);
+  assert.match(source, /metrics\.recall_significant/);
+  assert.match(source, /metrics\.false_negative_significant_count/);
+  assert.match(source, /Trained on physics-generated labels, not on observed collisions/);
+  assert.match(source, /Catalog overview \(not the collision filter\)/);
+  assert.match(source, /r\.reason \|\| r\.reason_code/);
+  assert.match(source, /Download decisions CSV/);
+  assert.match(source, /disabled=\{!jobId \|\| !decisions\.length\}/);
+});
 const proxy = {
   id: "SP-proxy-1",
   primary: { id: "1", name: "Catalog Object 1", category: "active", band: "LEO", orbit_type: "LEO", altitude_km: 500, inclination_deg: 50, velocity_kms: 7.6 },
