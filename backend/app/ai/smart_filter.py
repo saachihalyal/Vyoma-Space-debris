@@ -22,7 +22,7 @@ from app.services.automatic_research_pc import assess_automatic_research_pc
 ARTIFACT_PATH = Path(__file__).resolve().parent / "artifacts" / "orion_smart_filter_classifier.joblib"
 METADATA_PATH = ARTIFACT_PATH.with_suffix(".metadata.json")
 MODEL_NAME = "ORION Physics-Supervised Smart Filter Classifier"
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "2.1.0"
 SCENARIO_COUNT = len(COVARIANCE_SCALES) * len(HBR_SCALES)
 
 
@@ -76,6 +76,8 @@ def _load_artifact(modified_ns: int, size: int):
         raise ValueError("SMART_FILTER_FEATURE_SCHEMA_MISMATCH")
     if metadata.get("model_version") != MODEL_VERSION or metadata.get("model_name") != MODEL_NAME:
         raise ValueError("SMART_FILTER_MODEL_IDENTITY_MISMATCH")
+    if metadata.get("usable_for_inference") is not True:
+        raise ValueError("SMART_FILTER_DID_NOT_BEAT_HELD_OUT_BASELINE")
     if metadata.get("artifact_sha256") != _sha256(ARTIFACT_PATH):
         raise ValueError("SMART_FILTER_ARTIFACT_HASH_MISMATCH")
     from joblib import load

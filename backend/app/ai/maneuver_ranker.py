@@ -14,7 +14,7 @@ import numpy as np
 
 
 MODEL_NAME = "ORION physics-supervised maneuver research-Pc reduction ranker"
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "2.0.0"
 FEATURE_SCHEMA_VERSION = "2.0.0"
 FEATURES = (
     "primary_x_tca_km", "primary_y_tca_km", "primary_z_tca_km",
@@ -84,7 +84,7 @@ def feature_vector(event: Any, candidate: dict[str, Any], lead_seconds: float) -
 
 def score_candidates(event: Any, candidates: list[dict[str, Any]], lead_seconds: float) -> dict[str, Any]:
     """Return predicted log10 research-Pc reduction, ranked high to low."""
-    provenance = {"source_event_id": getattr(event, "id", None), "target": "log10(Pc_zero_burn / Pc_candidate)", "target_units": "log10 ratio", "label_source": "ORION ESA-prior Foster research Pc at candidate TCA"}
+    provenance = {"source_event_id": getattr(event, "id", None), "target": "log10(Pc_zero_burn / Pc_candidate)", "target_units": "log10 ratio", "label_source": "ORION TLE-age-baseline Foster research Pc at candidate TCA"}
     model, metadata, failure = _load_model()
     if failure:
         return _unavailable(failure, provenance)

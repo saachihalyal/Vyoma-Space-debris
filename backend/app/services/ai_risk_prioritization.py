@@ -144,9 +144,9 @@ def rank_screening_events(events: list[ConjunctionAssessmentEvent]) -> list[Conj
             "no numerical, event-bound Pc was available"
         )
         explanation = (
-            "Final priority combines 50% deterministic AI queue index, 30% normalized geometry, "
+            "Final priority combines 50% deterministic rule-based review priority, 30% normalized geometry, "
             f"and 20% relative Pc percentile only in a multi-event result where every event has the same Pc provenance ({pc_basis}); "
-            "otherwise AI and geometry weights are renormalized and Pc rankings remain separate. "
+            "otherwise review-priority and geometry weights are renormalized and Pc rankings remain separate. "
             "An ESA-prior Pc retains its unvalidated research-prior status and is not treated as operationally calibrated."
         )
         updated.append(event.model_copy(update={"ai_risk_assessment": assessment.model_copy(update={

@@ -1528,6 +1528,7 @@ async def maneuver(
     max_delta_v_m_s: float | None = Query(None, gt=0, le=0.1),
     initial_mass_kg: float | None = Query(None, gt=0),
     specific_impulse_s: float | None = Query(None, gt=0, le=2000),
+    covariance_scale: float = Query(1.0, ge=0.5, le=3.0),
 ) -> ManeuverAssessmentResponse:
     # Maneuver evaluation must use the exact completed screening event selected
     # in the UI. Re-running the catalog screen here could select a different
@@ -1584,6 +1585,7 @@ async def maneuver(
         initial_mass_kg=initial_mass_kg,
         specific_impulse_s=specific_impulse_s,
         rtn_direction=rtn_direction,
+        covariance_scale=covariance_scale,
     )
     if not isinstance(maneuver_result, dict) or maneuver_result.get("event_id") != event_id:
         discard_previous_assessment()

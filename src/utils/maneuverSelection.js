@@ -26,7 +26,23 @@ export function selectManeuverEvent(events, eventId) {
 export function resolveManeuverEvent(selectedEvent, events) {
   const selectable = selectableManeuverEvents(events);
   if (selectedEvent) return selectable.find((item) => item.id === selectedEvent.id) || null;
-  return null;
+  return defaultManeuverEvent(selectable);
+}
+
+export function defaultManeuverEvent(events) {
+  const eligible = eligibleManeuverEvents(events);
+  return eligible.slice().sort((left, right) => {
+    const leftLog = left.automatic_research_pc_assessment?.log10_pc;
+    const rightLog = right.automatic_research_pc_assessment?.log10_pc;
+    const leftValid = Number.isFinite(leftLog);
+    const rightValid = Number.isFinite(rightLog);
+    if (leftValid && rightValid && leftLog !== rightLog) return rightLog - leftLog;
+    if (leftValid !== rightValid) return leftValid ? -1 : 1;
+    const leftMiss = left.physics_result?.miss_distance?.value;
+    const rightMiss = right.physics_result?.miss_distance?.value;
+    if (Number.isFinite(leftMiss) && Number.isFinite(rightMiss) && leftMiss !== rightMiss) return leftMiss - rightMiss;
+    return String(left.id).localeCompare(String(right.id));
+  })[0] || null;
 }
 
 export function maneuverAssessmentForSelection(assessment, screeningJobId, event) {
@@ -56,7 +72,7 @@ export function maneuverPageState(event, events, screeningStatus = {}) {
     empty_text: screeningStatus?.result_status === "valid_empty"
       ? "The accepted Stage 2A run completed with zero qualifying close approaches. Event-specific maneuver assessment requires a valid physical trajectory event; heuristic proxy pairs cannot be used."
       : selectable.length
-        ? "The earliest valid event from the accepted run is selected automatically. You can choose another physical event; invalid events remain available for review but cannot produce maneuver candidates."
+        ? "The valid event with the highest exact log10 research Pc is selected by default. Choose another physical event if needed; invalid events remain available for review but cannot produce maneuver candidates."
         : "No trajectory-derived physical event is available. Heuristic proxy pairs cannot be used as maneuver inputs.",
   };
 }

@@ -363,14 +363,14 @@ export function physicalSmartFilterCsvPath(screeningJobId) {
   return `/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter.csv`;
 }
 
-export async function getManeuver(event, { signal, screeningJobId, leadSeconds = 300, burnMagnitudes = [0.01, 0.05], maxDeltaVMs = null, rtnDirection = "all", initialMassKg = null, specificImpulseS = null } = {}) {
+export async function getManeuver(event, { signal, screeningJobId, leadSeconds = 300, burnMagnitudes = [0.01, 0.05], maxDeltaVMs = null, rtnDirection = "all", initialMassKg = null, specificImpulseS = null, covarianceScale = 1 } = {}) {
   if (!event?.id) throw new Error("A selected Stage 2A event ID is required for maneuver assessment.");
   if (event.result_kind !== "physics_assessment") throw new Error("Maneuver assessment requires a trajectory-derived physics event.");
   if (!screeningJobId) throw new Error("The completed screening job ID is unavailable; refresh Collision Analysis and select its event again.");
   if (event.screening_job_id && event.screening_job_id !== screeningJobId) {
     throw new Error("The selected event belongs to a different screening job; select the event from the current Collision Analysis job.");
   }
-  const query = new URLSearchParams({ screening_job_id: screeningJobId, lead_seconds: String(leadSeconds), burn_magnitudes_m_s: burnMagnitudes.join(","), rtn_direction: rtnDirection });
+  const query = new URLSearchParams({ screening_job_id: screeningJobId, lead_seconds: String(leadSeconds), burn_magnitudes_m_s: burnMagnitudes.join(","), rtn_direction: rtnDirection, covariance_scale: String(covarianceScale) });
   if (maxDeltaVMs != null) query.set("max_delta_v_m_s", String(maxDeltaVMs));
   if (initialMassKg != null || specificImpulseS != null) {
     if (initialMassKg == null || specificImpulseS == null) throw new Error("Initial mass and specific impulse must both be supplied for a fuel estimate.");

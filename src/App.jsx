@@ -497,6 +497,7 @@ export default function App() {
           rtnDirection: maneuverRequest.rtnDirection,
           initialMassKg: maneuverRequest.initialMassKg,
           specificImpulseS: maneuverRequest.specificImpulseS,
+          covarianceScale: maneuverRequest.covarianceScale,
         });
         if (!isCurrentManeuverRequest(requestGeneration, maneuverRequestGenerationRef.current, controller.signal.aborted)) return;
         const matchingResult = result?.event_id === maneuverAssessmentEvent.id ? result : {
@@ -1511,6 +1512,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
   const [rtnDirection, setRtnDirection] = useState("all");
   const [initialMassKg, setInitialMassKg] = useState("");
   const [specificImpulseS, setSpecificImpulseS] = useState("");
+  const [covarianceScale, setCovarianceScale] = useState("1");
   const [configurationError, setConfigurationError] = useState("");
   const pageState = maneuverPageState(event, events, screeningStatus);
   const selectableEvents = pageState.selectable_events;
@@ -1541,6 +1543,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
       rtnDirection,
       initialMassKg: initialMassKg === "" ? null : Number(initialMassKg),
       specificImpulseS: specificImpulseS === "" ? null : Number(specificImpulseS),
+      covarianceScale: Number(covarianceScale),
     });
   }
   return (
@@ -1561,7 +1564,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
             <option value="" disabled>Select an event…</option>
             {selectableEvents.map((item) => <option key={item.id} value={item.id}>{item.id} · {item.primary?.name || item.primary?.id} vs {item.secondary?.name || item.secondary?.id}{item.physics_result?.status === "valid" ? " · valid" : ` · ${item.physics_result?.status || "unavailable"}`}</option>)}
           </select>
-          <small>The earliest valid event is selected automatically after an accepted run. Choose another returned event here; invalid events can be reviewed with their exact reason but cannot produce maneuver candidates. Partial runs have incomplete catalog coverage.</small>
+          <small>The event with the highest exact research log10 Pc is selected by default after an accepted run. Choose another returned event here; invalid events remain reviewable but cannot produce maneuver candidates. Partial runs have incomplete catalog coverage.</small>
         </label> : <EmptyState title={pageState.empty_title} text={pageState.empty_text} />}
       </Panel>
       {selectedEvent ? <Panel title="Catalog object type" icon={ShieldCheck}>
@@ -1583,6 +1586,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
           <label>Burn lead before baseline TCA (s)<input type="number" min="60" max="1800" step="1" required value={leadSeconds} onChange={(e) => setLeadSeconds(e.target.value)} /></label>
           <label>Maximum Δv (m/s)<input type="number" min="0.0001" max="0.1" step="any" required value={maxDeltaVMs} onChange={(e) => setMaxDeltaVMs(e.target.value)} /></label>
           <label>RTN direction to assess<select value={rtnDirection} onChange={(e) => setRtnDirection(e.target.value)}><option value="all">All six signed axes</option><option value="radial_plus">Radial +</option><option value="radial_minus">Radial −</option><option value="along_track_plus">Along-track +</option><option value="along_track_minus">Along-track −</option><option value="cross_track_plus">Cross-track +</option><option value="cross_track_minus">Cross-track −</option></select></label>
+          <label>Uncertainty scale (same before and after)<select value={covarianceScale} onChange={(e) => setCovarianceScale(e.target.value)}><option value="0.5">0.5×</option><option value="1">1× (baseline)</option><option value="2">2×</option><option value="3">3×</option></select></label>
           <label>Initial mass (kg), optional<input type="number" min="0.0001" step="any" value={initialMassKg} onChange={(e) => setInitialMassKg(e.target.value)} /></label>
           <label>Specific impulse (s), optional<input type="number" min="0.0001" max="2000" step="any" value={specificImpulseS} onChange={(e) => setSpecificImpulseS(e.target.value)} /></label>
           <button className="primary-action" type="submit" disabled={!screeningJobId || maneuverBusy}>{maneuverBusy ? "Searching…" : "Run Maneuver Search"}</button>
@@ -1590,6 +1594,7 @@ export function ManeuverPage({ event, events = [], screeningJobId, screeningStat
         {configurationError ? <p role="alert" className="muted">{configurationError}</p> : null}
         <p className="muted">Leave both fuel fields empty to use configurable defaults (500 kg and 220 s), clearly labeled as estimated assumptions. Supply both values to use spacecraft-specific inputs.</p>
         <p className="muted">The search applies impulses to the primary object's Cartesian state in its burn-epoch RTN frame. It samples six signed RTN axes, refines promising magnitudes, and searches encounter geometry from burn epoch through 30 minutes after baseline TCA.</p>
+        <p className="muted">Covariance scale is a research what-if applied to both the zero-burn Pc and every candidate Pc. It scales the same TLE-age baseline policy and does not represent measured uncertainty.</p>
       </Panel> : null}
       <section className="maneuver-results-summary" aria-label="Maneuver assessment summary">
         <Panel title="Zero-burn baseline" icon={Target}>

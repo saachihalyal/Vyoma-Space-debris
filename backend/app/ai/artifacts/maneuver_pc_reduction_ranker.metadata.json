@@ -1,8 +1,8 @@
 {
   "model_name": "ORION physics-supervised maneuver research-Pc reduction ranker",
-  "model_version": "1.0.0",
+  "model_version": "2.0.0",
   "artifact_filename": "maneuver_pc_reduction_ranker.joblib",
-  "artifact_sha256": "75e8dcd05b54b1e85bf676ce7aa493ed5ae00ddef612c9b48587a8207446e999",
+  "artifact_sha256": "ab16f0f97c632c01b63be01e6d89b1c8bdadfeaef7c97b61311f3431f81aa687",
   "feature_schema_version": "2.0.0",
   "feature_names": [
     "primary_x_tca_km",
@@ -29,9 +29,9 @@
   "target": "log10(Pc_zero_burn / Pc_candidate)",
   "target_units": "log10 ratio; positive means reduced Pc",
   "dataset_filename": "maneuver_pc_reduction_v1.csv",
-  "dataset_sha256": "4ec5d742f07cb11559f53ea4c5fafde03e51a9416c10d1fd4d0fb2254ea153ec",
-  "parent_event_count": 54,
-  "candidate_scenario_count": 282,
+  "dataset_sha256": "7285d4f73d3c8660be16e3bdc29b1dbaa891ff2be009cf83f6ad8cbe36d619af",
+  "parent_event_count": 49,
+  "candidate_scenario_count": 256,
   "parent_source": {
     "snapshot_job_id": "08c33d64c8d34ddfb6838a565d3c0db3",
     "snapshot_created_at_utc": "2026-10-19T09:43:03.120187+00:00",
@@ -59,8 +59,8 @@
       "radial -"
     ],
     "propagator": "Earth two-body point-mass RK4",
-    "research_pc_method": "ORION ESA-prior Foster 2D at each calculated TCA with the same default covariance/HBR policy for baseline and candidate",
-    "covariance_assignment": "TCA-assigned prior; no covariance propagation from TLE epoch or burn execution uncertainty"
+    "research_pc_method": "ORION TLE-age-baseline Foster 2D at each calculated TCA with the same selected covariance/HBR policy for baseline and candidate",
+    "covariance_assignment": "TLE-age baseline assigned at each TCA; no covariance propagation from TLE epoch or burn execution uncertainty"
   },
   "grouped_split": {
     "seed": 1501,
@@ -68,123 +68,118 @@
     "split_strategy": "70/15/15 fixed-seed parent-event split",
     "parent_event_ids": {
       "train": [
-        "CA-0F8D2F9C121254573A53",
         "CA-10DAF30CDBFE086243E3",
-        "CA-1A39743744101E3C9135",
+        "CA-178080E20CB468BE5F71",
         "CA-1E3244F7D54B346E33CB",
         "CA-1E4D711DDC556F00CDDD",
         "CA-2162E0F04D232C37A171",
         "CA-231916555D510C7073A7",
         "CA-248685DE60A49ACA53E3",
-        "CA-315F09BE14F358F6207D",
+        "CA-2CF4BB5B3FFAD7F4167C",
         "CA-3220D1F86C6B173EDA0B",
-        "CA-3CCC73C3612481400D4F",
-        "CA-4BE12B6BA2AFC2FE60D9",
+        "CA-457BC56914B3BCABC913",
+        "CA-465B520414345A7790E9",
         "CA-60A635EE57F04393DD3C",
         "CA-64F13DB4EB3190ED47B4",
-        "CA-6768F0762B5B4098E4C8",
-        "CA-81B9091387C888961569",
+        "CA-7589D5C4DAA1C528FEFA",
         "CA-82AC7315E249745D69A9",
-        "CA-8497F2CE1B0DD9B435B3",
+        "CA-918C45F57C0536392781",
         "CA-9FAE43134F8181A1B3D0",
         "CA-A0E6EF9AB6F13E048EF0",
-        "CA-A3380BA915D228925A87",
         "CA-A7B02AECBDAFD9D9F278",
         "CA-AA2193736C4BB633E71C",
         "CA-ACA21FB160C12ED55E63",
-        "CA-B0C382C94D39F79B3DB2",
         "CA-B20C00FC2746A07301FE",
         "CA-B31CA1F498DB1C6E268D",
         "CA-C609DD82731CC3B3B77D",
-        "CA-CDBB32CB84F0A6744B8C",
-        "CA-D645FA20EA632C489BC3",
+        "CA-C68358CE397D2E897683",
+        "CA-CBB751C4BC3D8A247AA5",
         "CA-DBB14125E2A34BE98D66",
         "CA-DBB6EAC57769FEB8B78F",
+        "CA-DC6BDCD68C0475815CF2",
+        "CA-E12B63EF84A1770E201D",
         "CA-E67D43ED47A4D91D1D3D",
         "CA-ED02B352C23EBC7760CA",
-        "CA-F1B51FA8BC54524750BC",
         "CA-F276797EEB794B5D063A",
         "CA-F79CE22D34785115A7DD"
       ],
       "validation": [
-        "CA-0980980B61FE5861707F",
-        "CA-465B520414345A7790E9",
-        "CA-46CBE1EE53E00EF1E148",
-        "CA-7589D5C4DAA1C528FEFA",
-        "CA-A50957FC6ECDC1FE71BB",
-        "CA-CF63CF27E37A91F83CFF",
-        "CA-D668E7535685DD75BB0D",
-        "CA-E12B63EF84A1770E201D"
+        "CA-0F8D2F9C121254573A53",
+        "CA-4BE12B6BA2AFC2FE60D9",
+        "CA-56EE881A70E32AAA78D4",
+        "CA-8497F2CE1B0DD9B435B3",
+        "CA-B0C382C94D39F79B3DB2",
+        "CA-CDBB32CB84F0A6744B8C",
+        "CA-CF63CF27E37A91F83CFF"
       ],
       "test": [
-        "CA-178080E20CB468BE5F71",
-        "CA-2CF4BB5B3FFAD7F4167C",
-        "CA-457BC56914B3BCABC913",
-        "CA-56EE881A70E32AAA78D4",
+        "CA-1A39743744101E3C9135",
+        "CA-315F09BE14F358F6207D",
+        "CA-46CBE1EE53E00EF1E148",
         "CA-638BE240823DD59AA408",
-        "CA-918C45F57C0536392781",
-        "CA-C68358CE397D2E897683",
-        "CA-CBB751C4BC3D8A247AA5",
-        "CA-DC6BDCD68C0475815CF2"
+        "CA-6768F0762B5B4098E4C8",
+        "CA-A50957FC6ECDC1FE71BB",
+        "CA-D645FA20EA632C489BC3",
+        "CA-D668E7535685DD75BB0D"
       ]
     },
     "scenario_counts": {
-      "train": 189,
-      "validation": 42,
-      "test": 51
+      "train": 178,
+      "validation": 40,
+      "test": 38
     }
   },
   "split_counts": {
     "train": {
-      "parent_event_count": 37,
-      "candidate_scenario_count": 189
+      "parent_event_count": 34,
+      "candidate_scenario_count": 178
     },
     "validation": {
-      "parent_event_count": 8,
-      "candidate_scenario_count": 42
+      "parent_event_count": 7,
+      "candidate_scenario_count": 40
     },
     "test": {
-      "parent_event_count": 9,
-      "candidate_scenario_count": 51
+      "parent_event_count": 8,
+      "candidate_scenario_count": 38
     }
   },
   "estimator": "RandomForestRegressor(n_estimators=240, max_depth=14, min_samples_leaf=3, random_state=1501, n_jobs=1)",
   "validation_metrics": {
-    "candidate_count": 42,
-    "parent_event_count": 8,
-    "mae_log10_pc_reduction": 1.4515769124707245,
-    "rmse_log10_pc_reduction": 4.112561593990194,
-    "mean_within_parent_spearman": 0.4375,
-    "top1_agreement_with_physics_best": 0.5,
-    "mean_regret_log10_pc_reduction": 0.18061308264711404,
+    "candidate_count": 40,
+    "parent_event_count": 7,
+    "mae_log10_pc_reduction": 0.031873539311306556,
+    "rmse_log10_pc_reduction": 0.0444208495125304,
+    "mean_within_parent_spearman": 0.46938775510204084,
+    "top1_agreement_with_physics_best": 0.42857142857142855,
+    "mean_regret_log10_pc_reduction": 0.03226869864115743,
     "baseline": {
       "name": "lowest delta-v, then alphabetical direction tie-break",
-      "mean_regret_log10_pc_reduction": 0.9397632544188022
+      "mean_regret_log10_pc_reduction": 0.04038836898133332
     }
   },
   "test_metrics": {
-    "candidate_count": 51,
-    "parent_event_count": 9,
-    "mae_log10_pc_reduction": 2.2741522111576007,
-    "rmse_log10_pc_reduction": 5.712944569474093,
-    "mean_within_parent_spearman": 0.4222222222222222,
-    "top1_agreement_with_physics_best": 0.3333333333333333,
-    "mean_regret_log10_pc_reduction": 0.6623429742015638,
+    "candidate_count": 38,
+    "parent_event_count": 8,
+    "mae_log10_pc_reduction": 0.034672509782800565,
+    "rmse_log10_pc_reduction": 0.06040442915515173,
+    "mean_within_parent_spearman": 0.4696428571428572,
+    "top1_agreement_with_physics_best": 0.625,
+    "mean_regret_log10_pc_reduction": 0.03114245199340482,
     "baseline": {
       "name": "lowest delta-v, then alphabetical direction tie-break",
-      "mean_regret_log10_pc_reduction": 1.5621547888818903
+      "mean_regret_log10_pc_reduction": 0.0177084956283437
     },
     "median_train_target_baseline": {
-      "mae_log10_pc_reduction": 2.347599241680358,
-      "rmse_log10_pc_reduction": 8.359829509488213,
-      "training_median_log10_pc_reduction": 0.002965826471940103
+      "mae_log10_pc_reduction": 0.04259230848146798,
+      "rmse_log10_pc_reduction": 0.07134990647804701,
+      "training_median_log10_pc_reduction": 0.0003345914678012374
     }
   },
   "baseline": {
     "name": "lowest delta-v, then alphabetical direction tie-break",
     "test_metrics": {
       "name": "lowest delta-v, then alphabetical direction tie-break",
-      "mean_regret_log10_pc_reduction": 1.5621547888818903
+      "mean_regret_log10_pc_reduction": 0.0177084956283437
     }
   },
   "scikit_learn_version": "1.9.1",
@@ -195,5 +190,5 @@
     "Only six signed RTN directions and one configured magnitude per parent are used for training; performance may not generalize beyond this envelope.",
     "The ranker is used only if held-out mean regret beats the deterministic baseline; every live candidate is recalculated by the physics pipeline."
   ],
-  "training_elapsed_seconds": 48.095
+  "training_elapsed_seconds": 45.146
 }

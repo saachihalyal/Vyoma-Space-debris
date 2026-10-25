@@ -80,6 +80,8 @@ def assess_automatic_research_pc(
     covariance_scale: float = 1.0,
     hbr_scale: float = 1.0,
     covariance_policy: str | None = None,
+    fixed_covariance_inputs: tuple[CovarianceInput, CovarianceInput] | None = None,
+    fixed_hbr_km: float | None = None,
 ) -> AutomaticResearchPcAssessment:
     selected_policy = covariance_policy or os.getenv("ORION_RESEARCH_PC_COVARIANCE_POLICY", DEFAULT_COVARIANCE_POLICY)
     if selected_policy not in COVARIANCE_POLICIES:
@@ -162,8 +164,17 @@ def assess_automatic_research_pc(
         event_id = physics.event_id
         values: list[tuple[float | None, float, float]] = []
         central_plane_terms = None
+        central_covariance_matrix_sha256: list[str] = []
+        if fixed_covariance_inputs is not None and (
+            len(fixed_covariance_inputs) != 2 or fixed_hbr_km is None
+            or not math.isfinite(float(fixed_hbr_km)) or float(fixed_hbr_km) <= 0
+            or [item.object_id for item in fixed_covariance_inputs] != [primary.id, secondary.id]
+        ):
+            return _unavailable(shared, "FIXED_COMPARISON_UNCERTAINTY_INVALID")
         for quantile in ("p10", "p50", "p90"):
-            if selected_policy == "esa_population_prior":
+            if fixed_covariance_inputs is not None:
+                covariances = [_retarget_covariance(item, tca) for item in fixed_covariance_inputs]
+            elif selected_policy == "esa_population_prior":
                 covariances = [
                     _covariance(obj.id, tca, state, spec[0], quantile, spec[2] * covariance_scale, spec[4])
                     for obj, state, spec in zip((primary, secondary), states, specs)
@@ -178,10 +189,14 @@ def assess_automatic_research_pc(
                 override["radius_km"] if override is not None else spec[3][quantile] / 1000.0
                 for override, spec in zip(size_overrides, specs)
             ]
-            hbr_km = sum(object_radii_km) * hbr_scale
+            hbr_km = float(fixed_hbr_km) if fixed_covariance_inputs is not None else sum(object_radii_km) * hbr_scale
             result = _calculate(physics, primary.id, secondary.id, tca, states, covariances, hbr_km, hbr_source, hbr_provenance)
             if quantile == "p50":
                 central_plane_terms = _encounter_plane_terms(physics, covariances, states)
+                central_covariance_matrix_sha256 = [
+                    hashlib.sha256(np.asarray(item.matrix, dtype=np.float64).tobytes()).hexdigest()
+                    for item in covariances
+                ]
             if result.status == "available" and result.pc is not None and result.pc > 0:
                 log_pc = math.log(float(result.pc))
             elif result.status == "available" and result.pc == 0 or result.reason_codes == ["NUMERICAL_FAILURE"]:
@@ -198,17 +213,47 @@ def assess_automatic_research_pc(
         negligible = central_log_pc / math.log(10.0) < LOG10_PC_FLOOR
         floor_pc = f"< 1e{LOG10_PC_FLOOR:g}"
         floor_percent = f"< 1e{LOG10_PC_FLOOR + 2:g}"
-        sensitivity_logs = [item[2] for item in values]
+        # Recompute a compact 3x3 sensitivity grid. Covariance and HBR are
+        # both changed through the same physics calculator; taking logs
+        # before deriving the bounds avoids Pc underflow in the tails.
+        sensitivity_logs: list[float] = []
+        covariance_sensitivity_scales = (0.5, 1.0, 3.0)
+        hbr_sensitivity_scales = (0.75, 1.0, 1.5)
+        for sensitivity_covariance_scale in covariance_sensitivity_scales:
+            if fixed_covariance_inputs is not None:
+                sensitivity_covariances = [
+                    _scale_covariance_input(_retarget_covariance(item, tca), sensitivity_covariance_scale)
+                    for item in fixed_covariance_inputs
+                ]
+            elif selected_policy == "esa_population_prior":
+                sensitivity_covariances = [
+                    _covariance(obj.id, tca, state, spec[0], "p50", spec[2] * sensitivity_covariance_scale, spec[4])
+                    for obj, state, spec in zip((primary, secondary), states, specs)
+                ]
+            else:
+                baseline_multiplier = 2.0 if selected_policy == "tle_age_baseline_2x" else 1.0
+                sensitivity_covariances = [
+                    _tle_age_position_covariance(obj.id, obj, tca, state,
+                                                 baseline_multiplier * sensitivity_covariance_scale, selected_policy)
+                    for obj, state in zip((primary, secondary), states)
+                ]
+            for sensitivity_hbr_scale in hbr_sensitivity_scales:
+                scenario_hbr_km = central_hbr * sensitivity_hbr_scale
+                scenario_result = _calculate(
+                    physics, primary.id, secondary.id, tca, states,
+                    sensitivity_covariances, scenario_hbr_km, hbr_source, hbr_provenance,
+                )
+                if scenario_result.status == "available" and scenario_result.pc is not None and scenario_result.pc > 0:
+                    sensitivity_logs.append(math.log(float(scenario_result.pc)))
+                elif scenario_result.status == "available" and scenario_result.pc == 0 or scenario_result.reason_codes == ["NUMERICAL_FAILURE"]:
+                    sensitivity_logs.append(_log_foster_pc(physics, sensitivity_covariances, states, scenario_hbr_km))
+                else:
+                    return _unavailable(shared, "FOSTER_SENSITIVITY_CALCULATION_" + (scenario_result.reason_codes[0] if scenario_result.reason_codes else "FAILED"), prior, config)
         hbr_quantiles = {quantile: value[1] for quantile, value in zip(("p10", "p50", "p90"), values)}
-        if selected_policy == "esa_population_prior":
-            sensitivity_reason = "Range is the min/max of coupled ESA p10, p50 and p90 covariance/HBR prior scenarios; it is not a statistical confidence interval."
-        else:
-            collapsed_hbr = max(hbr_quantiles.values()) - min(hbr_quantiles.values()) <= 1e-12
-            sensitivity_reason = (
-                f"HBR-only ESA span-prior sensitivity; TLE-age covariance is held fixed. The p10/p50/p90 combined HBR is {central_hbr:.6g} km for all three quantiles, so this event's range collapses to one Pc. Use the separate covariance-scale what-if control to recompute with changed covariance. This is not a statistical confidence interval."
-                if collapsed_hbr else
-                "HBR-only ESA span-prior sensitivity; TLE-age covariance is held fixed. Use the separate covariance-scale what-if control to recompute with changed covariance. This is not a statistical confidence interval."
-            )
+        sensitivity_reason = (
+            "Bounds are recomputed across covariance multipliers 0.5x, 1x, and 3x and HBR multipliers 0.75x, 1x, and 1.5x. "
+            "They are the minimum and maximum of configured what-if combinations, not a statistical confidence interval."
+        )
         source_hash = hashlib.sha256(PRIOR_PATH.read_bytes()).hexdigest()
         age_days = [spec[4] for spec in specs]
         assumptions = [
@@ -222,12 +267,15 @@ def assess_automatic_research_pc(
             "ESA target/chaser roles are mapped from ORION object class: active/payload to target; debris/rocket body/unknown to chaser.",
             "ESA span inputs are treated as diameters and converted to radius; this is an assumed size mapping, not authenticated object dimensions.",
             "Object covariances are assumed independent for the Foster relative covariance.",
-            ("p10/p50/p90 covariance and HBR scenarios vary the ESA population prior; endpoints are not confidence bounds."
-             if selected_policy == "esa_population_prior" else
-             "Sensitivity holds the selected TLE-age covariance policy fixed and varies only the ESA span-based HBR prior; endpoints are not confidence bounds. Covariance-scale what-if values are computed separately."),
+            "Sensitivity bounds are recalculated over covariance scales 0.5x, 1x, and 3x and HBR scales 0.75x, 1x, and 1.5x in the log-Pc domain; they are not confidence bounds.",
             f"Scenario covariance multiplier: {covariance_scale:g}; scenario HBR multiplier: {hbr_scale:g}. Both are explicit research-scenario controls, not measured inputs.",
             "When a result is below binary64's representable range, the same Foster disk integral is evaluated in log space and reported in scientific notation rather than substituted with zero.",
         ]
+        if fixed_covariance_inputs is not None:
+            assumptions.extend([
+                "Maneuver comparison reuses the baseline event's TEME covariance matrices numerically unchanged at candidate TCA; only the mean relative state changes.",
+                "Maneuver comparison holds the baseline event's combined HBR fixed; sensitivity scales are what-if variations around that shared baseline.",
+            ])
         return AutomaticResearchPcAssessment(
             status="prior_based_research_estimate", quality_status="prior_based_unvalidated",
             estimated_pc=central_pc, estimated_pc_scientific=(floor_pc if negligible else _scientific(central_log_pc)),
@@ -241,11 +289,13 @@ def assess_automatic_research_pc(
             upper_sensitivity_pc=(math.exp(max(sensitivity_logs)) if max(sensitivity_logs) >= min_log else None),
             lower_sensitivity_pc_scientific=(floor_pc if min(sensitivity_logs) / math.log(10.0) < LOG10_PC_FLOOR else _scientific(min(sensitivity_logs))),
             upper_sensitivity_pc_scientific=(floor_pc if max(sensitivity_logs) / math.log(10.0) < LOG10_PC_FLOOR else _scientific(max(sensitivity_logs))),
-            hbr_km=central_hbr, hbr_sensitivity_km=[min(v[1] for v in values), max(v[1] for v in values)],
+            hbr_km=central_hbr, hbr_sensitivity_km=[central_hbr * 0.75, central_hbr * 1.5],
             encounter_plane_sigma_min_km=(central_plane_terms or {}).get("sigma_min_km"),
             encounter_plane_sigma_max_km=(central_plane_terms or {}).get("sigma_max_km"),
             miss_sigma_ratio=(central_plane_terms or {}).get("miss_sigma_ratio"),
-            covariance_method=("ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors."
+            covariance_method=("Fixed baseline-event TEME covariance reused numerically at candidate TCA for a maneuver comparison."
+                               if fixed_covariance_inputs is not None else
+                               "ESA Kelvins component-wise population covariance prior; diagonal local RTN assigned at TCA and rotated to TEME; configured age, orbit-band, eccentricity and BSTAR scale factors."
                                if selected_policy == "esa_population_prior" else
                                f"{COVARIANCE_POLICIES[selected_policy]} assigned in RTN at TCA and rotated to TEME; no covariance propagation is performed."),
             hbr_method=("Documented assumed object-size HBR override where matched; remaining object uses ESA span prior. No dimension is authenticated."
@@ -263,6 +313,15 @@ def assess_automatic_research_pc(
                 "tca_utc": tca.isoformat(), "covariance_frame": "TEME", "covariance_assignment_epoch": "TCA",
                 "covariance_independence_assumed": True, "configuration": config,
                 "scenario_covariance_scale": float(covariance_scale), "scenario_hbr_scale": float(hbr_scale),
+                "fixed_comparison_uncertainty": fixed_covariance_inputs is not None,
+                "fixed_baseline_hbr_km": float(fixed_hbr_km) if fixed_covariance_inputs is not None else None,
+                "fixed_covariance_matrix_sha256": [
+                    hashlib.sha256(np.asarray(item.matrix, dtype=np.float64).tobytes()).hexdigest()
+                    for item in fixed_covariance_inputs
+                ] if fixed_covariance_inputs is not None else [],
+                "central_covariance_matrix_sha256": central_covariance_matrix_sha256,
+                "sensitivity_covariance_scales": list(covariance_sensitivity_scales),
+                "sensitivity_hbr_scales": list(hbr_sensitivity_scales),
                 "object_metadata": {obj.id: {"band": obj.band, "category": obj.category, "tle_age_days": age}
                                     for obj, age in zip((primary, secondary), age_days)},
                 "scenario_quantiles": ["p10", "p50", "p90"],
@@ -319,6 +378,55 @@ def _tle_age_position_covariance(object_id, obj, tca, state, scale=1.0, policy_i
         object_id=object_id, frame="TEME", epoch=tca.isoformat(), matrix=matrix,
         units={"position": "km^2"}, source=COVARIANCE_POLICIES[policy_id],
         source_type="derived", is_synthetic=False,
+    )
+
+
+def maneuver_baseline_covariances(physics: PhysicsResult, primary: ObjectSummary, secondary: ObjectSummary, scale: float = 1.0, policy_id: str = DEFAULT_COVARIANCE_POLICY):
+    """Build the maneuver comparison covariance once at the selected event TCA."""
+    tca = _parse_utc(physics.tca.value if physics.tca else None)
+    if tca is None or physics.primary_state_at_tca is None or physics.secondary_state_at_tca is None:
+        raise ValueError("MANEUVER_BASELINE_COVARIANCE_INPUT_UNAVAILABLE")
+    states = (_state(physics.primary_state_at_tca, primary.id, tca), _state(physics.secondary_state_at_tca, secondary.id, tca))
+    if policy_id not in COVARIANCE_POLICIES:
+        raise ValueError("MANEUVER_FIXED_COVARIANCE_POLICY_UNSUPPORTED")
+    if policy_id == "esa_population_prior":
+        prior = json.loads(PRIOR_PATH.read_text(encoding="utf-8"))
+        config = _config()
+        objects = (primary, secondary)
+        specs = [_object_prior(prior, config, obj, _prior_role(obj), tca) for obj in objects]
+        if any(spec is None for spec in specs):
+            raise ValueError("MANEUVER_FIXED_COVARIANCE_PRIOR_UNAVAILABLE")
+        covariances = tuple(
+            _covariance(obj.id, tca, state, spec[0], "p50", spec[2] * float(scale), spec[4])
+            for obj, state, spec in zip(objects, states, specs)
+        )
+    else:
+        policy_scale = float(scale) * (2.0 if policy_id == "tle_age_baseline_2x" else 1.0)
+        covariances = tuple(
+            _tle_age_position_covariance(obj.id, obj, tca, state, policy_scale, policy_id)
+            for obj, state in zip((primary, secondary), states)
+        )
+    return covariances
+
+
+def _retarget_covariance(covariance: CovarianceInput, tca: datetime) -> CovarianceInput:
+    return CovarianceInput(
+        object_id=covariance.object_id, frame=covariance.frame, epoch=tca.isoformat(),
+        matrix=np.asarray(covariance.matrix, dtype=float).copy(), units=covariance.units,
+        source="Frozen selected-event baseline TEME covariance for maneuver comparison",
+        source_type="derived", source_timestamp=covariance.source_timestamp,
+        input_hash=covariance.input_hash, is_synthetic=covariance.is_synthetic,
+        validity_status=covariance.validity_status,
+    )
+
+
+def _scale_covariance_input(covariance: CovarianceInput, scale: float) -> CovarianceInput:
+    return CovarianceInput(
+        object_id=covariance.object_id, frame=covariance.frame, epoch=covariance.epoch,
+        matrix=np.asarray(covariance.matrix, dtype=float) * float(scale) ** 2,
+        units=covariance.units, source=covariance.source, source_type=covariance.source_type,
+        source_timestamp=covariance.source_timestamp, input_hash=covariance.input_hash,
+        is_synthetic=covariance.is_synthetic, validity_status=covariance.validity_status,
     )
 
 

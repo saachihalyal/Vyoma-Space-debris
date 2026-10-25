@@ -2,62 +2,24 @@
 
 ## Purpose and limits
 
-These models are fast surrogates for ORION's own research-Pc calculation. They are trained on physics-generated scenarios and have not been validated against observed collision outcomes. The research Pc from the physics calculation remains authoritative. Model outputs do not replace it and are not operational collision-avoidance predictions.
+These offline trained surrogates reproduce ORION's corrected TLE-age-baseline research Pc and physics risk policy. Labels are physics generated, not observed collision outcomes. Research Pc remains authoritative, and the models are not operationally calibrated.
 
-## Fixed training snapshot and generated scenarios
+## Dataset and leakage-controlled split
 
-The offline trainer is `backend/app/ai/collision_training.py`, run from `backend` with:
+Source: saved CelesTrak screening job `08c33d64c8d34ddfb6838a565d3c0db3` with 118 valid parent events. An audit of all 10 saved screening-job files found 260 valid physical event rows and no duplicate event IDs. Applying ORION's existing co-located encounter grouping rule across jobs (same TCA to the millisecond, miss distance and relative speed rounded to four significant digits, and a shared object ID) maps those 118 parents to 62 physical encounter groups. The initial parent-only split leaked 20 groups (48 parent IDs) across partitions. Dataset v3 now assigns every parent and all generated variants in an encounter group to one fixed-seed partition. The saved split has zero group intersections: train 43 encounter groups / 75 parents / 900 scenarios; validation 9 / 20 / 240; test 10 / 23 / 276.
 
-```powershell
-.\.venv\Scripts\python.exe -m app.ai.collision_training
-```
+The generator produced 1,416 synthetic scenario variants using covariance scales 0.5, 1, 2, 3; HBR scales 0.75, 1, 1.5; TLE-age scales 0.5, 1, 2; and encounter-plane miss-distance scales 0.01, 0.1, 0.5, 1.0. Miss distance is varied while relative velocity is fixed. TLE age changes the assumed element epoch for the uncertainty model while keeping the saved state fixed. Regression target: `max(log10(Pc), -30)`; class labels use `orion-physics-pc-risk-v2`. Dataset version is `orion-collision-scenarios-v3`; the split is `backend/ml_data/orion-collision-scenarios-v3-splits.json`.
 
-The source is saved screening job `08c33d64c8d34ddfb6838a565d3c0db3`, created `2026-10-19T09:43:03.120187+00:00`. Its `120` records contain `118` valid physical events. The snapshot hash is `5c54434b021dc9370e574ac55f9525d130758830f9ae444fe8e47229540fb026`. Each eligible conjunction is derived from two nonsynthetic live object records whose retained input URLs point to CelesTrak. This provenance is recorded per scenario.
+## Research Pc regression
 
-The generator calculates research Pc with the ORION Foster 2D pipeline while varying covariance scales `0.5`, `1`, `2`, and `3`, and HBR scales `0.75`, `1`, and `1.5`. Every target comes from the physics output. Out of `1,416` attempted variants from the `118` valid parents, `804` variants from `67` distinct parent events passed calculation and feature validation; `612` were rejected as `FOSTER_PRIOR_CALCULATION_PC_METHOD_NOT_APPLICABLE`.
+Random forest version `2.1.0`, with median imputation fitted on train only. Test MAE was `0.05791` and RMSE `0.09754` log10(Pc), Spearman `0.98697`, across 276 rows from 10 independent encounter groups / 23 parent events. Every test row was non-negligible (`log10 Pc > -30`), so all-data and non-negligible metrics are identical. Training-median baseline MAE/RMSE were `0.57685` / `0.71345`; train-fitted linear baseline MAE/RMSE were `0.18637` / `0.25597`. The model beat both baselines and is usable for inference with the physics fallback retained.
 
-All variants from a parent event stay in one fixed-seed (`20261024`) shuffled parent-ID split:
+## Physics risk classifier
 
-| Partition | Parent events | Scenario variants |
-|---|---:|---:|
-| Train | 46 | 552 |
-| Validation | 10 | 120 |
-| Test | 11 | 132 |
+Class balanced random forest version `2.1.0`. Test accuracy was `0.94203`, macro F1 `0.62319`, weighted F1 `0.94203`; the majority baseline accuracy was `0.66667`, macro F1 `0.26667`. Class order Low, Medium, High; confusion matrix (true rows, predicted columns): `[[0,0,0],[0,176,8],[0,8,84]]`. Test counts: Low 0, Medium 184, High 92. Per-class precision/recall/F1: Low `0/0/0` (no Low test examples); Medium `0.95652/0.95652/0.95652`; High `0.91304/0.91304/0.91304`. It beat the majority baseline on macro F1 and is enabled; the test set contains no Low examples, so Low performance is not evaluated.
 
-The generated JSONL and split manifest are saved under `backend/ml_data/`. Preprocessing uses median imputation fitted inside each model pipeline on training rows only. The feature schema is `orion-collision-features-v1` and includes miss distance, relative speed, TLE ages at TCA, object altitude/inclination and categories, assumed HBR, and scenario scales. The exact names, units, hashes, parent IDs, calculator version, input provenance, and generated targets are recorded in the dataset and metadata files.
+## Artifacts, fallbacks, and limitations
 
-## Model 1: research-Pc surrogate
+Artifacts: `backend/app/ai/artifacts/orion_research_pc_surrogate.joblib` and `orion_physics_risk_classifier.joblib`, version `2.1.0`; feature schema `orion-collision-features-v2`. Sidecars record artifact hashes, target, feature schema, encounter-group split, training time, calculator/policy versions, baseline comparison, and measured metrics. `backend/app/ai/train_all.py` and `scripts/retrain_all.ps1` regenerate T5 outputs. Models load only when their measured held-out checks pass; otherwise inference uses the labelled rule-based physics fallback.
 
-Target: `log10(research_pc)`. The estimator is a `RandomForestRegressor` with `300` trees, maximum depth `12`, minimum leaf size `2`, and the fixed seed. It is evaluated in log10(Pc) units against a training-set median baseline.
-
-| Split | Scenarios | Parent events | Model MAE | Model RMSE | Median baseline MAE | Median baseline RMSE |
-|---|---:|---:|---:|---:|---:|---:|
-| Validation | 120 | 10 | 646.0338 | 2905.6762 | 670.7326 | 3163.4291 |
-| Test | 132 | 11 | 0.4235 | 1.2963 | 0.8233 | 1.5527 |
-
-Validation performance is extremely weak because the generated log10(Pc) targets include rare extreme-tail values below `-20,000`. The validation MAE is hundreds of orders of magnitude in log10 units, so the modest gain over its median baseline does not establish useful generalization. The test split is much less extreme and is not representative enough to override that limitation. The API exposes this model's output only with its model identity and marks it as a research surrogate; users must rely on the accompanying physics Pc.
-
-## Model 2: physics risk classifier
-
-Target: Low, Medium, or High, derived from the same generated research Pc under `orion-physics-pc-risk-v1`. The estimator is a class-balanced `RandomForestClassifier` with `300` trees, maximum depth `12`, minimum leaf size `2`, and the fixed seed. Test class order is Low, Medium, High.
-
-Test results on `132` scenarios from `11` parent events:
-
-* Accuracy: `0.9545`; macro-F1: `0.7535`; weighted-F1: `0.9582`.
-* Majority-class baseline (High): accuracy `0.9242`; macro-F1 `0.3202`.
-* Confusion matrix (rows actual, columns predicted; Low, Medium, High): `[[2, 2, 0], [0, 6, 0], [1, 3, 118]]`.
-* Low: precision `0.6667`, recall `0.5000`, F1 `0.5714`, support `4`.
-* Medium: precision `0.5455`, recall `1.0000`, F1 `0.7059`, support `6`.
-* High: precision `1.0000`, recall `0.9672`, F1 `0.9833`, support `122`.
-
-Validation accuracy is `0.9750` and macro-F1 is `0.8921` on `120` scenarios from `10` parent events. Its majority baseline accuracy is `0.7083` and macro-F1 is `0.2764`. Scenario class counts are imbalanced; generated scenario counts are not independent conjunction counts.
-
-## Live inference and fallback
-
-Inference runs only with saved, locally validated artifacts. The API checks the SHA-256, feature schema version, and ordered feature names before loading an estimator. Training is never invoked during a user request. Status and persisted evaluation metrics are exposed at `GET /api/collision-models` and in health responses. Each event keeps `collision_ai_assessment` separate from event-specific Foster Pc, research Pc, physics class, and the deterministic geometry queue index.
-
-When an artifact is missing, corrupt, incompatible, or cannot infer from valid features, the output is explicitly marked `fallback` or `unavailable`. The deterministic reference values use the physics research Pc/classification fields and leave AI prediction fields null. They are not labeled as AI predictions.
-
-## Reproducibility and known limits
-
-The saved source snapshot and split manifest make this two-model training run reproducible. The generated scenario data and both versioned artifact metadata files contain the dataset/split/artifact hashes. Only `67` independent parent events produced scenarios, with `11` held out for testing. Most variants were rejected by the current Foster applicability rules. The regression validation result shows that this sample does not support a broadly reliable live Pc surrogate; additional independently sourced parent events and better tail-aware model evaluation are needed. Both tasks reproduce the declared research-Pc assumptions, not real collision outcomes.
+The 62 encounter groups, not the 1,416 variants, are the independent source units. Evaluation measures reproduction of the physics policy on 10 held-out groups, not observed collisions. The bounded parameter grid does not establish operational calibration. Low-risk test performance cannot be estimated from a test set with no Low examples.

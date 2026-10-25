@@ -80,14 +80,21 @@ class PhysicsSmartFilterTests(unittest.TestCase):
 
     def test_saved_scenario_labels_and_grouped_metadata_match_trained_filter(self) -> None:
         metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v1.jsonl")
+        self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v3.jsonl")
+        self.assertEqual(metadata["model_version"], "2.1.0")
+        self.assertTrue(metadata["usable_for_inference"])
         dataset_path = BACKEND_DIR / "ml_data" / metadata["dataset_filename"]
         self.assertEqual(metadata["dataset_sha256"], hashlib.sha256(dataset_path.read_bytes()).hexdigest())
-        self.assertEqual(metadata["grouping_strategy"], "parent_event_id; scenario variants from one conjunction never cross partitions")
+        self.assertIn("physical encounter group across saved screening jobs", metadata["grouping_strategy"])
         parent_groups = metadata["scenario_split"]["parent_event_ids"]
         self.assertFalse(set(parent_groups["train"]) & set(parent_groups["validation"]))
         self.assertFalse(set(parent_groups["train"]) & set(parent_groups["test"]))
         self.assertFalse(set(parent_groups["validation"]) & set(parent_groups["test"]))
+        encounter_groups = metadata["scenario_split"]["encounter_group_ids"]
+        self.assertFalse(set(encounter_groups["train"]) & set(encounter_groups["validation"]))
+        self.assertFalse(set(encounter_groups["train"]) & set(encounter_groups["test"]))
+        self.assertFalse(set(encounter_groups["validation"]) & set(encounter_groups["test"]))
+        self.assertTrue(metadata["baseline_comparison"]["deterministic_miss_distance_baseline_macro_f1_beaten"])
         self.assertEqual(metadata["significant_pc_threshold"], 1e-4)
         self.assertGreater(metadata["metrics"]["test"]["false_negative_significant_count"], 0)
 

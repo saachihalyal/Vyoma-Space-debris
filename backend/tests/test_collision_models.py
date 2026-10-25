@@ -28,15 +28,20 @@ class CollisionModelTests(unittest.TestCase):
         )
         cls.event = cls.event.model_copy(update={"automatic_research_pc_assessment": research})
 
-    def test_grouped_split_is_fixed_seed_and_disjoint_by_parent_event(self) -> None:
+    def test_grouped_split_is_fixed_seed_and_disjoint_by_encounter_group(self) -> None:
         parents = [f"parent-{index:02}" for index in range(40)]
-        first = grouped_split(parents, seed=31)
-        self.assertEqual(first, grouped_split(parents, seed=31))
+        group_by_parent = {parent: f"encounter-{index // 2:02}" for index, parent in enumerate(parents)}
+        first = grouped_split(parents, seed=31, group_by_parent=group_by_parent)
+        self.assertEqual(first, grouped_split(parents, seed=31, group_by_parent=group_by_parent))
         groups = [set(first[name]) for name in ("train", "validation", "test")]
         self.assertFalse(groups[0] & groups[1])
         self.assertFalse(groups[0] & groups[2])
         self.assertFalse(groups[1] & groups[2])
         self.assertEqual(set.union(*groups), set(parents))
+        group_splits = [{group_by_parent[parent] for parent in split} for split in groups]
+        self.assertFalse(group_splits[0] & group_splits[1])
+        self.assertFalse(group_splits[0] & group_splits[2])
+        self.assertFalse(group_splits[1] & group_splits[2])
 
     def test_missing_models_use_explicit_deterministic_fallback_not_ai_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

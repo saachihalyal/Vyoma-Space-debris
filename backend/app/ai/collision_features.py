@@ -8,7 +8,7 @@ from typing import Any
 from app.models import ConjunctionAssessmentEvent
 
 
-FEATURE_SCHEMA_VERSION = "orion-collision-features-v1"
+FEATURE_SCHEMA_VERSION = "orion-collision-features-v2"
 OBJECT_CATEGORIES = ("active", "debris", "payload", "rocket_body", "unknown")
 NUMERIC_FEATURES = (
     "miss_distance_km",

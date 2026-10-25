@@ -49,6 +49,8 @@ def _load_validated_artifact(artifact_path: str, metadata_path: str, modified_ns
     meta = _metadata(metadata_file)
     if not artifact.is_file() or not meta:
         raise ValueError("MODEL_ARTIFACT_OR_METADATA_MISSING")
+    if meta.get("usable_for_inference") is not True:
+        raise ValueError("MODEL_DID_NOT_BEAT_HELD_OUT_BASELINE")
     if meta.get("feature_schema_version") != FEATURE_SCHEMA_VERSION:
         raise ValueError("MODEL_FEATURE_SCHEMA_VERSION_MISMATCH")
     if meta.get("feature_names") != list(FEATURE_NAMES):

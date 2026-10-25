@@ -14,7 +14,7 @@ from app.ai.collision_features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from app.ai.collision_training import DATASET_PATH, SEED, _sha256, grouped_split
 
 
-MODEL_VERSION = "1.0.0"
+MODEL_VERSION = "2.1.0"
 SIGNIFICANT_PC_THRESHOLD = 1e-4
 SIGNIFICANT_LOG10_THRESHOLD = -4.0
 CLASS_ORDER = ("insignificant", "significant")
@@ -22,7 +22,7 @@ ARTIFACT_PATH = Path(__file__).resolve().parent / "artifacts" / "orion_smart_fil
 METADATA_PATH = ARTIFACT_PATH.with_suffix(".metadata.json")
 
 
-def _metrics(y_true, y_pred, parent_count: int) -> dict[str, Any]:
+def _metrics(y_true, y_pred, parent_count: int, encounter_group_count: int) -> dict[str, Any]:
     from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_recall_fscore_support
 
     precision, recall, f1, support = precision_recall_fscore_support(
@@ -31,6 +31,7 @@ def _metrics(y_true, y_pred, parent_count: int) -> dict[str, Any]:
     return {
         "sample_count": int(len(y_true)),
         "parent_event_count": parent_count,
+        "encounter_group_count": encounter_group_count,
         "class_order": list(CLASS_ORDER),
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "precision_significant": float(precision[1]),
@@ -57,7 +58,9 @@ def train_smart_filter() -> dict[str, Any]:
     scenarios = [json.loads(line) for line in DATASET_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
     if not scenarios:
         raise ValueError(f"Physics scenario dataset is missing or empty: {DATASET_PATH}")
-    parent_splits = grouped_split([row["parent_event_id"] for row in scenarios], seed=SEED)
+    group_by_parent = {row["parent_event_id"]: row["encounter_group_id"] for row in scenarios}
+    parent_splits = grouped_split(list(group_by_parent), seed=SEED, group_by_parent=group_by_parent)
+    encounter_splits = {name: sorted({group_by_parent[parent_id] for parent_id in ids}) for name, ids in parent_splits.items()}
     partitions = {
         name: np.asarray([i for i, row in enumerate(scenarios) if row["parent_event_id"] in set(ids)], dtype=int)
         for name, ids in parent_splits.items()
@@ -81,22 +84,30 @@ def train_smart_filter() -> dict[str, Any]:
     metrics = {}
     for split in ("validation", "test"):
         indexes = partitions[split]
-        metrics[split] = _metrics(y[indexes], model.predict(X[indexes]), len(parent_splits[split]))
+        metrics[split] = _metrics(y[indexes], model.predict(X[indexes]), len(parent_splits[split]), len(encounter_splits[split]))
         metrics[split]["majority_class_baseline"] = _metrics(
-            y[indexes], baseline.predict(X[indexes]), len(parent_splits[split]),
+            y[indexes], baseline.predict(X[indexes]), len(parent_splits[split]), len(encounter_splits[split]),
         )
         metrics[split]["majority_class_baseline"]["training_majority_class"] = str(
             baseline.classes_[int(np.argmax(baseline.class_prior_))]
         )
+        # A transparent deterministic comparison rule, independent of the
+        # learned classifier. It is not the runtime safety guard.
+        simple_prediction = np.where(X[indexes, FEATURE_NAMES.index("miss_distance_km")] <= 1.0,
+                                     "significant", "insignificant")
+        metrics[split]["deterministic_miss_distance_baseline"] = _metrics(
+            y[indexes], simple_prediction, len(parent_splits[split]), len(encounter_splits[split]),
+        )
 
     split_counts = {
-        name: {"parent_event_count": len(parent_splits[name]), "scenario_count": int(len(indexes))}
+        name: {"parent_event_count": len(parent_splits[name]), "encounter_group_count": len(encounter_splits[name]), "scenario_count": int(len(indexes))}
         for name, indexes in partitions.items()
     }
     split_manifest = {
         "seed": SEED,
-        "grouping_key": "parent_event_id",
-        "split_strategy": "fixed-seed shuffled unique parent IDs; approximately 70/15/15",
+        "grouping_key": "encounter_group_id",
+        "split_strategy": "fixed-seed shuffled physical encounter groups; approximately 70/15/15",
+        "encounter_group_ids": encounter_splits,
         "parent_event_ids": parent_splits,
         "split_counts": split_counts,
     }
@@ -119,14 +130,26 @@ def train_smart_filter() -> dict[str, Any]:
         "dataset_sha256": dataset_sha256,
         "dataset_scenario_count": len(scenarios),
         "dataset_independent_parent_count": len({row["parent_event_id"] for row in scenarios}),
+        "dataset_independent_encounter_group_count": len({row["encounter_group_id"] for row in scenarios}),
         "feature_names": list(FEATURE_NAMES),
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
-        "grouping_strategy": "parent_event_id; scenario variants from one conjunction never cross partitions",
+        "grouping_strategy": "physical encounter group across saved screening jobs; all related parent events and scenario variants remain in one partition",
         "random_seed": SEED,
         "split_counts": split_counts,
         "scenario_split": split_manifest,
         "preprocessing": "median SimpleImputer in pipeline; fitted on train partition only",
         "metrics": metrics,
+        "usable_for_inference": (
+            metrics["test"]["macro_f1"] > metrics["test"]["majority_class_baseline"]["macro_f1"]
+            and metrics["test"]["macro_f1"] > metrics["test"]["deterministic_miss_distance_baseline"]["macro_f1"]
+            and metrics["test"]["false_negative_significant_count"]
+            < metrics["test"]["majority_class_baseline"]["false_negative_significant_count"]
+        ),
+        "baseline_comparison": {
+            "majority_baseline_macro_f1_beaten": metrics["test"]["macro_f1"] > metrics["test"]["majority_class_baseline"]["macro_f1"],
+            "deterministic_miss_distance_baseline_macro_f1_beaten": metrics["test"]["macro_f1"] > metrics["test"]["deterministic_miss_distance_baseline"]["macro_f1"],
+            "majority_baseline_false_negatives_beaten": metrics["test"]["false_negative_significant_count"] < metrics["test"]["majority_class_baseline"]["false_negative_significant_count"],
+        },
         "confidence_definition": "maximum random-forest significant-class vote fraction over the 12 configured covariance/HBR scenarios; not calibrated probability",
         "safety_guard_policy": {
             "miss_distance_threshold_km": 1.0,
@@ -138,12 +161,14 @@ def train_smart_filter() -> dict[str, Any]:
             "Generated variants do not increase the number of independent conjunctions.",
             "The safety guard is evaluated independently of classifier output.",
         ],
-        "training_date_utc": datetime.now(timezone.utc).isoformat(),
+        "training_timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
     METADATA_PATH.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return {
         "model_name": metadata["model_name"],
         "model_version": MODEL_VERSION,
+        "usable_for_inference": metadata["usable_for_inference"],
+        "baseline_comparison": metadata["baseline_comparison"],
         "target_definition": metadata["target_definition"],
         "dataset_scenario_count": len(scenarios),
         "dataset_independent_parent_count": metadata["dataset_independent_parent_count"],

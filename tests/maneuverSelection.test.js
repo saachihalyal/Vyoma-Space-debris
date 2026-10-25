@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { eligibleManeuverEvents, isCurrentManeuverRequest, maneuverAssessmentForSelection, maneuverPageState, resolveManeuverEvent, selectManeuverEvent } from "../src/utils/maneuverSelection.js";
+import { defaultManeuverEvent, eligibleManeuverEvents, isCurrentManeuverRequest, maneuverAssessmentForSelection, maneuverPageState, resolveManeuverEvent, selectManeuverEvent } from "../src/utils/maneuverSelection.js";
 
 const physical = { id: "EV-1", result_kind: "physics_assessment", physics_result: { status: "valid" } };
 const invalidPhysical = { id: "EV-invalid", result_kind: "physics_assessment", physics_result: { status: "invalid" } };
@@ -8,10 +8,19 @@ const proxy = { id: "SP-1", result_kind: "screening_proxy" };
 
 test("an explicitly selected proxy cannot fall through to an unrelated physical event", () => {
   assert.equal(resolveManeuverEvent(proxy, [physical]), null);
-  assert.equal(resolveManeuverEvent(null, [physical]), null);
+  assert.equal(resolveManeuverEvent(null, [physical]), physical);
   assert.equal(resolveManeuverEvent(invalidPhysical, [invalidPhysical]), invalidPhysical);
   assert.equal(selectManeuverEvent([invalidPhysical], invalidPhysical.id), invalidPhysical);
   assert.equal(resolveManeuverEvent(physical, [physical]), physical);
+});
+
+test("unselected maneuver event defaults to the highest exact research Pc", () => {
+  const events = [
+    { id: "lower", result_kind: "physics_assessment", physics_result: { status: "valid" }, automatic_research_pc_assessment: { log10_pc: -9 } },
+    { id: "higher", result_kind: "physics_assessment", physics_result: { status: "valid" }, automatic_research_pc_assessment: { log10_pc: -6 } },
+  ];
+  assert.equal(defaultManeuverEvent(events).id, "higher");
+  assert.equal(resolveManeuverEvent(null, events).id, "higher");
 });
 
 test("missing, malformed, and duplicate physical IDs are unavailable for maneuver selection", () => {

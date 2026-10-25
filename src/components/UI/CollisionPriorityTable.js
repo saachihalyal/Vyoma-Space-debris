@@ -79,7 +79,7 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
         React.createElement("h3", null, eventPair(event)),
         React.createElement("span", { className: `physics-status-badge ${valid ? "is-valid" : ""}` }, `Physics assessment: ${physics.status || "unavailable"}`)),
       React.createElement("div", { className: "conjunction-ai-score", "aria-label": `Prioritization index ${queueScore}${category ? `, model class ${category}` : ""}` },
-        React.createElement("span", null, deterministicGeometryIndex ? "Geometry/speed review index" : "AI prioritization index"),
+        React.createElement("span", null, "Review priority (rule-based)"),
         React.createElement("strong", null, queueScore),
         category ? React.createElement("b", null, category) : null)),
     React.createElement("div", { className: "conjunction-card-metrics" },
@@ -91,7 +91,7 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
       React.createElement(ProbabilityChannel, { label: "Event-specific Foster Pc", value: fosterAvailable ? probability(foster.pc) : "Unavailable", method: fosterAvailable ? `${foster.method || "Foster 2D"}; event-matched inputs` : "Requires compatible event covariance, frames, epochs, and sourced HBR" }),
       React.createElement(ProbabilityChannel, { label: "Assumption-based research Pc", value: research?.status === "prior_based_research_estimate" ? `${researchDisplay.value} Pc (${researchDisplay.percentage})` : "Unavailable", method: research?.status === "prior_based_research_estimate" ? `${research.covariance_policy_name || research.method_name}; sensitivity ${researchDisplay.sensitivity}` : researchDisplay.reason })),
     React.createElement("div", { className: "conjunction-card-ai" },
-      React.createElement("strong", null, `${deterministicGeometryIndex ? "Geometry/speed review index" : "AI queue index"}: ${queueScore}${category ? ` · ${category}` : ""}`),
+      React.createElement("strong", null, `Review priority (rule-based): ${queueScore}${category ? ` · ${category}` : ""}`),
       React.createElement("span", null, `${ai?.model_name || "No AI prioritization assessment"}${ai?.model_version ? ` v${ai.model_version}` : ""}; ${ai?.prediction_method || "method unavailable"}`),
       React.createElement("small", null, ai ? `${ai.explanation || "No explanation supplied."} Deterministic prioritization index; not a probability or trained live collision predictor.` : "A score is withheld because valid event geometry and relative speed are unavailable.")),
     React.createElement("details", { className: "conjunction-collision-models" },
@@ -123,7 +123,7 @@ function EventCard({ event, rank, onSelect, onShowInGlobe, onAssessManeuver, scr
         React.createElement("dt", null, "Foster method and provenance"), React.createElement("dd", null, fosterAvailable ? `${foster.method || "Foster 2D"}; event ID ${foster.event_id}; ${JSON.stringify(foster.provenance || {})}` : `${operationalFosterStatus(event, fosterAvailable)} Reason codes: ${(foster.reason_codes || []).join(", ") || "not supplied"}. No covariance, HBR, or Pc was inferred.`),
         React.createElement("dt", null, "Research estimate assumptions"), React.createElement("dd", null, research?.status === "prior_based_research_estimate" ? `${(research.assumptions || []).join(" ")} ${researchDisplay.reason} Provenance: ${research.provenance?.source || "ESA-derived prior"}; ${research.method_name || "research method"} v${research.method_version || "unknown"}. Not operational Pc.` : `${researchDisplay.reason} ${(research?.reason_codes || []).join(", ")}`),
         React.createElement("dt", null, "Source Pc provenance"), React.createElement("dd", null, sourcePc !== null ? `${foster.source_reported_pc_method || event.source_reported_pc_method || "method undeclared"}; ${sourceProvenance.source || "source unavailable"}; authenticated ${sourceProvenance.authenticated === true ? "yes" : "no / unverified"}` : "No event-matched source value."),
-        React.createElement("dt", null, "Priorities and classification"), React.createElement("dd", null, `${deterministicGeometryIndex ? "Geometry/speed review index" : "AI queue index"} ${queueScore}${category ? `, AI class ${category}` : ""} (${ai?.model_name || "method unavailable"}); Foster Pc class ${fosterAvailable ? foster.probability_classification?.category || "not classified" : "not available"}; geometry review priority is not a Pc class.`),
+        React.createElement("dt", null, "Priorities and classification"), React.createElement("dd", null, `Review priority (rule-based) ${queueScore} (${ai?.model_name || "method unavailable"}); Foster Pc class ${fosterAvailable ? foster.probability_classification?.category || "not classified" : "not available"}; geometry review priority is not a Pc class.`),
         React.createElement("dt", null, "Trajectory source"), React.createElement("dd", null, `${provenance.source || "source unavailable"}; ${provenance.propagator || provenance.method || "propagator unavailable"}; frame ${provenance.reference_frame || physics.encounter_geometry?.frame || "unavailable"}; catalog timestamp ${provenance.source_timestamp || "unavailable"}`))));
   return card;
 }

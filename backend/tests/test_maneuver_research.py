@@ -10,8 +10,10 @@ from unittest.mock import AsyncMock, Mock, patch
 from fastapi.testclient import TestClient
 
 from app import main
-from app.models import CollisionProbabilityResult, ComparisonResult, ConjunctionAssessmentEvent, MLResult, ObjectSummary, OrbitalAnomalyResult, PhysicsResult, Provenance, ScientificField
-from app.services.conjunction import _propagate_samples, _refine_sampled_minimum, _rk4, optimize_maneuver
+from app.models import AutomaticResearchPcAssessment, CollisionProbabilityResult, ComparisonResult, ConjunctionAssessmentEvent, MLResult, ObjectSummary, OrbitalAnomalyResult, PhysicsResult, Provenance, ScientificField
+from app.services.conjunction import _maneuver_research_pc, _propagate_samples, _refine_sampled_minimum, _rk4, optimize_maneuver
+from app.services.automatic_research_pc import assess_automatic_research_pc
+from app.ai.collision_training import read_parent_events
 from app.services.orbit import propagate_records
 from app.services.tle_provider import parse_tle_text
 import app.services.trajectory_screening as trajectory_screening
@@ -135,6 +137,41 @@ def _event():
 
 
 class ResearchManeuverTests(unittest.TestCase):
+    def test_maneuver_baseline_matches_collision_analysis_for_every_valid_saved_parent(self):
+        _snapshot, events = read_parent_events()
+        compared = 0
+        for event in events:
+            assessment = event.automatic_research_pc_assessment
+            if assessment is None or assessment.status != "prior_based_research_estimate":
+                assessment = assess_automatic_research_pc(
+                    event.physics_result, event.collision_probability, event.review_priority,
+                    primary=event.primary, secondary=event.secondary,
+                )
+                event = event.model_copy(update={"automatic_research_pc_assessment": assessment})
+            self.assertEqual(assessment.status, "prior_based_research_estimate", event.id)
+            maneuver_baseline = _maneuver_research_pc(event, {"delta_v_m_s": 0.0}, covariance_scale=1.0)
+            self.assertEqual(maneuver_baseline["status"], "available", event.id)
+            self.assertEqual(maneuver_baseline["pc_scientific"], assessment.estimated_pc_scientific, event.id)
+            self.assertEqual(maneuver_baseline["log10_pc"], assessment.log10_pc, event.id)
+            self.assertEqual(maneuver_baseline["hbr_km"], assessment.hbr_km, event.id)
+            self.assertEqual(maneuver_baseline["comparison_role"], "collision_analysis_research_pc_record", event.id)
+            compared += 1
+        self.assertEqual(compared, 118)
+
+    def test_zero_burn_baseline_reuses_selected_collision_analysis_research_pc(self):
+        event = _event()
+        event.automatic_research_pc_assessment = AutomaticResearchPcAssessment(
+            status="prior_based_research_estimate", quality_status="prior_based_unvalidated",
+            estimated_pc=2.5e-7, estimated_pc_scientific="2.500000e-7", log10_pc=math.log10(2.5e-7),
+            covariance_policy_id="tle_age_baseline", covariance_method="configured TLE-age policy",
+            hbr_method="assumed object-size HBR", hbr_km=0.001,
+        )
+        baseline = optimize_maneuver(event, lead_seconds=180, burn_magnitudes_m_s=(0.01,), refine_candidates=False)["probability_before"]
+        self.assertEqual(baseline["comparison_role"], "collision_analysis_research_pc_record")
+        self.assertEqual(baseline["pc_scientific"], event.automatic_research_pc_assessment.estimated_pc_scientific)
+        self.assertEqual(baseline["log10_pc"], event.automatic_research_pc_assessment.log10_pc)
+        self.assertEqual(baseline["event_id"], event.id)
+
     def test_user_maneuver_upload_validates_json_and_csv_state_requirements(self):
         event = _event()
         event.provenance.source_type = "user_supplied"
@@ -223,9 +260,9 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(result["physics_candidate_status"], "evaluated")
         self.assertEqual(result["status"], "available_with_warning")
         self.assertEqual(result["ml_result"]["status"], "fallback_physics_ranking")
-        self.assertEqual(result["ml_result"]["reason_code"], "LIVE_RESEARCH_PC_CONFIRMATION_UNAVAILABLE")
+        self.assertEqual(result["ml_result"]["reason_code"], "HELD_OUT_RANKING_NOT_USEFUL_VS_BASELINE")
         self.assertEqual(result["ml_result"]["model_name"], "ORION physics-supervised maneuver research-Pc reduction ranker")
-        self.assertEqual(result["ml_result"]["model_version"], "1.0.0")
+        self.assertEqual(result["ml_result"]["model_version"], "2.0.0")
         self.assertEqual(result["ml_result"]["score_units"], "log10 ratio; positive predicts reduction")
         self.assertEqual(result["ml_result"]["provenance"]["source_event_id"], event.id)
         scored = [row for row in result["candidates"] if row.get("maneuver_ml_predicted_log10_pc_reduction") is not None]
@@ -233,9 +270,9 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertTrue(all(row.get("maneuver_ml_rank") is None for row in result["candidates"]))
         self.assertTrue(all(row["maneuver_ml_status"] == "physics_fallback_rank" for row in scored))
         evaluation = result["ml_result"]["evaluation_summary"]
-        self.assertEqual(evaluation["held_out_scenario_count"], 9)
-        self.assertAlmostEqual(evaluation["top1_agreement_with_physics_best"], 1 / 3)
-        self.assertLess(evaluation["model_mean_regret_log10_pc_reduction"], evaluation["baseline_mean_regret_log10_pc_reduction"])
+        self.assertEqual(evaluation["held_out_scenario_count"], 8)
+        self.assertAlmostEqual(evaluation["top1_agreement_with_physics_best"], 0.625)
+        self.assertGreater(evaluation["model_mean_regret_log10_pc_reduction"], evaluation["baseline_mean_regret_log10_pc_reduction"])
         self.assertEqual(result["candidates"][0]["direction"], "zero-burn baseline")
         self.assertIsNone(result["candidates"][0]["maneuver_ml_rank"])
         self.assertTrue(all(isinstance(row["predicted_miss_distance_km"], (int, float)) for row in result["candidates"]))
@@ -355,12 +392,31 @@ class ResearchManeuverTests(unittest.TestCase):
             event.physics_result.primary_state_at_tca["provenance"]["method"],
             "SGP4 TLE propagation",
         )
+        research_pc = assess_automatic_research_pc(
+            event.physics_result, event.collision_probability, event.review_priority,
+            primary=event.primary, secondary=event.secondary,
+        )
+        self.assertEqual(research_pc.status, "prior_based_research_estimate")
+        event = event.model_copy(update={"automatic_research_pc_assessment": research_pc})
 
         first = optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,))
         second = optimize_maneuver(event, lead_seconds=300, burn_magnitudes_m_s=(0.01,))
         self.assertEqual(first["status"], "available_with_warning")
         self.assertEqual(first["candidates"], second["candidates"])
         baseline = first["candidates"][0]
+        self.assertEqual(first["probability_before"]["comparison_role"], "collision_analysis_research_pc_record")
+        self.assertEqual(first["probability_before"]["pc_scientific"], research_pc.estimated_pc_scientific)
+        evaluated_candidate = next(row for row in first["candidates"] if row["direction"] == "along-track +")
+        after_pc = evaluated_candidate["research_pc_after"]
+        self.assertEqual(after_pc["status"], "available")
+        self.assertTrue(after_pc["provenance"]["fixed_comparison_uncertainty"])
+        self.assertEqual(len(after_pc["provenance"]["fixed_covariance_matrix_sha256"]), 2)
+        self.assertEqual(
+            after_pc["provenance"]["fixed_covariance_matrix_sha256"],
+            research_pc.provenance["central_covariance_matrix_sha256"],
+        )
+        self.assertEqual(after_pc["hbr_km"], research_pc.hbr_km)
+        self.assertTrue(math.isfinite(evaluated_candidate["research_pc_reduction_log10"]))
         comparison = first["baseline_reference_comparison"]
         self.assertEqual(baseline["direction"], "zero-burn baseline")
         self.assertEqual(baseline["closest_approach_utc"], event.physics_result.tca.value)
@@ -744,7 +800,7 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(result["probability_before"]["status"], "unavailable")
         self.assertEqual(result["probability_after"]["status"], "unavailable")
         self.assertIsNotNone(result["fuel_cost_kg"])
-        self.assertTrue(any("ESA-prior covariance/HBR" in item for item in result["limitations"]))
+        self.assertTrue(any("configured TLE-age covariance/HBR" in item for item in result["limitations"]))
         self.assertTrue(any("configurable default spacecraft assumptions" in item for item in result["limitations"]))
         along_track = next(row for row in result["candidates"] if row["direction"] == "along-track +")
         sanity = along_track["along_track_sanity_check"]
@@ -874,8 +930,8 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(maneuver_ml["provenance"]["source_event_id"], event.id)
         self.assertEqual(maneuver_ml["provenance"]["screening_job_id"], job_id)
         self.assertEqual(maneuver_ml["score_units"], "log10 ratio; positive predicts reduction")
-        self.assertEqual(maneuver_ml["evaluation_summary"]["held_out_scenario_count"], 9)
-        self.assertLess(
+        self.assertEqual(maneuver_ml["evaluation_summary"]["held_out_scenario_count"], 8)
+        self.assertGreater(
             maneuver_ml["evaluation_summary"]["model_mean_regret_log10_pc_reduction"],
             maneuver_ml["evaluation_summary"]["baseline_mean_regret_log10_pc_reduction"],
         )
@@ -954,12 +1010,12 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertRegex(pdf_text, r"change from\) Tj\n/F1 13 Tf\n0 -18 Td\n\(zero-burn\) Tj")
         self.assertIn(b"Maneuver ML status: fallback_physics_ranking", assessment_pdf.content)
         # The loaded maneuver model supplies its actual held-out evaluation;
-        # the PDF wraps "51 candidates" across a line boundary.
-        self.assertIn(b"9 parents", assessment_pdf.content)
-        self.assertIn(b"51) Tj", assessment_pdf.content)
+        # the PDF wraps "38 candidates" across a line boundary.
+        self.assertIn(b"8 parents", assessment_pdf.content)
+        self.assertIn(b"38) Tj", assessment_pdf.content)
         self.assertIn(b"(candidates; within-parent Spearman", assessment_pdf.content)
         self.assertIn(b"ORION physics-supervised maneuver", assessment_pdf.content)
-        self.assertIn(b"research-Pc reduction ranker v1.0.0", assessment_pdf.content)
+        self.assertIn(b"research-Pc reduction ranker v2.0.0", assessment_pdf.content)
         self.assertIn(b"Maneuver ML provenance:", assessment_pdf.content)
         self.assertIn(f"Maneuver event ID: {event.id}".encode(), assessment_pdf.content)
         self.assertIn(f"Maneuver screening job ID: {job_id}".encode(), assessment_pdf.content)

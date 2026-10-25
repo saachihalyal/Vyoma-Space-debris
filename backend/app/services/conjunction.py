@@ -4,6 +4,7 @@ import hashlib
 import math
 import os
 from decimal import Decimal, InvalidOperation
+from decimal import localcontext
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -23,7 +24,7 @@ from app.models import (
 )
 from app.services.risk import derived_provenance
 from app.services.object_classification import pair_type_for
-from app.services.automatic_research_pc import assess_automatic_research_pc
+from app.services.automatic_research_pc import assess_automatic_research_pc, maneuver_baseline_covariances
 
 
 SCREENING_METHOD = "same-shell catalog-pair heuristic screening proxy"
@@ -231,6 +232,7 @@ def optimize_maneuver(
     specific_impulse_s: float | None = None,
     refine_candidates: bool = True,
     rtn_direction: str = "all",
+    covariance_scale: float = 1.0,
 ) -> dict[str, Any]:
     """Bounded exploratory two-body search and local delta-v refinement; not flight dynamics software."""
     event_id = event.id if isinstance(event, (ScreeningProxyEvent, ConjunctionAssessmentEvent)) else str(event.get("id", ""))
@@ -260,12 +262,12 @@ def optimize_maneuver(
         "probability_after": None,
         "probability_status": "unavailable",
         "probability_reason_code": "REAL_TLE_PRIOR_INPUTS_AND_VALID_CANDIDATE_TCA_REQUIRED",
-        "probability_reason": "Comparable before/after research Pc requires valid candidate states and TLE epochs for the ESA-prior covariance/HBR estimator.",
+        "probability_reason": "Comparable before/after research Pc requires valid candidate states and TLE epochs for the configured research covariance/HBR estimator.",
         "miss_distance_before_m": None,
         "miss_distance_after_m": None,
         "trajectory": None,
         "limitations": [
-            "Before/after research Pc uses the same ESA-prior covariance/HBR method assigned at each calculated TCA; covariance is not propagated from TLE epoch or with burn-execution error.",
+            "Before/after research Pc uses the same configured TLE-age covariance/HBR policy and scale; covariance is assigned at each calculated TCA rather than dynamically propagated, and burn-execution error is set to zero.",
             "When mass or specific impulse is omitted, fuel uses configurable default spacecraft assumptions and is labeled as an estimate.",
             "No operational recommendation or risk reduction is calculated.",
         ],
@@ -446,6 +448,11 @@ def optimize_maneuver(
         base["reason_code"] = "MANEUVER_CONFIGURATION_OUT_OF_BOUNDS"
         base["reason"] = "Lead time must be 60–1800 s; one to four burn magnitudes must each be greater than 0 and at most 0.1 m/s."
         return base
+    if (isinstance(covariance_scale, bool) or not isinstance(covariance_scale, (int, float))
+            or not math.isfinite(covariance_scale) or not 0.5 <= covariance_scale <= 3.0):
+        base["reason_code"] = "MANEUVER_COVARIANCE_SCALE_OUT_OF_BOUNDS"
+        base["reason"] = "Covariance scale must be between 0.5 and 3.0, inclusive."
+        return base
     burn_magnitudes_m_s = magnitudes
     mu, step = 398600.4418, MANEUVER_SEARCH_SAMPLE_SECONDS
     burn_epoch = tca_datetime.astimezone(timezone.utc) - timedelta(seconds=lead_seconds)
@@ -533,7 +540,7 @@ def optimize_maneuver(
             row["change_from_zero_burn_km"] = row["predicted_miss_distance_km"] - baseline_miss
             row["change_from_zero_burn_baseline_percent"] = (100.0 * row["change_from_zero_burn_km"] / baseline_miss) if baseline_miss > 0 else None
             row["source_sgp4_miss_distance_km"] = reference_miss_distance
-        pc_results = [_maneuver_research_pc(event, row) for row in result_rows]
+        pc_results = [_maneuver_research_pc(event, row, covariance_scale=covariance_scale) for row in result_rows]
         baseline_pc = pc_results[0]
         for row, pc_result in zip(result_rows, pc_results):
             row["research_pc_after"] = pc_result
@@ -723,7 +730,10 @@ def optimize_maneuver(
         "candidates": result_rows[1:],
         "limitations": "Two-body simulator candidates; no J2, drag, third-body, covariance, execution error, attitude, or propulsion constraints.",
     }
-    probability_before = {**baseline_pc, "event_id": event_id, "comparison_role": "zero_burn_two_body_baseline"}
+    probability_before = {
+        **baseline_pc, "event_id": event_id,
+        "comparison_role": baseline_pc.get("comparison_role", "zero_burn_two_body_baseline"),
+    }
     probability_after = ({
         **best_pc_candidate["research_pc_after"], "event_id": event_id,
         "comparison_role": "best_research_pc_reduction_candidate",
@@ -774,7 +784,9 @@ def optimize_maneuver(
         "zero_burn_baseline": zero_burn_baseline,
         "physics_candidates": physics_candidates,
         "surrogate_rank": surrogate_rank,
-        "candidate_interpretation": "Candidate geometry changes are relative to the zero-burn two-body simulation. Research Pc before and after uses the same ESA-prior covariance/HBR method assigned at each calculated TCA. Covariance is not propagated from the TLE epoch and burn-execution error is not modeled. Neither output is an operational maneuver recommendation.",
+        "candidate_interpretation": "Candidate geometry changes are relative to the zero-burn two-body simulation. Baseline Pc at scale 1 reuses the selected event's Collision Analysis research-Pc record; candidate Pc uses the same configured TLE-age covariance policy, scale, and HBR selection. Covariance is assigned at each TCA rather than propagated; burn-execution error is zero and not modeled. Neither output is an operational maneuver recommendation.",
+        "covariance_scale": float(covariance_scale),
+        "percentage_reduction_policy": "Computed from exact before/after log10(Pc): 100 * (1 - 10^(after_log10_pc - before_log10_pc)); this remains defined for a negligible baseline. Absolute reduction is shown as < 1e-30 when below the documented Pc display floor.",
         "candidates": result_rows,
         "ml_result": maneuver_ml,
         "baseline_reference_comparison": baseline_comparison,
@@ -795,11 +807,42 @@ def optimize_maneuver(
     }
 
 
-def _maneuver_research_pc(event: ConjunctionAssessmentEvent, candidate: dict[str, Any]) -> dict[str, Any]:
+def _maneuver_research_pc(event: ConjunctionAssessmentEvent, candidate: dict[str, Any], *, covariance_scale: float = 1.0) -> dict[str, Any]:
     """Evaluate comparable prior-based research Pc at the candidate's own TCA."""
     if candidate.get("objective_status") == "search_boundary_minimum":
         return {"status": "unavailable", "pc": None, "reason_code": "CLOSEST_APPROACH_AT_SEARCH_BOUNDARY"}
+    selected_research = event.automatic_research_pc_assessment
+    if (candidate.get("delta_v_m_s") == 0 and covariance_scale == 1.0
+            and selected_research is not None
+            and selected_research.status == "prior_based_research_estimate"
+            and isinstance(selected_research.log10_pc, (int, float))):
+        return {
+            "status": "available", "pc": selected_research.estimated_pc,
+            "pc_scientific": selected_research.estimated_pc_scientific,
+            "log10_pc": float(selected_research.log10_pc),
+            "tca_utc": event.physics_result.tca.value,
+            "miss_distance_km": event.physics_result.miss_distance.value,
+            "method": selected_research.method_name,
+            "method_version": selected_research.method_version,
+            "covariance_method": selected_research.covariance_method,
+            "hbr_method": selected_research.hbr_method,
+            "hbr_km": selected_research.hbr_km,
+            "provenance": selected_research.provenance,
+            "assumptions": selected_research.assumptions,
+            "covariance_assignment": "Exact selected-event Collision Analysis research-Pc record; TLE-age baseline policy, configured covariance scale 1.0, and selected-event HBR.",
+            "comparison_role": "collision_analysis_research_pc_record",
+        }
     try:
+        selected_policy = (selected_research.covariance_policy_id if selected_research is not None
+                           and selected_research.covariance_policy_id else "tle_age_baseline")
+        fixed_covariances = None
+        fixed_hbr_km = None
+        if selected_research is not None and selected_research.status == "prior_based_research_estimate":
+            fixed_covariances = maneuver_baseline_covariances(
+                event.physics_result, event.primary, event.secondary,
+                covariance_scale, selected_policy,
+            )
+            fixed_hbr_km = selected_research.hbr_km
         tca = candidate["closest_approach_utc"]
         p = candidate["primary_state_at_closest_approach"]
         s = candidate["secondary_state_at_closest_approach"]
@@ -820,6 +863,8 @@ def _maneuver_research_pc(event: ConjunctionAssessmentEvent, candidate: dict[str
         })
         research = assess_automatic_research_pc(
             physics, None, event.review_priority or ReviewPriority(), event.primary, event.secondary,
+            covariance_scale=covariance_scale, covariance_policy=selected_policy,
+            fixed_covariance_inputs=fixed_covariances, fixed_hbr_km=fixed_hbr_km,
         )
         scientific = research.estimated_pc_scientific
         if research.status != "prior_based_research_estimate" or not isinstance(scientific, str):
@@ -836,7 +881,9 @@ def _maneuver_research_pc(event: ConjunctionAssessmentEvent, candidate: dict[str
             "covariance_method": research.covariance_method, "hbr_method": research.hbr_method,
             "hbr_km": research.hbr_km, "provenance": research.provenance,
             "assumptions": research.assumptions,
-            "covariance_assignment": "ESA population-prior covariance re-assigned consistently at each candidate TCA; no covariance propagation from TLE epoch or burn-execution covariance",
+            "covariance_assignment": (f"Exact selected-event baseline TEME covariance matrix and HBR ({fixed_hbr_km:g} km) reused for every candidate; covariance matrix remains fixed while the mean relative state changes; scale {covariance_scale:g}."
+                                      if fixed_covariances is not None and fixed_hbr_km is not None else
+                                      f"Same {research.covariance_policy_id} policy and event-derived HBR selection at candidate TCA; no burn-execution covariance."),
         }
     except (KeyError, TypeError, ValueError, OverflowError, AttributeError) as exc:
         return {"status": "unavailable", "pc": None, "reason_code": f"RESEARCH_PC_CANDIDATE_INVALID_{type(exc).__name__}"}
@@ -852,9 +899,15 @@ def _pc_absolute_reduction(before: dict[str, Any], after: dict[str, Any]) -> str
     if before.get("status") != "available" or after.get("status") != "available":
         return None
     try:
-        value = Decimal(before["pc_scientific"]) - Decimal(after["pc_scientific"])
+        with localcontext() as context:
+            context.prec = 40
+            baseline_log = Decimal(str(before["log10_pc"]))
+            candidate_log = Decimal(str(after["log10_pc"]))
+            value = (Decimal(10) ** baseline_log) - (Decimal(10) ** candidate_log)
+        if abs(value) < Decimal("1e-30"):
+            return "< 1e-30"
         return f"{value:.6E}"
-    except (InvalidOperation, ValueError, OverflowError):
+    except (InvalidOperation, KeyError, TypeError, ValueError, OverflowError):
         return None
 
 
@@ -862,12 +915,11 @@ def _pc_percentage_reduction(before: dict[str, Any], after: dict[str, Any]) -> f
     if before.get("status") != "available" or after.get("status") != "available":
         return None
     try:
-        before_pc, after_pc = Decimal(before["pc_scientific"]), Decimal(after["pc_scientific"])
-        if before_pc <= 0:
-            return None
-        result = float(Decimal(100) * (Decimal(1) - after_pc / before_pc))
+        difference = float(after["log10_pc"]) - float(before["log10_pc"])
+        ratio = math.pow(10.0, difference) if difference > -323.0 else 0.0
+        result = 100.0 * (1.0 - ratio)
         return result if math.isfinite(result) else None
-    except (InvalidOperation, ValueError, OverflowError, ZeroDivisionError):
+    except (KeyError, TypeError, ValueError, OverflowError, ZeroDivisionError):
         return None
 
 
@@ -927,12 +979,12 @@ def _maneuver_event_context(event: ConjunctionAssessmentEvent) -> dict[str, Any]
             "hbr_km": pc.hbr_km if pc is not None else (research.hbr_km if research is not None else None),
             "hbr_source": pc.hbr_source if pc is not None else ("ESA_prior_assumed" if research is not None and research.status == "prior_based_research_estimate" else "unavailable"),
             "hbr_provenance": pc.hbr_provenance if pc is not None else (research.provenance if research is not None else None),
-            "post_burn_covariance_propagation": "not_dynamically_propagated; the same ESA-prior covariance/HBR method is assigned at each calculated candidate TCA",
+            "post_burn_covariance_propagation": "not_dynamically_propagated; the same configured TLE-age covariance/HBR policy and scale is assigned at each candidate TCA",
         },
         "data_quality_limitations": [
             "Candidate trajectories are Earth two-body RK4 simulations; they omit J2, drag, third-body effects, controls, and burn execution error.",
-            "Research Pc uses the same ESA-prior covariance/HBR policy assigned at each TCA; uncertainty is not dynamically propagated from TLE epoch.",
-            "Source-reported Pc, event-specific Foster Pc, prior-based research Pc, and AI queue index remain separate evidence.",
+            "Research Pc uses the same configured TLE-age covariance/HBR policy and scale at each TCA; uncertainty is not dynamically propagated from TLE epoch.",
+            "Source-reported Pc, event-specific Foster Pc, prior-based research Pc, and rule-based review priority remain separate evidence.",
             "This is a simulated candidate search, not an executed or operationally validated maneuver.",
         ],
     }
