@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -80,6 +80,7 @@ import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentat
 import { ManeuverAiSummary } from "./components/UI/ManeuverAiSummary.js";
 import { ManeuverScreeningContext } from "./components/UI/ManeuverScreeningContext.js";
 import { ManeuverUserUpload } from "./components/UI/ManeuverUserUpload.jsx";
+import { ManeuverWorkbench } from "./components/UI/ManeuverWorkbench.jsx";
 import { BuildVersionBadge } from "./components/UI/BuildVersionBadge.jsx";
 import { buildSmartFilterView } from "./utils/smartFilterView";
 import { catalogHoverDetails } from "./utils/catalogHover.js";
@@ -735,7 +736,7 @@ export default function App() {
               onShowInGlobe={handleShowInGlobe}
             />
           ) : null}
-          {activePage === "maneuver" ? <ManeuverPage event={maneuverEvent} events={platform.conjunctions} screeningJobId={platform.conjunctionStatus?.job_id} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); selectEvent(selectManeuverEvent(platform.conjunctions, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: platform.conjunctionStatus?.job_id || null })} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} onClearReferenceEvent={() => setReferenceManeuverEvent(null)} /> : null}
+          {activePage === "maneuver" ? <ManeuverWorkbench event={maneuverEvent} events={platform.conjunctions} screeningJobId={platform.conjunctionStatus?.job_id} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); selectEvent(selectManeuverEvent(platform.conjunctions, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: platform.conjunctionStatus?.job_id || null })} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} onClearReferenceEvent={() => setReferenceManeuverEvent(null)} /> : null}
           {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics} events={platform.screeningProxies} snapshot={snapshot} /> : null}
           {activePage === "reports" ? <ReportsPage
             event={topEvent}
@@ -1506,164 +1507,8 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   );
 }
 
-export function ManeuverPage({ event, events = [], screeningJobId, screeningStatus, screeningAttempt, onSelectEvent = () => {}, onRunManeuver = () => {}, maneuver, download, referenceEvent = null, onClearReferenceEvent = () => {} }) {
-  const [leadSeconds, setLeadSeconds] = useState("300");
-  const [maxDeltaVMs, setMaxDeltaVMs] = useState("0.1");
-  const [rtnDirection, setRtnDirection] = useState("all");
-  const [initialMassKg, setInitialMassKg] = useState("");
-  const [specificImpulseS, setSpecificImpulseS] = useState("");
-  const [covarianceScale, setCovarianceScale] = useState("1");
-  const [configurationError, setConfigurationError] = useState("");
-  const pageState = maneuverPageState(event, events, screeningStatus);
-  const selectableEvents = pageState.selectable_events;
-  const selectedEvent = pageState.selected_event;
-  const m = selectedEvent
-    ? maneuverAssessmentForSelection(maneuver, screeningJobId, selectedEvent) || {
-      status: "not_run",
-      reason: "Configure the bounded search and select Run Maneuver Search.",
-    }
-    : {};
-  const physicsCandidates = (m.physics_candidates?.candidates || (m.candidates || []).slice(1)).slice().sort((left, right) => (left.physics_research_pc_rank ?? 9999) - (right.physics_research_pc_rank ?? 9999));
-  const maneuverCandidateRows = m.ml_result?.ranking_used
-    ? physicsCandidates.slice().sort((left, right) => (left.maneuver_ml_rank ?? 9999) - (right.maneuver_ml_rank ?? 9999))
-    : physicsCandidates;
-  const bestCandidate = m.best_candidate || null;
-  const baseline = m.zero_burn_baseline || {};
-  const maneuverBusy = m.status === "running";
-  function submitManeuverSearch(submitEvent) {
-    submitEvent.preventDefault();
-    if ((initialMassKg === "") !== (specificImpulseS === "")) {
-      setConfigurationError("Enter both initial mass and specific impulse, or leave both empty.");
-      return;
-    }
-    setConfigurationError("");
-    onRunManeuver({
-      leadSeconds: Number(leadSeconds),
-      maxDeltaVMs: Number(maxDeltaVMs),
-      rtnDirection,
-      initialMassKg: initialMassKg === "" ? null : Number(initialMassKg),
-      specificImpulseS: specificImpulseS === "" ? null : Number(specificImpulseS),
-      covarianceScale: Number(covarianceScale),
-    });
-  }
-  return (
-    <div className="page-stack">
-      <PageHeader
-        eyebrow="Bounded two-body research simulation"
-        title="Maneuver Assessment"
-        text="Compare a bounded set of impulsive RTN burns against a zero-burn two-body baseline. This simplified research simulation is not an operational maneuver recommendation."
-        action={<div className="report-action-group" aria-label="Maneuver report downloads">{["pdf", "csv", "json"].map((format) => <button className={format === "pdf" ? "primary-action" : "secondary-action"} type="button" key={format} disabled={selectedEvent?.physics_result?.status !== "valid" || !screeningJobId || !["available", "available_with_warning"].includes(m.status)} title={!m.status || !["available", "available_with_warning"].includes(m.status) ? "Run and complete the maneuver assessment to export its report." : undefined} onClick={() => selectedEvent && download(selectedManeuverReportPath(screeningJobId, selectedEvent.id, format), `${selectedEvent.id}-maneuver-assessment.${format}`)}>Download {format.toUpperCase()}</button>)}</div>}
-      />
-      <ManeuverScreeningContext screeningJobId={screeningJobId} screeningStatus={screeningStatus} screeningAttempt={screeningAttempt} />
-      <ManeuverUserUpload download={download} />
-      {referenceEvent ? <ReferenceManeuverAssessment referenceEvent={referenceEvent} download={download} onClear={onClearReferenceEvent} /> : null}
-      <Panel title="Accepted Stage 2A Event" icon={Rocket}>
-        {selectableEvents.length ? <label className="maneuver-event-select">
-          <span>Select a trajectory-derived event</span>
-          <select value={selectedEvent?.id || ""} onChange={(e) => onSelectEvent(e.target.value)}>
-            <option value="" disabled>Select an event…</option>
-            {selectableEvents.map((item) => <option key={item.id} value={item.id}>{item.id} · {item.primary?.name || item.primary?.id} vs {item.secondary?.name || item.secondary?.id}{item.physics_result?.status === "valid" ? " · valid" : ` · ${item.physics_result?.status || "unavailable"}`}</option>)}
-          </select>
-          <small>The event with the highest exact research log10 Pc is selected by default after an accepted run. Choose another returned event here; invalid events remain reviewable but cannot produce maneuver candidates. Partial runs have incomplete catalog coverage.</small>
-        </label> : <EmptyState title={pageState.empty_title} text={pageState.empty_text} />}
-      </Panel>
-      {selectedEvent ? <Panel title="Catalog object type" icon={ShieldCheck}>
-        <p className="muted">Object type comes from explicit catalog metadata or a documented CelesTrak group fallback. It is not collision-risk severity.</p>
-        <div className="object-classification-grid">{[selectedEvent.primary, selectedEvent.secondary].map((object) => <div key={object.id}>
-          <strong>{object.name || object.id} · {object.id}</strong>
-          <span>{object.object_type || "UNKNOWN"} · category {object.category || "unknown"}</span>
-          <small>Classification source: {object.classification_source || "unavailable"}{object.source_classification ? ` · raw source class: ${object.source_classification}` : ""}</small>
-        </div>)}</div>
-      </Panel> : null}
-      {selectedEvent ? <ManeuverEventContext event={selectedEvent} context={m.event_context} /> : null}
-      {!selectedEvent ? null : <>
-      {selectedEvent.physics_result?.status !== "valid" ? <Panel title="Stage 2A Validation" icon={Target}>
-        <p className="muted">This selected event is invalid or unavailable for maneuver simulation. No candidate burns or recommendations are produced.</p>
-        {(selectedEvent.physics_result?.reason_codes || []).map((code) => <p key={code}><strong>{code}</strong></p>)}
-      </Panel> : null}
-      {selectedEvent.physics_result?.status === "valid" ? <Panel title="Maneuver Search Configuration" icon={Rocket}>
-        <form className="maneuver-search-form" onSubmit={submitManeuverSearch}>
-          <label>Burn lead before baseline TCA (s)<input type="number" min="60" max="1800" step="1" required value={leadSeconds} onChange={(e) => setLeadSeconds(e.target.value)} /></label>
-          <label>Maximum Δv (m/s)<input type="number" min="0.0001" max="0.1" step="any" required value={maxDeltaVMs} onChange={(e) => setMaxDeltaVMs(e.target.value)} /></label>
-          <label>RTN direction to assess<select value={rtnDirection} onChange={(e) => setRtnDirection(e.target.value)}><option value="all">All six signed axes</option><option value="radial_plus">Radial +</option><option value="radial_minus">Radial −</option><option value="along_track_plus">Along-track +</option><option value="along_track_minus">Along-track −</option><option value="cross_track_plus">Cross-track +</option><option value="cross_track_minus">Cross-track −</option></select></label>
-          <label>Uncertainty scale (same before and after)<select value={covarianceScale} onChange={(e) => setCovarianceScale(e.target.value)}><option value="0.5">0.5×</option><option value="1">1× (baseline)</option><option value="2">2×</option><option value="3">3×</option></select></label>
-          <label>Initial mass (kg), optional<input type="number" min="0.0001" step="any" value={initialMassKg} onChange={(e) => setInitialMassKg(e.target.value)} /></label>
-          <label>Specific impulse (s), optional<input type="number" min="0.0001" max="2000" step="any" value={specificImpulseS} onChange={(e) => setSpecificImpulseS(e.target.value)} /></label>
-          <button className="primary-action" type="submit" disabled={!screeningJobId || maneuverBusy}>{maneuverBusy ? "Searching…" : "Run Maneuver Search"}</button>
-        </form>
-        {configurationError ? <p role="alert" className="muted">{configurationError}</p> : null}
-        <p className="muted">Leave both fuel fields empty to use configurable defaults (500 kg and 220 s), clearly labeled as estimated assumptions. Supply both values to use spacecraft-specific inputs.</p>
-        <p className="muted">The search applies impulses to the primary object's Cartesian state in its burn-epoch RTN frame. It samples six signed RTN axes, refines promising magnitudes, and searches encounter geometry from burn epoch through 30 minutes after baseline TCA.</p>
-        <p className="muted">Covariance scale is a research what-if applied to both the zero-burn Pc and every candidate Pc. It scales the same TLE-age baseline policy and does not represent measured uncertainty.</p>
-      </Panel> : null}
-      <section className="maneuver-results-summary" aria-label="Maneuver assessment summary">
-        <Panel title="Zero-burn baseline" icon={Target}>
-          <div className="maneuver-summary-grid">
-            <span>Baseline TCA<strong>{baseline.tca_utc || selectedEvent.physics_result?.tca?.value || "Unavailable"}</strong></span>
-            <span>Baseline miss distance<strong>{Number.isFinite(baseline.miss_distance_km) ? `${baseline.miss_distance_km.toFixed(6)} km · two-body baseline` : selectedEvent.physics_result?.miss_distance?.status === "available" ? `${selectedEvent.physics_result.miss_distance.value} km · Stage 2A SGP4 reference` : "Unavailable"}</strong></span>
-            <span>Baseline relative velocity<strong>{baseline.candidate?.relative_velocity_km_s ? `${baseline.candidate.relative_velocity_km_s.map((v) => Number(v).toFixed(6)).join(", ")} km/s` : "Available after search"}</strong></span>
-          </div>
-        </Panel>
-        <Panel title="Best Physics-Evaluated Candidate" icon={ShieldCheck}>
-          {!m.best_candidate_status && !maneuverBusy ? <p className="muted">Run a search to compare candidates with the zero-burn baseline.</p> : null}
-          {maneuverBusy ? <p role="status" className="muted">Propagating and comparing candidates…</p> : null}
-          {m.best_candidate_status === "no_candidate_improved_separation_within_search_bounds" ? <p className="maneuver-no-improvement">No tested candidate improved miss distance within these search bounds.</p> : null}
-          {bestCandidate ? <div className="maneuver-summary-grid">
-            <span>Selected burn<strong>{bestCandidate.delta_v_m_s.toFixed(5)} m/s · {bestCandidate.direction} RTN</strong></span>
-            <span>RTN Δv components<strong>{bestCandidate.delta_v_rtn_m_s?.map((value) => Number(value).toFixed(6)).join(", ") || "Unavailable"} m/s (R, T, N)</strong></span>
-            <span>Candidate miss distance<strong>{bestCandidate.predicted_miss_distance_km.toFixed(6)} km</strong></span>
-            <span>Change vs baseline<strong>{bestCandidate.change_from_zero_burn_km > 0 ? "+" : ""}{bestCandidate.change_from_zero_burn_km.toFixed(6)} km · {bestCandidate.change_from_zero_burn_baseline_percent == null ? "unavailable" : `${bestCandidate.change_from_zero_burn_baseline_percent.toFixed(3)}%`}</strong></span>
-            <span>Candidate TCA<strong>{bestCandidate.closest_approach_utc}</strong></span>
-            <span>Candidate relative velocity<strong>{bestCandidate.relative_velocity_km_s.map((v) => Number(v).toFixed(6)).join(", ")} km/s</strong></span>
-            <span>Pc after maneuver<strong>{m.probability_after?.status === "available" ? `${m.probability_after.pc_scientific} · research Pc at candidate TCA` : `Unavailable · ${m.probability_after?.reason_code || "comparable research Pc unavailable"}`}</strong></span>
-            <span>Pc reduction<strong>{m.probability_comparison?.status === "available" && Number.isFinite(m.risk_reduction_pct) ? `${m.risk_reduction_pct.toPrecision(5)}% · ${bestCandidate.absolute_research_pc_reduction_scientific || "absolute difference unavailable"}` : `Unavailable · ${m.probability_comparison?.reason_code || "comparable Pc unavailable"}`}</strong></span>
-            <span>Fuel estimate<strong>{m.fuel?.status === "estimated" ? `${m.fuel.propellant_consumption_kg.toPrecision(5)} kg · ${m.fuel.assumption_status === "estimated_from_default_assumptions" ? `estimated from defaults (${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s)` : `user inputs (${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s)`}` : `Unavailable · ${m.fuel?.reason_code || "fuel inputs invalid"}`}</strong></span>
-          </div> : null}
-          {bestCandidate ? <p className="muted">Selection basis: {m.best_candidate_basis || "physics-confirmed research Pc ordering"}. Research Pc uses its declared covariance and HBR policies at TCA; uncertainty is not dynamically propagated from the TLE epoch, and this is not an operational recommendation.</p> : null}
-        </Panel>
-      </section>
-      <ManeuverBaselineComparison comparison={m.baseline_reference_comparison} stage2aReference={m.stage2a_reference} stage2aPhysics={selectedEvent.physics_result} zeroBurnBaseline={m.zero_burn_baseline} candidates={physicsCandidates} probabilityBefore={m.probability_before} probabilityAfter={m.probability_after} probabilityComparison={m.probability_comparison} />
-      <Panel title="Maneuver Report Preview" icon={FileText}>
-        <div className="readout-list">
-          <span>Selected event / TCA<strong>{selectedEvent.id} · {selectedEvent.primary?.id} / {selectedEvent.secondary?.id} · {selectedEvent.physics_result?.tca?.value || "Unavailable"}</strong></span>
-          <span>Burn epoch / RTN delta-v<strong>{bestCandidate ? `${bestCandidate.maneuver_epoch_utc} · ${bestCandidate.delta_v_rtn_m_s?.join(", ") || "Unavailable"} m/s; magnitude ${bestCandidate.delta_v_m_s} m/s` : "Run a maneuver search for candidate details"}</strong></span>
-          <span>Miss / relative velocity / TCA<strong>{bestCandidate ? `${baseline.miss_distance_km ?? "Unavailable"} → ${bestCandidate.predicted_miss_distance_km} km · ${bestCandidate.relative_velocity_km_s?.join(", ") || "Unavailable"} km/s · ${bestCandidate.closest_approach_utc || "Unavailable"}` : "Unavailable"}</strong></span>
-          <span>Research Pc before / after / reduction<strong>{m.probability_before?.pc_scientific || "Unavailable"} → {m.probability_after?.pc_scientific || "Unavailable"} · {m.best_candidate?.absolute_research_pc_reduction_scientific || "Unavailable"} · {Number.isFinite(m.risk_reduction_pct) ? `${m.risk_reduction_pct}%` : "Unavailable"}</strong></span>
-          <span>Fuel / AI and physics ranking<strong>{m.fuel?.status === "estimated" ? `${m.fuel.propellant_consumption_kg} kg · ${m.fuel.assumption_status} · mass ${m.fuel.initial_mass_kg} kg, Isp ${m.fuel.specific_impulse_s} s` : "Fuel unavailable"} · AI rank {bestCandidate?.maneuver_ml_rank ?? "unavailable"} / physics rank {bestCandidate?.physics_research_pc_rank ?? "unavailable"}</strong></span>
-        </div>
-        <p className="muted">The preview and all downloads retain the two-body propagation, TCA-assigned covariance, no execution-error, and default-fuel assumption limits.</p>
-      </Panel>
-      <details className="advanced-maneuver-details"><summary>Advanced propagation, baseline comparison, candidate table and provenance</summary>
-      <section className="split-grid">
-        <Panel title="Physics Inputs" icon={Rocket}>
-          <PhysicsAvailability physics={selectedEvent.physics_result} />
-        </Panel>
-        <Panel title="Maneuver Result" icon={Target}>
-          <div className="readout-list">
-            <span>Status <strong>{m.status === "running" ? "evaluating" : m.status || "unavailable"}</strong></span>
-            <span>Reason <strong>{m.reason || "No validated maneuver model is configured."}</strong></span>
-            <span>Event key <strong>{selectedEvent.id}</strong></span>
-            <span>Screening job key <strong>{m.screening_job_id || screeningJobId || "Unavailable"}</strong></span>
-            <span>Physics candidate evaluation <strong>{m.physics_candidate_status || "not_evaluated"}</strong></span>
-            <span>Collision-probability comparison <strong>{m.probability_comparison?.status || "not evaluated"} · {m.probability_comparison?.interpretation || m.probability_comparison?.reason_code || "Run a physics maneuver comparison."}</strong></span>
-            <span>Method <strong>{m.method || "Unavailable"}</strong></span>
-            {m.candidate_interpretation ? <span>Candidate interpretation <strong>{m.candidate_interpretation}</strong></span> : null}
-            {m.assumptions?.map((item, index) => <span key={index}>Assumption / limitation <strong>{item}</strong></span>)}
-            {m.limitations?.map((item, index) => <span key={index}>Input limitation <strong>{item}</strong></span>)}
-          </div>
-        </Panel>
-      </section>
-      <Panel title="Maneuver Research-Pc Ranker" icon={ShieldCheck}>
-        <ManeuverAiSummary result={m.surrogate_rank || m.ml_result} />
-      </Panel>
-      {physicsCandidates.length ? <Panel title="Physics Candidates · Two-Body RK4" icon={Target}>
-        <p className="muted">This is a bounded axis-aligned local search, not a global optimum. Every candidate uses numerical two-body RK4 propagation and a refined closest-approach search. Synthetic surrogate scores do not affect selection.</p>
-        <div className="table-scroll"><table><thead><tr><th>Physics rank</th><th>AI rank</th><th>Δv (m/s)</th><th>Direction / frame</th><th>Candidate TCA</th><th>Miss distance (km)</th><th>Change (km / %)</th><th>Relative velocity (km/s)</th><th>Fuel (kg)</th><th>Pc after burn</th><th>Pc reduction</th></tr></thead><tbody>{maneuverCandidateRows.map((candidate, index) => <tr key={`${candidate.delta_v_m_s}-${candidate.direction}-${index}`}><td>{candidate.physics_research_pc_rank ?? "Unavailable"}</td><td>{candidate.maneuver_ml_rank ?? "Physics fallback"}{Number.isFinite(candidate.maneuver_ml_predicted_log10_pc_reduction) ? ` · ${candidate.maneuver_ml_predicted_log10_pc_reduction.toFixed(3)} log10` : ""}</td><td>{Number.isFinite(candidate.delta_v_m_s) ? candidate.delta_v_m_s.toFixed(5) : "Unavailable"}</td><td>{candidate.direction || "Unavailable"} · RTN</td><td>{candidate.closest_approach_utc || "Unavailable"}</td><td>{Number.isFinite(candidate.predicted_miss_distance_km) ? candidate.predicted_miss_distance_km.toFixed(6) : "Unavailable"}</td><td>{Number.isFinite(candidate.change_from_zero_burn_km) ? `${candidate.change_from_zero_burn_km > 0 ? "+" : ""}${candidate.change_from_zero_burn_km.toFixed(6)} / ${candidate.change_from_zero_burn_baseline_percent?.toFixed(3) ?? "unavailable"}%` : "Unavailable"}</td><td>{candidate.relative_velocity_km_s?.map((v) => Number(v).toFixed(6)).join(", ") || "Unavailable"}</td><td>{candidate.fuel?.status === "estimated" ? `${candidate.fuel.propellant_consumption_kg.toPrecision(5)}${candidate.fuel.assumption_status === "estimated_from_default_assumptions" ? "*" : ""}` : "Unavailable"}</td><td>{candidate.research_pc_after?.pc_scientific || `Unavailable · ${candidate.research_pc_after?.reason_code || "not calculated"}`}</td><td>{Number.isFinite(candidate.percentage_research_pc_reduction) ? `${candidate.percentage_research_pc_reduction.toPrecision(5)}%` : `Unavailable · ${candidate.research_pc_after?.reason_code || "no baseline"}`}</td></tr>)}</tbody></table></div>
-      </Panel> : null}
-      </details>
-      </>}
-    </div>
-  );
+export function ManeuverPage(props) {
+  return <ManeuverWorkbench {...props} />;
 }
 
 function AnalyticsPage({ analytics, events, snapshot }) {

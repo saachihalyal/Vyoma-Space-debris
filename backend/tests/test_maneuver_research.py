@@ -734,12 +734,18 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(result["reason_code"], "DISTINCT_OBJECT_STATE_IDENTITY_REQUIRED")
 
     def test_solver_configuration_validation_is_independent_of_http_parsing(self):
-        for lead, magnitudes in ((None, (0.01,)), (True, (0.01,)), (300, None), (300, (float("nan"),)), (300, ("0.01",))):
+        for lead, magnitudes in ((None, (0.01,)), (True, (0.01,)), (10801, (0.01,)), (300, None), (300, (float("nan"),)), (300, ("0.01",))):
             with self.subTest(lead=lead, magnitudes=magnitudes):
                 result = optimize_maneuver(_event(), lead_seconds=lead, burn_magnitudes_m_s=magnitudes)
                 self.assertEqual(result["status"], "unavailable")
                 self.assertEqual(result["reason_code"], "MANEUVER_CONFIGURATION_OUT_OF_BOUNDS")
                 self.assertNotIn("candidates", result)
+
+    def test_maneuver_api_accepts_three_hour_workbench_lead_time(self):
+        parameters = main.app.openapi()["paths"]["/api/conjunctions/{event_id}/maneuver"]["post"]["parameters"]
+        lead = next(parameter for parameter in parameters if parameter["name"] == "lead_seconds")
+        self.assertEqual(lead["schema"]["maximum"], 10800)
+        self.assertLessEqual(5400, lead["schema"]["maximum"])
 
     def test_api_unavailable_latest_result_clears_stale_assessment(self):
         event = _event()

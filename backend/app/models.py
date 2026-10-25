@@ -591,7 +591,7 @@ class SpaceTrackCdmRequest(BaseModel):
 class ReferenceManeuverRequest(BaseModel):
     event_id: str = Field(min_length=1, max_length=100)
     maneuvering_object_id: str = Field(min_length=1, max_length=32)
-    burn_lead_seconds: float = Field(ge=60, le=1800)
+    burn_lead_seconds: float = Field(ge=60, le=10800)
     direction: Literal["radial+", "radial-", "along_track+", "along_track-", "cross_track+", "cross_track-"]
     delta_v_m_s: float = Field(gt=0, le=0.1)
 

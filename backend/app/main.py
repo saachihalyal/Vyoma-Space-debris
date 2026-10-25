@@ -1526,7 +1526,7 @@ async def maneuver(
     event_id: str,
     event: ConjunctionAssessmentEvent,
     screening_job_id: str,
-    lead_seconds: float = Query(300, ge=60, le=1800),
+    lead_seconds: float = Query(300, ge=60, le=10800),
     burn_magnitudes_m_s: str = Query("0.01,0.05"),
     rtn_direction: Literal["all", "radial_plus", "radial_minus", "along_track_plus", "along_track_minus", "cross_track_plus", "cross_track_minus"] = Query("all"),
     max_delta_v_m_s: float | None = Query(None, gt=0, le=0.1),
@@ -1634,7 +1634,7 @@ async def maneuver(
 @app.post("/api/maneuver/user-upload", response_model=ManeuverAssessmentResponse, response_model_exclude_unset=True)
 async def maneuver_user_upload(
     request: Request,
-    lead_seconds: float = Query(300, ge=60, le=1800),
+    lead_seconds: float = Query(300, ge=60, le=10800),
     burn_magnitude_m_s: float = Query(0.01, gt=0, le=0.1),
     rtn_direction: Literal["all", "radial_plus", "radial_minus", "along_track_plus", "along_track_minus", "cross_track_plus", "cross_track_minus"] = Query("all"),
     initial_mass_kg: float | None = Query(None, gt=0),

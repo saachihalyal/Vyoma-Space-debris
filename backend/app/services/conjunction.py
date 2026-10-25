@@ -435,7 +435,7 @@ def optimize_maneuver(
         isinstance(lead_seconds, (int, float))
         and not isinstance(lead_seconds, bool)
         and math.isfinite(lead_seconds)
-        and 60 <= lead_seconds <= 1800
+        and 60 <= lead_seconds <= 10800
     )
     valid_magnitudes = bool(magnitudes) and len(magnitudes) <= 4 and all(
         isinstance(value, (int, float))
@@ -446,7 +446,7 @@ def optimize_maneuver(
     )
     if not valid_lead or not valid_magnitudes:
         base["reason_code"] = "MANEUVER_CONFIGURATION_OUT_OF_BOUNDS"
-        base["reason"] = "Lead time must be 60–1800 s; one to four burn magnitudes must each be greater than 0 and at most 0.1 m/s."
+        base["reason"] = "Lead time must be 60 to 10800 s; one to four burn magnitudes must each be greater than 0 and at most 0.1 m/s."
         return base
     if (isinstance(covariance_scale, bool) or not isinstance(covariance_scale, (int, float))
             or not math.isfinite(covariance_scale) or not 0.5 <= covariance_scale <= 3.0):
@@ -493,7 +493,7 @@ def optimize_maneuver(
 
         # Start at the burn epoch and search through the original TCA plus a
         # fixed 30-minute post-TCA horizon. The 5 s grid is bounded (at most
-        # 721 samples for the validated 30-minute maximum lead); it is not a
+        # 2521 samples for the validated 3-hour maximum lead); it is not a
         # claim about minima outside this simulator interval.
         search_end_elapsed = lead_seconds + MANEUVER_POST_TCA_SEARCH_SECONDS
         elapsed_samples = {0.0, float(lead_seconds), float(search_end_elapsed)}

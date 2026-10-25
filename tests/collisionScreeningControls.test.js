@@ -6,6 +6,7 @@ const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8
 const apiSource = readFileSync(new URL("../src/api/ssaClient.js", import.meta.url), "utf8");
 const styleSource = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 const satelliteFieldSource = readFileSync(new URL("../src/components/Scene/SatelliteField.jsx", import.meta.url), "utf8");
+const maneuverWorkbenchSource = readFileSync(new URL("../src/components/UI/ManeuverWorkbench.jsx", import.meta.url), "utf8");
 
 test("Collision Analysis Start Screening is wired to the existing explicit screening callback", () => {
   assert.match(appSource, /onStartScreening=\{startScreening\}/);
@@ -50,7 +51,7 @@ test("conjunction cards preserve Show in Globe pair context and Maneuver Assessm
   assert.match(appSource, /onAssessManeuver=\{\(item\) => selectEvent\(item, "maneuver"\)\}/);
   assert.match(appSource, /setPendingGlobeSelection\(captureGlobeEventSelection\(event, screeningJobId\)\)/);
   assert.match(appSource, /highlightedObjectIds=\{resolvedGlobeSelection\.event \? \[resolvedGlobeSelection\.event\.primary\?\.id, resolvedGlobeSelection\.event\.secondary\?\.id\]/);
-  assert.match(appSource, /selectedEvent\.physics_result\.miss_distance/);
+  assert.match(maneuverWorkbenchSource, /selected\.physics_result/);
   assert.match(satelliteFieldSource, /const selected = activeObjects\.filter\(\(object\) => highlightedIds\.has\(object\.id\)\)/);
   assert.match(satelliteFieldSource, /const selected = debrisObjects\.filter\(\(object\) => highlightedIds\.has\(object\.id\)\)/);
 });
