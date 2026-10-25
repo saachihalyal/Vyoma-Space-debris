@@ -84,12 +84,13 @@ import { ManeuverUserUpload } from "./components/UI/ManeuverUserUpload.jsx";
 import { ManeuverWorkbench } from "./components/UI/ManeuverWorkbench.jsx";
 import { BuildVersionBadge } from "./components/UI/BuildVersionBadge.jsx";
 import { buildSmartFilterView } from "./utils/smartFilterView";
-import { catalogHoverDetails } from "./utils/catalogHover.js";
 import { captureGlobeEventSelection, downloadGlobeEventReport, resolveGlobeEventSelection } from "./utils/globeEventReport.js";
 import { EventRiskEstimate } from "./components/UI/EventRiskEstimate.js";
 import { forecastHourLabel, proxyPriorityClassIndex } from "./utils/analyticsPresentation.js";
 import { beginScreeningAttempt, collisionScreeningState, createExplicitRefreshHandler, finishScreeningAttempt, reconcilePhysicalEventSelection, resolvePhysicalEventSelection, screeningResultMatchesRun, screeningStatusForEmptyResults, screeningSummaryDisplay, shouldStartScreeningRun, updateScreeningAttempt } from "./utils/screeningRefreshPolicy.js";
 import { readWatchlist } from "./utils/watchlistStorage.js";
+import { researchPcCatalogSummary } from "./utils/researchPcAnalytics.js";
+import { buildResearchPcHeatmap } from "./utils/researchPcHeatmap.js";
 import { COLLISION_INVALID_ASSESSMENT_LABEL, COLLISION_PAIR_FILTERS, collisionEventPriority, explainPhysicsReason, filterCollisionEvents, getCollisionEventsForDisplay, rankCollisionEvents, rankOrbitalAnomalyEvents, screeningAssessmentCounts, searchAndSortCollisionEvents } from "./utils/collisionEventDisplay.js";
 import { clearActiveScreeningJobId, readActiveScreeningJobId, saveActiveScreeningJobId } from "./utils/screeningJobStorage.js";
 import {
@@ -115,6 +116,8 @@ import {
   PAIR_TYPE,
 } from "./utils/identityModel";
 import {
+  BarChart as RechartsBarChart,
+  Bar,
   LineChart as RechartsLineChart,
   Line,
   ResponsiveContainer,
@@ -139,6 +142,7 @@ const initialFilters = {
 const NAV = [
   { id: "home", label: "Home", icon: Home },
   { id: "visualization", label: "Visualization", icon: Globe2 },
+  { id: "heatmap", label: "Heat Map", icon: Gauge },
   { id: "smart", label: "Smart Filter", icon: Filter },
   { id: "collision", label: "Collision Analysis", icon: Radar },
   { id: "maneuver", label: "Maneuver", icon: Rocket },
@@ -158,7 +162,6 @@ export default function App() {
   const [forecastHours, setForecastHours] = useState(24);
   const [isPlaying, setIsPlaying] = useState(true);
   const [selectedObject, setSelectedObject] = useState(null);
-  const [hoverObject, setHoverObject] = useState(null);
   const [selectedRisk, setSelectedRisk] = useState(null);
   const [eventSelection, setEventSelection] = useState({ event: null, context: null, notice: null });
   const selectedEvent = eventSelection.event;
@@ -695,8 +698,6 @@ export default function App() {
               activeFrame={activeFrame}
               selectedObject={selectedObject}
               setSelectedObject={setSelectedObject}
-              hoverObject={hoverObject}
-              setHoverObject={setHoverObject}
               selectedRisk={selectedRisk}
               setSelectedRisk={setSelectedRisk}
               analyticsOpen={analyticsOpen}
@@ -709,6 +710,7 @@ export default function App() {
               onGlobeReportDownload={handleGlobeReportDownload}
             />
           ) : null}
+          {activePage === "heatmap" ? <HeatMapPage events={platform.conjunctions} /> : null}
           {activePage === "smart" ? (
             <SmartFilterWorkbench snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} download={handleDownload} />
           ) : null}
@@ -870,6 +872,10 @@ function HomePage({ snapshot, platform, highPriority, navigate, selectEvent }) {
   const stats = snapshot?.stats || {};
   const briefing = platform?.smart?.briefing || "Analyzing orbital environment and preparing mission briefing.";
   const analytics = platform?.analytics || {};
+  const eventSummary = researchPcCatalogSummary(platform?.conjunctions || []);
+  const classData = ["Low", "Medium", "High", "Unclassified"].map((name) => ({ name, groups: eventSummary.classCounts[name] || 0 }));
+  const pcHistogram = eventSummary.histogram.map((bin) => ({ range: bin.label, events: bin.count }));
+  const modelStatuses = Object.entries(platform?.health?.collision_models || {}).filter(([, model]) => model && typeof model === "object" && model.status).map(([name, model]) => `${name.replaceAll("_", " ")}: ${model.status}`);
 
   return (
     <div className="page-stack">    
@@ -883,12 +889,29 @@ function HomePage({ snapshot, platform, highPriority, navigate, selectEvent }) {
           <div className="hero-actions">
             <button className="secondary-action" type="button" onClick={() => navigate("visualization")}>Open Visualization</button>
             <button className="secondary-action" type="button" onClick={() => navigate("smart")}>Explore Filter</button>
+            <button className="secondary-action" type="button" onClick={() => navigate("heatmap")}>Open Heat Map</button>
+            <button className="secondary-action" type="button" onClick={() => navigate("collision")}>Open Collision Analysis</button>
           </div>
         </div>
         <div className="hero-briefing">
           <span><ShieldCheck size={18} /> Research Prototype Briefing</span>
           <p>{briefing}</p>
         </div>
+      </section>
+
+      <section className="og-kpis" aria-label="Screening overview">
+        <article className="og-card og-kpi"><b>{eventSummary.total}</b><span>Events screened</span></article>
+        <article className="og-card og-kpi"><b>{eventSummary.valid}</b><span>Valid interior-TCA events</span></article>
+        <article className="og-card og-kpi"><b>{(eventSummary.classCounts.Medium || 0) + (eventSummary.classCounts.High || 0)}</b><span>Medium or High Pc-class encounter groups</span></article>
+        <article className="og-card og-kpi"><b>{modelStatuses.length ? modelStatuses.join(" · ") : "Status not reported"}</b><span>Models status</span></article>
+      </section>
+      <section className="split-grid">
+        <Panel title="Research Pc class counts · encounter groups" icon={Gauge}>
+          {eventSummary.encounterCount ? <div className="home-chart"><ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={classData}><CartesianGrid strokeDasharray="3 3" stroke="#26364d"/><XAxis dataKey="name" stroke="#9fb7d9"/><YAxis allowDecimals={false} stroke="#9fb7d9"/><Tooltip/><Bar dataKey="groups" fill="#22d3ee" radius={[6,6,0,0]}/></RechartsBarChart></ResponsiveContainer></div> : <p className="muted">No screening events are available for class counts.</p>}
+        </Panel>
+        <Panel title="Research Pc log10 histogram" icon={LineChart}>
+          {eventSummary.withResearchPc ? <div className="home-chart"><ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={pcHistogram}><CartesianGrid strokeDasharray="3 3" stroke="#26364d"/><XAxis dataKey="range" stroke="#9fb7d9"/><YAxis allowDecimals={false} stroke="#9fb7d9"/><Tooltip/><Bar dataKey="events" fill="#8b5cf6" radius={[6,6,0,0]}/></RechartsBarChart></ResponsiveContainer></div> : <p className="muted">No finite research Pc values are available for the histogram.</p>}
+        </Panel>
       </section>
 
      
@@ -906,6 +929,23 @@ function HomePage({ snapshot, platform, highPriority, navigate, selectEvent }) {
   );
 }
 
+function HeatMapPage({ events = [] }) {
+  const data = useMemo(() => buildResearchPcHeatmap(events), [events]);
+  const color = (value) => {
+    const t = Math.max(0, Math.min(1, value / 30));
+    return `hsl(${190 - t * 150} 85% ${22 + t * 28}%)`;
+  };
+  return <div className="og-page og-heatmap">
+    <header className="og-workbench-head"><div><p className="eyebrow">Research Pc · screening events</p><h1>Heat Map</h1><p className="og-sub">Cells average the named metric over valid physical events with finite research Pc and valid plotted coordinates.</p></div></header>
+    <section className="og-card">
+      <div className="og-section-head"><div><h2>{data.metric}</h2><p className="og-sub">Clipped at 30 for display. Empty cells contain no plotted events; missing or invalid values are excluded, never imputed.</p></div><span className="og-chip">{data.plottedCount} plotted · {data.excludedCount} excluded</span></div>
+      {data.plottedCount ? <><div className="research-heatmap" role="img" aria-label={`${data.metric} heat map across primary-object altitude and speed`}>
+        {data.cells.map((cell) => <div key={`${cell.x}-${cell.y}`} className="research-heatmap-cell" title={cell.value == null ? "No valid research Pc values in this cell" : `${data.metric}: ${cell.value.toFixed(2)} · ${cell.count} event(s)`} style={{ background: cell.value == null ? "rgba(255,255,255,.025)" : color(cell.value) }}>{cell.value == null ? "" : cell.value.toFixed(1)}</div>)}
+      </div><div className="heatmap-axis-labels"><span>Speed magnitude: {data.minSpeed.toFixed(2)}–{data.maxSpeed.toFixed(2)} km/s</span><span>Primary altitude: {data.minAltitude.toFixed(0)}–{data.maxAltitude.toFixed(0)} km</span></div></> : <p className="muted">No valid physical events with finite research Pc and plotted altitude/speed are available. {data.excludedCount} input event(s) were excluded.</p>}
+    </section>
+  </div>;
+}
+
 
 function VisualizationPage(props) {
   const {
@@ -919,8 +959,6 @@ function VisualizationPage(props) {
     activeFrame,
     selectedObject,
     setSelectedObject,
-    hoverObject,
-    setHoverObject,
     selectedRisk,
     setSelectedRisk,
     analyticsOpen,
@@ -996,7 +1034,6 @@ function VisualizationPage(props) {
           setSelectedObject(null);
           setAnalyticsOpen(true);
         }}
-        onHoverObject={setHoverObject}
       />
       </SceneErrorBoundary>
       <div className="hud-layer">
@@ -1004,14 +1041,6 @@ function VisualizationPage(props) {
         {!loading && snapshot && !snapshot.objects?.length && snapshot.source_state?.status !== "unavailable" ? <div className="scene-data-notice" role="status">Catalog loaded with no objects to plot.</div> : null}
         {snapshot?.source_state?.status === "unavailable" && !snapshot?.objects?.length ? <div className="scene-data-notice" role="status">Catalog unavailable. The globe and controls are active, but no catalog objects are available to plot.</div> : null}
         {resolvedGlobeSelection.error ? <div className="scene-data-notice" role="status">Event report unavailable: {resolvedGlobeSelection.error}</div> : null}
-        {hoverObject?.object ? <div className="globe-object-tooltip" role="status" style={{ left: Math.min(Math.max(12, hoverObject.x ?? 12), window.innerWidth - 300), top: Math.min(Math.max(12, hoverObject.y ?? 12), window.innerHeight - 180) }}>
-          <strong>{catalogHoverDetails(hoverObject.object).name}</strong>
-          <span>Catalog ID: {catalogHoverDetails(hoverObject.object).catalogId}</span>
-          <span>Classification: {catalogHoverDetails(hoverObject.object).classification}</span>
-          <span>Altitude: {catalogHoverDetails(hoverObject.object).altitude}</span>
-          <span>Inclination: {catalogHoverDetails(hoverObject.object).inclination}</span>
-          <span>Speed: {catalogHoverDetails(hoverObject.object).speed}</span>
-        </div> : null}
         <motion.header className="top-command-bar" initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           <div className="brand-block">
             <div className="brand-mark"><Radar size={22} /></div>

@@ -92,6 +92,8 @@ test("Show in Globe and Maneuver Assessment pass the exact selected event identi
   buttons.find((button) => button.props.children === "Assess Maneuver").props.onClick();
   assert.equal(globeCall[0], selected.primary.id);
   assert.equal(globeCall[1], selected);
+  assert.deepEqual([globeCall[1].primary.id, globeCall[1].secondary.id], ["10114", "25544"]);
+  assert.equal(globeCall[1].physics_result.tca.value, "2026-10-13T12:56:17Z");
   assert.equal(globeCall[2], "job-selected");
   assert.equal(maneuverCall, selected);
 });
