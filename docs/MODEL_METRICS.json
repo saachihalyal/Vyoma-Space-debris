@@ -923,6 +923,38 @@
     "target_definition": "significant iff physics-generated research Pc >= 0.0001",
     "usable_for_inference": true
   },
+  "final_validation": {
+    "date": "2026-10-25",
+    "backend": {
+      "command": "backend/.venv/Scripts/python.exe -m pytest -q backend/tests",
+      "passed": 341,
+      "failed": 0,
+      "subtests_passed": 108,
+      "warnings": 1,
+      "timeout_seconds": 600,
+      "log": "backend/backend-final-pass.log"
+    },
+    "frontend": {
+      "command": "node --test tests/*.test.js",
+      "passed": 197,
+      "failed": 0,
+      "timeout_seconds": 600,
+      "log": "frontend-final-pass.log"
+    },
+    "ui_rules": {
+      "command": "node scripts/check-ui-rules.mjs",
+      "result": "passed; 2 CSS files scanned; every declared font size is at least 12px",
+      "timeout_seconds": 600,
+      "log": "ui-rules-final-pass.log"
+    },
+    "production_build": {
+      "command": "node node_modules/vite/bin/vite.js build",
+      "result": "passed; 3217 modules transformed; 47.13 seconds",
+      "warning": "Vite reports the main minified chunk exceeds 500 kB",
+      "timeout_seconds": 600,
+      "log": "production-build-final-pass.log"
+    }
+  },
   "training_mode": "offline_only",
   "training_timestamp_utc": "2026-10-25T14:11:06.133936+00:00"
 }

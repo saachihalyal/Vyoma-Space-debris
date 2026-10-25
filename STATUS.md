@@ -134,3 +134,20 @@ The pre-existing Stage 6 report changes remain uncommitted and must be completed
 - Added subtle gradient hover borders, a collapsible icon/label sidebar, current collision-model status, and moved the single frontend/backend version badge into the top bar. The global CSS font-size rule now checks all CSS under `src` and passes at a 12px minimum.
 - Frontend suite: 191 passed, 0 failed (`frontend-suite-p1-verified.log`); UI rules passed (`ui-rules-p1-verified.log`); production build succeeded in 49.71 s (`frontend-build-p1-verified.log`) with the existing >500 kB chunk warning. Each npm command used a 600-second timeout.
 - The managed restart could not be completed: `stop-dev.ps1` found no managed process state, while `start-dev.ps1` found port 8001 occupied by PID 19224. Process inspection returned access denied, so that listener was not stopped. `/api/system-health` timed out; no new screening or browser screenshot was produced. Browser/computer-use was explicitly excluded by the user.
+
+## Final pass (2026-10-25)
+
+No feature work was added. Fixed the single UI-rules violation by raising the responsive heat-map cell text from 10px to 12px. Final automated runs: backend **341 passed**, 1 warning, 108 subtests; frontend **197 passed**, 0 failed; UI-rules passed (2 CSS files; minimum 12px); production build passed (3,217 modules, 47.13 seconds) with the existing >500 kB chunk warning. Logs are local and excluded from commits. The full checked-in metric basis is in `docs/MODEL_METRICS.json`; methodology reflects the all-saved-jobs v5 training record. The 10-minute walkthrough is `docs/DEMO_SCRIPT.md`.
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| Full backend suite | Done | 341 passed, 1 warning, 108 subtests; `backend/backend-final-pass.log`. |
+| Frontend suite | Done | 197 passed, 0 failed; `frontend-final-pass.log`. |
+| UI rules | Done after one responsive font-size correction | Final post-fix output in `ui-rules-final-pass.log`. |
+| Production build | Done | Final post-fix output in `production-build-final-pass.log`; Vite large-chunk warning is recorded. |
+| Methodology and metrics references | Done | `docs/METHODOLOGY.md` documents the metrics and limitations in `docs/MODEL_METRICS.json`; final verification record is included there. |
+| 10-minute demo and limitations | Done | `docs/DEMO_SCRIPT.md`; includes restore job ID, all requested views/actions, and limitations. |
+| Globe, Show in Globe, upload/Foster assessment, archive restore, report downloads | Partial: implemented; manual browser verification not done | Existing frontend/backend coverage and public sample file; exact manual sequence in `docs/DEMO_SCRIPT.md`. |
+| Five live conjunction rows with Pc, score, Pc class, AI outputs, and provenance | Not done in this pass | The event-bearing source is in `backend/exports`, which the task rules prohibit opening/printing. The checked-in model metrics are aggregate, not event-level predictions; no values were fabricated. |
+| Manual browser walkthrough and PDF visual inspection | Not done | Browser/computer-use was explicitly prohibited; automated suites/build do not count as manual verification. |
+| Commit and `demo-ready` tag | Done in this final checkpoint | This checkpoint contains only `STATUS.md`, `docs/METHODOLOGY.md`, `docs/MODEL_METRICS.json`, `docs/DEMO_SCRIPT.md`, and `src/og-theme.css`; verification logs, generated build output, and the pre-existing live cache are excluded. |
