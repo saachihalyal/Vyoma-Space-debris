@@ -1,0 +1,9 @@
+node_modules/
+dist/
+backend/.venv/
+backend/exports/
+backend/ml_data/
+docs/evidence/
+*.joblib
+*.log
+package-lock.json
