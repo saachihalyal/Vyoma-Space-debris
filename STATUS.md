@@ -93,3 +93,13 @@ The pre-existing Stage 6 report changes remain uncommitted and must be completed
 - Current launcher commit: `e1e6573`; current Stage 1 code commit: `a8e1300`.
 - No browser visual verification is claimed.
 - Space-Track remains out of the workflow.
+
+### All-saved-job model refresh (2026-10-25)
+
+- Backend-only. Corrected training input selection from the prior newest-job-only 70-parent run to all 10 saved screening jobs. The archive has 260 valid-status unique event rows; 220 pass the current valid interior-TCA and real CelesTrak input screen. The other 40 do not meet that provenance screen.
+- Grouped split uses 142 physical encounter groups: train 99 groups / 147 parents / 2,644 scenarios; validation 21 / 36 / 648; test 22 / 37 / 666. Dataset v5 has 3,958 scenarios from 220 parents; 2 labels were rejected for Pc/log mismatch.
+- Added v3 physics features `miss_sigma_ratio`, its square, and `log10(HBR^2 / (2*sqrt(det(sigma2D))))`. Retrained with `scripts/retrain_all.ps1`; generated metrics and artifacts are in `docs/MODEL_METRICS.json` and `backend/app/ai/artifacts/`.
+- Pc test MAE/RMSE: all rows 0.0765338 / 0.2320370; median baseline 9.3299688 / 14.3797862; linear baseline 5.0609578 / 6.7198512. Non-negligible rows (459): 0.1098556 / 0.2783319; median 2.3033657 / 4.4920524; linear 3.3695553 / 4.6135896. Beats both baselines in both subsets; app model status is available (2.3.0).
+- Risk test: support Low/Medium/High 272/236/158; confusion `[[272,0,0],[7,229,0],[0,6,152]]`; macro-F1 0.9801134 vs majority 0.1933191; usable.
+- Smart Filter test: support insignificant/significant 508/158; confusion `[[508,0],[6,152]]`; significant precision 1.0, recall 0.9620253, FN 6; macro-F1 0.9873872 vs majority 0.4327087 (FN 158), deterministic 1 km baseline 0.6768758 (FN 0). Model beats both macro-F1 baselines and majority FN count; the independent 1 km/physics guard remains enabled.
+- Method and final results: `docs/METHODOLOGY.md`, `docs/MODEL_METRICS.json`. No frontend files changed.

@@ -14,7 +14,7 @@ from app.ai.collision_features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from app.ai.collision_training import DATASET_PATH, SEED, _sha256, grouped_split
 
 
-MODEL_VERSION = "2.2.0"
+MODEL_VERSION = "2.3.0"
 SIGNIFICANT_PC_THRESHOLD = 1e-4
 SIGNIFICANT_LOG10_THRESHOLD = -4.0
 CLASS_ORDER = ("insignificant", "significant")

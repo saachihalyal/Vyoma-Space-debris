@@ -25,9 +25,9 @@ from app.services.probability_classification import ORION_RISK_POLICY_VERSION
 
 
 SEED = 20261024
-MODEL_VERSION = "2.2.0"
-SCENARIO_DATASET_VERSION = "orion-collision-scenarios-v4"
-SNAPSHOT_JOB_ID = "fcec3945251c45f38f215485ecbb5605"
+MODEL_VERSION = "2.3.0"
+SCENARIO_DATASET_VERSION = "orion-collision-scenarios-v5"
+SNAPSHOT_JOB_ID = "all-saved-jobs"
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 SNAPSHOT_PATH = BACKEND_DIR / "exports" / f"screening-job-{SNAPSHOT_JOB_ID}.json"
 DATASET_PATH = BACKEND_DIR / "ml_data" / f"{SCENARIO_DATASET_VERSION}.jsonl"
@@ -63,22 +63,37 @@ def _sha256(path: Path) -> str:
 
 
 def read_parent_events(snapshot_path: Path = SNAPSHOT_PATH) -> tuple[dict[str, Any], list[ConjunctionAssessmentEvent]]:
-    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
-    if snapshot.get("job_id") != SNAPSHOT_JOB_ID:
-        raise ValueError(f"Expected saved CelesTrak snapshot {SNAPSHOT_JOB_ID}; found {snapshot.get('job_id')!r}")
-    events = []
-    for record in snapshot.get("result", {}).get("data", []):
-        if record.get("physics_result", {}).get("status") != "valid":
-            continue
+    paths = sorted(snapshot_path.parent.glob("screening-job-*.json")) if snapshot_path == SNAPSHOT_PATH else [snapshot_path]
+    if not paths:
+        raise ValueError(f"No saved screening jobs found under {snapshot_path.parent}")
+    events_by_id: dict[str, ConjunctionAssessmentEvent] = {}
+    event_job_id: dict[str, str] = {}
+    snapshots = []
+    for path in paths:
         try:
-            event = ConjunctionAssessmentEvent.model_validate(record)
-        except Exception:
+            saved = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
             continue
-        if not _has_real_celestrak_inputs(event):
-            continue
-        events.append(event)
+        snapshots.append((path, saved))
+        for record in saved.get("result", {}).get("data", []):
+            if record.get("physics_result", {}).get("status") != "valid":
+                continue
+            try:
+                event = ConjunctionAssessmentEvent.model_validate(record)
+            except Exception:
+                continue
+            if _has_real_celestrak_inputs(event):
+                events_by_id.setdefault(event.id, event)
+                event_job_id.setdefault(event.id, saved.get("job_id"))
+    events = list(events_by_id.values())
     if not events:
-        raise ValueError("The saved screening snapshot has no valid, non-synthetic CelesTrak events")
+        raise ValueError("Saved screening jobs have no valid, non-synthetic CelesTrak events")
+    snapshot = {
+        "job_id": "all-saved-jobs", "created_at": None, "event_job_id": event_job_id,
+        "source_jobs": [{"job_id": saved.get("job_id"), "created_at": saved.get("created_at"),
+                         "snapshot_path": path.name, "snapshot_sha256": _sha256(path)}
+                        for path, saved in snapshots],
+    }
     return snapshot, events
 
 
@@ -158,8 +173,9 @@ def generate_scenarios(snapshot_path: Path = SNAPSHOT_PATH) -> tuple[dict[str, A
                                     }
                                     for obj in (scenario_event.primary, scenario_event.secondary)
                                 ],
-                                "snapshot_job_id": snapshot.get("job_id"),
-                                "snapshot_created_at": snapshot.get("created_at"),
+                                "snapshot_job_id": snapshot.get("event_job_id", {}).get(event.id),
+                                "snapshot_created_at": next((job.get("created_at") for job in snapshot.get("source_jobs", [])
+                                                              if job.get("job_id") == snapshot.get("event_job_id", {}).get(event.id)), None),
                                 "object_ids": [event.primary.id, event.secondary.id],
                                 "tca_utc": event.physics_result.tca.value,
                             },
@@ -185,10 +201,11 @@ def generate_scenarios(snapshot_path: Path = SNAPSHOT_PATH) -> tuple[dict[str, A
         "dataset_version": SCENARIO_DATASET_VERSION,
         "snapshot_job_id": snapshot.get("job_id"),
         "snapshot_created_at": snapshot.get("created_at"),
-        "snapshot_path": snapshot_path.name,
-        "snapshot_sha256": _sha256(snapshot_path),
+        "snapshot_path": [job["snapshot_path"] for job in snapshot.get("source_jobs", [])],
+        "saved_job_count": len(snapshot.get("source_jobs", [])),
+        "saved_jobs": snapshot.get("source_jobs", []),
         "source_policy": "valid live, non-synthetic CelesTrak GP/TLE screening events only",
-        "valid_parent_events_in_snapshot": len(events),
+        "valid_parent_events_across_saved_jobs": len(events),
         "independent_parent_events_with_scenarios": len(parent_ids),
         "unique_physical_encounter_groups_with_scenarios": len({item["encounter_group_id"] for item in scenarios}),
         "encounter_grouping_method": "Across all saved screening jobs: same TCA rounded to the millisecond, same miss-distance and relative-speed geometry rounded to four significant digits, and connected by a shared object ID; duplicate saved-job rows resolve to the same group.",
@@ -227,13 +244,27 @@ def _scenario_event(event: ConjunctionAssessmentEvent, age_scale: float, miss_sc
     for obj in (item.primary, item.secondary):
         provenance = obj.provenance
         epoch_text = getattr(provenance, "element_epoch", None) if provenance else None
+        epoch = None
         if epoch_text:
-            epoch = datetime.fromisoformat(str(epoch_text).replace("Z", "+00:00"))
+            try:
+                epoch = datetime.fromisoformat(str(epoch_text).replace("Z", "+00:00"))
+            except ValueError:
+                epoch = None
+        record = (provenance.source_record or {}) if provenance else {}
+        parsed = record.get("parsed_propagation_parameters") or {}
+        if epoch is None and parsed.get("epochyr") is not None and parsed.get("epochdays") is not None:
+            year = int(parsed["epochyr"])
+            year += 1900 if year >= 57 else 2000
+            epoch = datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(days=float(parsed["epochdays"]) - 1.0)
+        if epoch is not None:
             if epoch.tzinfo is None:
                 epoch = epoch.replace(tzinfo=timezone.utc)
             age = max(0.0, (tca - epoch).total_seconds() / 86400.0)
             target_epoch = tca - timedelta(days=age * age_scale)
             provenance.element_epoch = target_epoch.astimezone(timezone.utc).isoformat()
+            if parsed.get("epochyr") is not None and parsed.get("epochdays") is not None:
+                parsed["epochyr"] = target_epoch.year % 100
+                parsed["epochdays"] = (target_epoch - datetime(target_epoch.year, 1, 1, tzinfo=timezone.utc)).total_seconds() / 86400.0 + 1.0
     pstate, sstate = physics.primary_state_at_tca, physics.secondary_state_at_tca
     if not pstate or not sstate:
         raise ValueError("Scenario parent has no TCA state vectors")
@@ -446,6 +477,8 @@ def train_models(snapshot_path: Path = SNAPSHOT_PATH) -> dict[str, Any]:
             "non_negligible_rmse_log10_pc": float(mean_squared_error(truth[non_negligible], predictions[non_negligible]) ** 0.5) if np.any(non_negligible) else None,
             "non_negligible_median_baseline_mae_log10_pc": float(mean_absolute_error(truth[non_negligible], baseline[non_negligible])) if np.any(non_negligible) else None,
             "non_negligible_median_baseline_rmse_log10_pc": float(mean_squared_error(truth[non_negligible], baseline[non_negligible]) ** 0.5) if np.any(non_negligible) else None,
+            "non_negligible_linear_baseline_mae_log10_pc": float(mean_absolute_error(truth[non_negligible], linear_predictions[non_negligible])) if np.any(non_negligible) else None,
+            "non_negligible_linear_baseline_rmse_log10_pc": float(mean_squared_error(truth[non_negligible], linear_predictions[non_negligible]) ** 0.5) if np.any(non_negligible) else None,
         }
 
     classifier = Pipeline([
@@ -537,9 +570,11 @@ def train_models(snapshot_path: Path = SNAPSHOT_PATH) -> dict[str, Any]:
         "artifact_sha256": _sha256(PC_ARTIFACT),
         "metrics": pc_metrics,
         "baseline": ["training-split median log10(Pc)", "training-split fitted linear regression"],
-        "usable_for_inference": all(
-            pc_metrics["test"][f"{metric}_log10_pc"] < pc_metrics["test"][f"{baseline}_{metric}_log10_pc"]
-            for metric in ("mae", "rmse") for baseline in ("baseline_median", "linear_baseline")
+        "usable_for_inference": (
+            all(pc_metrics["test"][f"{metric}_log10_pc"] < pc_metrics["test"][f"{baseline}_{metric}_log10_pc"]
+                for metric in ("mae", "rmse") for baseline in ("baseline_median", "linear_baseline"))
+            and all(pc_metrics["test"][f"non_negligible_{metric}_log10_pc"] < pc_metrics["test"][f"non_negligible_{baseline}_{metric}_log10_pc"]
+                    for metric in ("mae", "rmse") for baseline in ("median_baseline", "linear_baseline"))
         ),
     }
     risk_meta = {

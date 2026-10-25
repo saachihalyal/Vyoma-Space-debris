@@ -8,7 +8,7 @@ from typing import Any
 from app.models import ConjunctionAssessmentEvent
 
 
-FEATURE_SCHEMA_VERSION = "orion-collision-features-v2"
+FEATURE_SCHEMA_VERSION = "orion-collision-features-v3"
 OBJECT_CATEGORIES = ("active", "debris", "payload", "rocket_body", "unknown")
 NUMERIC_FEATURES = (
     "miss_distance_km",
@@ -22,6 +22,9 @@ NUMERIC_FEATURES = (
     "hbr_km",
     "covariance_scale",
     "hbr_scale",
+    "miss_sigma_ratio",
+    "miss_sigma_ratio_squared",
+    "log10_hbr_area_to_covariance",
 )
 FEATURE_NAMES = NUMERIC_FEATURES + tuple(
     f"{prefix}_category_{category}"
@@ -40,6 +43,9 @@ FEATURE_UNITS = {
     "hbr_km": "km, assumed research HBR",
     "covariance_scale": "dimensionless assumed scenario multiplier",
     "hbr_scale": "dimensionless assumed scenario multiplier",
+    "miss_sigma_ratio": "Mahalanobis distance in encounter-plane sigma units",
+    "miss_sigma_ratio_squared": "squared Mahalanobis distance in encounter-plane sigma units",
+    "log10_hbr_area_to_covariance": "log10(HBR^2 / (2 * sqrt(det(sigma2D))))",
     **{
         f"{prefix}_category_{category}": "one-hot object category"
         for prefix in ("primary", "secondary")
@@ -75,6 +81,9 @@ def build_collision_features(
         "hbr_km": research.hbr_km,
         "covariance_scale": research.provenance.get("scenario_covariance_scale", 1.0),
         "hbr_scale": research.provenance.get("scenario_hbr_scale", 1.0),
+        "miss_sigma_ratio": research.miss_sigma_ratio,
+        "miss_sigma_ratio_squared": (research.miss_sigma_ratio ** 2) if research.miss_sigma_ratio is not None else None,
+        "log10_hbr_area_to_covariance": _log_hbr_covariance_ratio(research),
     }
     for prefix, obj in (("primary", event.primary), ("secondary", event.secondary)):
         for category in OBJECT_CATEGORIES:
@@ -83,3 +92,13 @@ def build_collision_features(
            for value in values.values()):
         return None
     return {name: float(values[name]) for name in FEATURE_NAMES}
+
+
+def _log_hbr_covariance_ratio(research: Any) -> float | None:
+    sigma_min = research.encounter_plane_sigma_min_km
+    sigma_max = research.encounter_plane_sigma_max_km
+    hbr = research.hbr_km
+    if not all(isinstance(value, (int, float)) and math.isfinite(value) and value > 0
+               for value in (sigma_min, sigma_max, hbr)):
+        return None
+    return math.log10(hbr * hbr / (2.0 * sigma_min * sigma_max))
