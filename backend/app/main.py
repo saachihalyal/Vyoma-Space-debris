@@ -944,6 +944,10 @@ def _load_archived_screening_job(job_id: str) -> dict:
     if not re.fullmatch(r"[a-fA-F0-9]{32}", job_id):
         raise HTTPException(status_code=422, detail="Screening job ID must be a 32-character hexadecimal ID.")
     archive_path = SCREENING_EXPORT_ARCHIVE_DIR / f"screening-job-{job_id}.json"
+    if not archive_path.is_file():
+        demo_path = SCREENING_EXPORT_ARCHIVE_DIR / "demo" / archive_path.name
+        if demo_path.is_file():
+            archive_path = demo_path
     try:
         archived = json.loads(archive_path.read_text(encoding="utf-8"))
     except FileNotFoundError:

@@ -19,16 +19,16 @@ class PhysicsSmartFilterTests(unittest.TestCase):
         cls.snapshot, cls.events = read_parent_events()
         cls.event = cls.events[0]
 
-    def test_safety_guard_retains_close_real_celestrak_event(self) -> None:
+    def test_safety_guard_retains_real_event_when_scenarios_are_uncertain(self) -> None:
         result = smart_filter.evaluate_physical_smart_filter([self.event])
         row = result["decisions"][0]
         self.assertEqual(result["status"], "available")
         self.assertEqual(row["decision"], "retain")
         self.assertTrue(row["safety_guard_retained"])
-        self.assertIn("SAFETY_GUARD_MISS_DISTANCE", row["safety_guard_reasons"])
-        self.assertEqual(row["scenario_count_calculated"], row["scenario_count_required"])
-        self.assertIn(row["model_prediction"], {"significant", "insignificant"})
-        self.assertIsInstance(row["confidence"], float)
+        self.assertIn("SAFETY_GUARD_UNCERTAIN_SCENARIOS", row["safety_guard_reasons"])
+        self.assertLess(row["scenario_count_calculated"], row["scenario_count_required"])
+        self.assertIsNone(row["model_prediction"])
+        self.assertIsNone(row["confidence"])
 
     def test_missing_model_is_labeled_fallback_and_never_claims_a_prediction(self) -> None:
         missing = ARTIFACT_PATH.with_name("missing-smart-filter.joblib")
@@ -80,8 +80,8 @@ class PhysicsSmartFilterTests(unittest.TestCase):
 
     def test_saved_scenario_labels_and_grouped_metadata_match_trained_filter(self) -> None:
         metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
-        self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v3.jsonl")
-        self.assertEqual(metadata["model_version"], "2.1.0")
+        self.assertEqual(metadata["dataset_filename"], "orion-collision-scenarios-v4.jsonl")
+        self.assertEqual(metadata["model_version"], "2.2.0")
         self.assertTrue(metadata["usable_for_inference"])
         dataset_path = BACKEND_DIR / "ml_data" / metadata["dataset_filename"]
         self.assertEqual(metadata["dataset_sha256"], hashlib.sha256(dataset_path.read_bytes()).hexdigest())

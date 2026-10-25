@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import tempfile
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -14,6 +17,27 @@ from app import main
 class ScreeningJobLifecycleTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         main._screening_jobs.clear()
+
+    async def test_archived_job_loader_finds_demo_snapshot_directory(self):
+        job_id = "0123456789abcdef0123456789abcdef"
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary)
+            demo = archive / "demo"
+            demo.mkdir()
+            snapshot = {"job_id": job_id, "status": "complete"}
+            (demo / f"screening-job-{job_id}.json").write_text(json.dumps(snapshot), encoding="utf-8")
+            with patch.object(main, "SCREENING_EXPORT_ARCHIVE_DIR", archive), patch.object(
+                main, "_validate_archived_screening_job", side_effect=lambda _job_id, value: value
+            ):
+                loaded = main._load_archived_screening_job(job_id)
+        self.assertEqual(loaded["job_id"], job_id)
+
+    async def test_committed_demo_snapshot_is_a_restorable_finished_job(self):
+        job_id = "fcec3945251c45f38f215485ecbb5605"
+        archived = main._load_archived_screening_job(job_id)
+        self.assertEqual(archived["status"], "partial")
+        self.assertEqual(archived["result"]["completion_status"], "partial")
+        self.assertEqual(len(archived["result"]["data"]), 109)
 
     async def test_result_status_distinguishes_invalid_records_from_valid_events(self):
         valid_provenance = SimpleNamespace(validity_status="valid", is_synthetic=False, source_type="live")

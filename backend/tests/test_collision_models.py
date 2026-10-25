@@ -18,15 +18,18 @@ class CollisionModelTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         _snapshot, events = collision_models_event_source()
-        cls.event = next(event for event in events if event.physics_result.status == "valid")
-        research = assess_automatic_research_pc(
-            cls.event.physics_result,
-            cls.event.collision_probability,
-            cls.event.review_priority,
-            primary=cls.event.primary,
-            secondary=cls.event.secondary,
-        )
-        cls.event = cls.event.model_copy(update={"automatic_research_pc_assessment": research})
+        for event in events:
+            research = event.automatic_research_pc_assessment
+            if research is None or research.status != "prior_based_research_estimate":
+                research = assess_automatic_research_pc(
+                    event.physics_result, event.collision_probability, event.review_priority,
+                    primary=event.primary, secondary=event.secondary,
+                )
+            if research.status == "prior_based_research_estimate" and research.log10_pc is not None and research.log10_pc > -30:
+                cls.event = event.model_copy(update={"automatic_research_pc_assessment": research})
+                break
+        else:
+            raise AssertionError("Newest saved screening job has no estimable real event")
 
     def test_grouped_split_is_fixed_seed_and_disjoint_by_encounter_group(self) -> None:
         parents = [f"parent-{index:02}" for index in range(40)]
@@ -49,12 +52,30 @@ class CollisionModelTests(unittest.TestCase):
         manifest = metadata["scenario_split"]
         encounter_splits = manifest["encounter_group_ids"]
         self.assertEqual(manifest["grouping_key"], "encounter_group_id")
-        self.assertEqual(len(set.union(*(set(values) for values in encounter_splits.values()))), 62)
+        self.assertEqual(len(set.union(*(set(values) for values in encounter_splits.values()))),
+                         metadata["dataset_provenance"]["unique_physical_encounter_groups_with_scenarios"])
         names = ("train", "validation", "test")
         for left_index, left in enumerate(names):
             for right in names[left_index + 1:]:
                 self.assertFalse(set(encounter_splits[left]) & set(encounter_splits[right]))
 
+    def test_miss_distance_scenarios_are_true_multiples_of_parent_geometry(self) -> None:
+        from app.ai.collision_training import MISS_DISTANCE_SCALES, SCENARIO_DESIGNS, _scenario_event
+
+        self.assertTrue({1.0, 2.0, 3.0}.issubset(set(MISS_DISTANCE_SCALES)))
+        self.assertEqual(len(SCENARIO_DESIGNS), len(MISS_DISTANCE_SCALES) * 3)
+        import numpy as np
+        physics = self.event.physics_result
+        primary = np.asarray(physics.primary_state_at_tca["position_km"], dtype=float)
+        secondary = np.asarray(physics.secondary_state_at_tca["position_km"], dtype=float)
+        velocity = (np.asarray(physics.secondary_state_at_tca["velocity_km_s"], dtype=float)
+                    - np.asarray(physics.primary_state_at_tca["velocity_km_s"], dtype=float))
+        relative = secondary - primary
+        encounter = relative - velocity * (float(np.dot(relative, velocity)) / float(np.dot(velocity, velocity)))
+        original = float(np.linalg.norm(encounter))
+        for multiplier in (1.0, 2.0, 3.0):
+            scenario = _scenario_event(self.event, 1.0, multiplier)
+            self.assertAlmostEqual(scenario.physics_result.miss_distance.value, original * multiplier, places=6)
     def test_missing_models_use_explicit_deterministic_fallback_not_ai_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             missing = Path(temporary) / "missing.joblib"

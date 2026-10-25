@@ -22,7 +22,7 @@ from app.services.automatic_research_pc import assess_automatic_research_pc
 ARTIFACT_PATH = Path(__file__).resolve().parent / "artifacts" / "orion_smart_filter_classifier.joblib"
 METADATA_PATH = ARTIFACT_PATH.with_suffix(".metadata.json")
 MODEL_NAME = "ORION Physics-Supervised Smart Filter Classifier"
-MODEL_VERSION = "2.1.0"
+MODEL_VERSION = "2.2.0"
 SCENARIO_COUNT = len(COVARIANCE_SCALES) * len(HBR_SCALES)
 
 
