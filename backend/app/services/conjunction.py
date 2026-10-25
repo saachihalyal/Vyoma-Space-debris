@@ -867,12 +867,10 @@ def _maneuver_research_pc(event: ConjunctionAssessmentEvent, candidate: dict[str
             fixed_covariance_inputs=fixed_covariances, fixed_hbr_km=fixed_hbr_km,
         )
         scientific = research.estimated_pc_scientific
-        if research.status != "prior_based_research_estimate" or not isinstance(scientific, str):
+        if (research.status != "prior_based_research_estimate" or not isinstance(scientific, str)
+                or not isinstance(research.log10_pc, (int, float)) or not math.isfinite(research.log10_pc)):
             return {"status": "unavailable", "pc": None, "reason_code": (research.reason_codes or ["RESEARCH_PC_NOT_ESTIMABLE"])[0], "tca_utc": tca}
-        try:
-            log10_pc = float(Decimal(scientific).log10())
-        except (InvalidOperation, ValueError, OverflowError):
-            return {"status": "unavailable", "pc": None, "reason_code": "RESEARCH_PC_OUTPUT_INVALID", "tca_utc": tca}
+        log10_pc = float(research.log10_pc)
         return {
             "status": "available", "pc": research.estimated_pc, "pc_scientific": scientific,
             "log10_pc": log10_pc, "tca_utc": tca,

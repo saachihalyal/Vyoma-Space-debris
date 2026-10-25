@@ -59,8 +59,8 @@
       "radial -"
     ],
     "propagator": "Earth two-body point-mass RK4",
-    "research_pc_method": "ORION TLE-age-baseline Foster 2D at each calculated TCA with the same selected covariance/HBR policy for baseline and candidate",
-    "covariance_assignment": "TLE-age baseline assigned at each TCA; no covariance propagation from TLE epoch or burn execution uncertainty"
+    "research_pc_method": "ORION TLE-age-baseline Foster 2D at each calculated TCA with the exact selected-event TEME covariance matrices and HBR held fixed for baseline and candidate",
+    "covariance_assignment": "Baseline-event covariance matrices reused numerically unchanged at candidate TCA; no dynamic covariance propagation or burn execution uncertainty"
   },
   "grouped_split": {
     "seed": 1501,
@@ -186,9 +186,9 @@
   "limitations": [
     "Targets are ORION physics-generated research-Pc differences for simulated burns from real parent conjunction states, not observed collision or maneuver outcomes.",
     "The 2-body simulator omits J2, drag, third-body effects, control constraints, and burn execution uncertainty.",
-    "Covariance is assigned at each TCA using the same prior policy rather than dynamically propagated; this is a documented consistent research approximation.",
+    "The baseline-event covariance matrix is held fixed for each candidate comparison rather than dynamically propagated; this is a documented consistent research approximation.",
     "Only six signed RTN directions and one configured magnitude per parent are used for training; performance may not generalize beyond this envelope.",
     "The ranker is used only if held-out mean regret beats the deterministic baseline; every live candidate is recalculated by the physics pipeline."
   ],
-  "training_elapsed_seconds": 45.146
+  "training_elapsed_seconds": 64.399
 }

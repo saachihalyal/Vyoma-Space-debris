@@ -408,7 +408,7 @@ class ResearchManeuverTests(unittest.TestCase):
         self.assertEqual(first["probability_before"]["pc_scientific"], research_pc.estimated_pc_scientific)
         evaluated_candidate = next(row for row in first["candidates"] if row["direction"] == "along-track +")
         after_pc = evaluated_candidate["research_pc_after"]
-        self.assertEqual(after_pc["status"], "available")
+        self.assertEqual(after_pc["status"], "available", after_pc.get("reason_code"))
         self.assertTrue(after_pc["provenance"]["fixed_comparison_uncertainty"])
         self.assertEqual(len(after_pc["provenance"]["fixed_covariance_matrix_sha256"]), 2)
         self.assertEqual(
