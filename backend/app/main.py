@@ -22,6 +22,7 @@ from typing import Literal
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
@@ -51,7 +52,7 @@ from app.services.probability_classification import POLICY_VERSION as PC_CLASSIF
 from app.services.probability_classification import ORION_RISK_POLICY_VERSION, classify_orion_physics_pc
 from app.services.orbit import propagate_records
 from app.services.review_priority import policy_status
-from app.services.reports import conjunctions_csv, event_report_csv, event_report_payload, event_report_pdf, mission_report_pdf, reference_maneuver_report_pdf
+from app.services.reports import conjunctions_csv, event_report_csv, event_report_payload, event_report_pdf, mission_report_pdf, reference_cdm_report_pdf, reference_maneuver_report_pdf
 from app.services.reference_maneuver import assess_reference_maneuver
 from app.services.risk import build_forecast, build_risk_cells, derived_provenance
 from app.services.tle_provider import CELESTRAK_CACHE_PATH, TleProvider, TleRecord
@@ -107,6 +108,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1_000)
 logger = logging.getLogger(__name__)
 
 SCREENING_RESULT_TTL_SECONDS = 30.0
@@ -419,7 +421,14 @@ async def health() -> dict:
     }
 
 
-@app.get("/api/catalog", response_model=CatalogSnapshot)
+@app.get(
+    "/api/catalog",
+    response_model=CatalogSnapshot,
+    response_model_exclude={
+        "objects": {"__all__": {"velocity": True, "provenance": {"source_record": True}, "heuristic_score_provenance": {"source_record": True}}},
+        "unavailable_objects": {"__all__": {"provenance": {"source_record": True}}},
+    },
+)
 async def catalog(limit: int = Query(850, ge=25, le=2_000), forecast_hours: int = Query(0, ge=0, le=336)) -> CatalogSnapshot:
     return await build_snapshot(limit=limit, forecast_hours=forecast_hours)
 
@@ -555,7 +564,7 @@ async def analytics(limit: int = Query(850, ge=25, le=2_000)) -> dict:
 
 @app.get("/api/conjunctions")
 async def conjunctions(
-    limit: int = Query(100, ge=1, le=200),
+    limit: int = Query(100, ge=1, le=2000),
     min_pc: float | None = None,
     risk: str | None = None,
     horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=72),
@@ -767,7 +776,7 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
 
 @app.post("/api/conjunction-jobs", status_code=202)
 async def create_conjunction_job(
-    limit: int = Query(100, ge=1, le=200),
+    limit: int = Query(100, ge=1, le=2000),
     horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=72),
     sample_step_seconds: int = Query(DEFAULT_SAMPLE_STEP_SECONDS, ge=10, le=300),
     screening_threshold_km: float = Query(DEFAULT_SCREENING_THRESHOLD_KM, gt=0, le=1_000),
@@ -1423,7 +1432,12 @@ async def screening_proxies(limit: int = Query(100, ge=1, le=200), risk: str | N
         "physics_assessment_status": "not_assessed",
         "ml_status": "unavailable",
         "source_summary": snapshot.source_summary.model_dump(),
-        "data": event_dicts(selected),
+        "data": [event.model_dump(mode="json", exclude={
+            "obj_a": True, "obj_b": True, "features": True, "physics_result": True, "ml_result": True, "comparison_result": True,
+            "provenance": {"source_record": True},
+            "primary": {"provenance": {"source_record": True}},
+            "secondary": {"provenance": {"source_record": True}},
+        }) for event in selected],
         "message": "Deterministic catalog heuristic proxies; no trajectory-based close-approach assessment is implied.",
     }
 
@@ -1501,7 +1515,7 @@ async def calculate_reference_maneuver(request: ReferenceManeuverRequest) -> dic
 async def reference_maneuver_report(
     event_id: str,
     maneuvering_object_id: str,
-    burn_lead_seconds: float = Query(..., ge=60, le=1800),
+    burn_lead_seconds: float = Query(..., ge=60, le=10800),
     direction: Literal["radial+", "radial-", "along_track+", "along_track-", "cross_track+", "cross_track-"] = Query(...),
     delta_v_m_s: float = Query(..., gt=0, le=0.1),
 ) -> StreamingResponse:
@@ -1519,6 +1533,15 @@ async def reference_maneuver_report(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{event_id}-reference-maneuver-assessment.pdf"'},
     )
+
+
+@app.get("/api/collision-probability/reference-cases/nasa-cara-foster-2d/assessment.pdf")
+async def nasa_cara_reference_assessment_pdf() -> StreamingResponse:
+    payload = await calculate_nasa_cara_reference_case()
+    pdf = reference_cdm_report_pdf({**payload["data"], "source_label": "Bundled public NASA CARA reference CDM"})
+    return StreamingResponse(iter([pdf]), media_type="application/pdf", headers={
+        "Content-Disposition": 'attachment; filename="vyoma-reference-collision-assessment.pdf"',
+    })
 
 
 @app.post("/api/conjunctions/{event_id}/maneuver", response_model=ManeuverAssessmentResponse, response_model_exclude_unset=True)

@@ -512,7 +512,7 @@ test("explicit TopBar refresh enters the job flow once while startup and periodi
     assert.match(appSource, /load\(\{ explicitScreeningRefresh: false \}\);/);
     assert.match(appSource, /setInterval\(\(\) => load\(\{ explicitScreeningRefresh: false \}\)/);
     assert.match(appSource, /result_status: "not_started"/);
-    assert.match(appSource, /Select Start Screening to run a physical close-approach screen on the current catalog/);
+    assert.match(readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8"), /Run screening to populate physical encounter groups/);
 
     let requestId = 0;
     let activeController = null;
@@ -592,7 +592,9 @@ test("a pending replacement and its failure preserve accepted events, job, and s
 
 test("latest failed attempt is shown when no accepted result exists, without replacing a prior accepted job", () => {
   const appSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-  assert.match(appSource, /screeningStatusForEmptyResults\(eventStatus, attemptStatus\)/);
+  const controlsSource = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(controlsSource, /attemptStatus\.reason/);
+  assert.match(controlsSource, /Last accepted run/);
   const initial = {
     conjunctions: [],
     conjunctionStatus: { api_status: "idle", result_status: "not_started" },

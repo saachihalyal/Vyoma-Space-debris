@@ -13,10 +13,11 @@ test("Collision Analysis offers a validated standalone reference event to Maneuv
   assert.match(app, /referenceEvent=\{referenceManeuverEvent\}/);
   assert.match(maneuver, /Burn lead before reference TCA/);
   assert.match(maneuver, /Impulse direction in burn-epoch RTN/);
-  assert.match(maneuver, /Post-maneuver Pc remains unavailable/);
+  assert.match(maneuver, /held fixed at both encounter times/);
+  assert.match(maneuver, /Pc reduction/);
   assert.match(maneuver, /relative_velocity_km_s/);
-  assert.match(maneuver, /change_from_zero_burn_baseline_percent/);
-  assert.match(maneuver, /positive means increased miss distance/);
+  assert.match(maneuver, /data\.probability_change\?\.percentage_reduction/);
+  assert.match(maneuver, /Geometric miss-distance change/);
   assert.match(maneuver, /Download Reference Maneuver Report/);
 });
 

@@ -1,0 +1,44 @@
+﻿[
+    {
+        "endpoint":  "/api/catalog?limit=900\u0026forecast_hours=0",
+        "status":  "200",
+        "seconds":  "1.606074",
+        "bytes":  "4956360"
+    },
+    {
+        "endpoint":  "/api/forecast?horizon_hours=168\u0026steps=9",
+        "status":  "200",
+        "seconds":  "0.852274",
+        "bytes":  "292046"
+    },
+    {
+        "endpoint":  "/api/system-health",
+        "status":  "200",
+        "seconds":  "1.631586",
+        "bytes":  "27265"
+    },
+    {
+        "endpoint":  "/api/analytics",
+        "status":  "200",
+        "seconds":  "2.598747",
+        "bytes":  "6807"
+    },
+    {
+        "endpoint":  "/api/screening-proxies?limit=120",
+        "status":  "200",
+        "seconds":  "1.357377",
+        "bytes":  "3057172"
+    },
+    {
+        "endpoint":  "/api/smart-filter",
+        "status":  "200",
+        "seconds":  "1.102793",
+        "bytes":  "59035"
+    },
+    {
+        "endpoint":  "/api/conjunction-jobs/fcec3945251c45f38f215485ecbb5605",
+        "status":  "404",
+        "seconds":  "0.004376",
+        "bytes":  "61"
+    }
+]

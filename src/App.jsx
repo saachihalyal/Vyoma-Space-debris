@@ -1,4 +1,4 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -55,42 +55,41 @@ import {
   getScreeningProxies,
   getSmartFilter,
   getSystemHealth,
+  calculateReferenceCdmPc,
+  calculateReferenceManeuver,
 } from "./api/ssaClient";
-import { SSAScene } from "./components/Scene/SSAScene";
-import { AnalyticsPanel } from "./components/UI/AnalyticsPanel";
-import { ControlPanel } from "./components/UI/ControlPanel";
-import { TelemetryStrip } from "./components/UI/TelemetryStrip";
-import { TimelinePanel } from "./components/UI/TimelinePanel";
-import { SmartFilterWorkbench } from "./components/UI/SmartFilterWorkbench.jsx";
+const VisualizationPage = lazy(() => import("./components/UI/VisualizationPage.jsx").then((module) => ({ default: module.VisualizationPage })));
+const HomePage = lazy(() => import("./components/UI/HomePage.jsx").then((module) => ({ default: module.HomePage })));
+const SmartFilterWorkbench = lazy(() => import("./components/UI/SmartFilterWorkbench.jsx").then((module) => ({ default: module.SmartFilterWorkbench })));
 import { CollisionPcSummary, CollisionProbabilityCard, formatCollisionProbability, formatProbabilityPercentage, formatProbabilityScientific, isUsablePc, isValidProbability, pcDisplayStatus, sourcePcLabel } from "./components/UI/CollisionPcSummary.js";
-import { CdmReferenceAssessment } from "./components/UI/CdmReferenceAssessment.jsx";
-import { ReferenceManeuverAssessment } from "./components/UI/ReferenceManeuverAssessment.jsx";
-import { EventAnomalyPanel } from "./components/UI/OrbitalAnomalySummary.js";
-import { RiskBadge } from "./components/UI/RiskBadge.js";
+const CdmReferenceAssessment = lazy(() => import("./components/UI/CdmReferenceAssessment.jsx").then((module) => ({ default: module.CdmReferenceAssessment })));
+const ReferenceManeuverAssessment = lazy(() => import("./components/UI/ReferenceManeuverAssessment.jsx").then((module) => ({ default: module.ReferenceManeuverAssessment })));
+const EventAnomalyPanel = lazy(() => import("./components/UI/OrbitalAnomalySummary.js").then((module) => ({ default: module.EventAnomalyPanel })));
+const RiskBadge = lazy(() => import("./components/UI/RiskBadge.js").then((module) => ({ default: module.RiskBadge })));
 import { formatNumber } from "./utils/orbitalMath";
 import { createRequestSequence, ignoreAbort } from "./utils/requestSequence";
 import { getScreeningJobSelection } from "./utils/screeningJobSelection";
 import { datasetLabel, retainCatalogSnapshot, sourceLabel } from "./utils/catalogStatus";
 import { isCurrentManeuverRequest, maneuverAssessmentForSelection, maneuverPageState, resolveManeuverEvent, selectManeuverEvent } from "./utils/maneuverSelection";
-import { ManeuverBaselineComparison } from "./components/UI/ManeuverBaselineComparison.js";
-import { ManeuverEventContext } from "./components/UI/ManeuverEventContext.js";
-import { CollisionPriorityTable } from "./components/UI/CollisionPriorityTable.js";
-import { CollisionAnalysisSummary } from "./components/UI/CollisionAnalysisSummary.js";
-import { CollisionWorkbench } from "./components/UI/CollisionWorkbench.jsx";
+const ManeuverBaselineComparison = lazy(() => import("./components/UI/ManeuverBaselineComparison.js").then((module) => ({ default: module.ManeuverBaselineComparison })));
+const ManeuverEventContext = lazy(() => import("./components/UI/ManeuverEventContext.js").then((module) => ({ default: module.ManeuverEventContext })));
+const CollisionPriorityTable = lazy(() => import("./components/UI/CollisionPriorityTable.js").then((module) => ({ default: module.CollisionPriorityTable })));
+const CollisionAnalysisSummary = lazy(() => import("./components/UI/CollisionAnalysisSummary.js").then((module) => ({ default: module.CollisionAnalysisSummary })));
+const CollisionWorkbench = lazy(() => import("./components/UI/CollisionWorkbench.jsx").then((module) => ({ default: module.CollisionWorkbench })));
 import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentation } from "./utils/collisionPcPresentation.js";
-import { ManeuverAiSummary } from "./components/UI/ManeuverAiSummary.js";
-import { ManeuverScreeningContext } from "./components/UI/ManeuverScreeningContext.js";
-import { ManeuverUserUpload } from "./components/UI/ManeuverUserUpload.jsx";
-import { ManeuverWorkbench } from "./components/UI/ManeuverWorkbench.jsx";
+const ManeuverAiSummary = lazy(() => import("./components/UI/ManeuverAiSummary.js").then((module) => ({ default: module.ManeuverAiSummary })));
+const ManeuverScreeningContext = lazy(() => import("./components/UI/ManeuverScreeningContext.js").then((module) => ({ default: module.ManeuverScreeningContext })));
+const ManeuverUserUpload = lazy(() => import("./components/UI/ManeuverUserUpload.jsx").then((module) => ({ default: module.ManeuverUserUpload })));
+const ManeuverWorkbench = lazy(() => import("./components/UI/ManeuverWorkbench.jsx").then((module) => ({ default: module.ManeuverWorkbench })));
 import { BuildVersionBadge } from "./components/UI/BuildVersionBadge.jsx";
 import { buildSmartFilterView } from "./utils/smartFilterView";
 import { captureGlobeEventSelection, downloadGlobeEventReport, resolveGlobeEventSelection } from "./utils/globeEventReport.js";
-import { EventRiskEstimate } from "./components/UI/EventRiskEstimate.js";
+const EventRiskEstimate = lazy(() => import("./components/UI/EventRiskEstimate.js").then((module) => ({ default: module.EventRiskEstimate })));
 import { forecastHourLabel, proxyPriorityClassIndex } from "./utils/analyticsPresentation.js";
 import { beginScreeningAttempt, collisionScreeningState, createExplicitRefreshHandler, finishScreeningAttempt, reconcilePhysicalEventSelection, resolvePhysicalEventSelection, screeningResultMatchesRun, screeningStatusForEmptyResults, screeningSummaryDisplay, shouldStartScreeningRun, updateScreeningAttempt } from "./utils/screeningRefreshPolicy.js";
 import { readWatchlist } from "./utils/watchlistStorage.js";
 import { researchPcCatalogSummary } from "./utils/researchPcAnalytics.js";
-import { buildResearchPcHeatmap } from "./utils/researchPcHeatmap.js";
+import { readAcceptedScreeningCache, saveAcceptedScreeningCache } from "./utils/acceptedScreeningCache.js";
 import { COLLISION_INVALID_ASSESSMENT_LABEL, COLLISION_PAIR_FILTERS, collisionEventPriority, explainPhysicsReason, filterCollisionEvents, getCollisionEventsForDisplay, rankCollisionEvents, rankOrbitalAnomalyEvents, screeningAssessmentCounts, searchAndSortCollisionEvents } from "./utils/collisionEventDisplay.js";
 import { clearActiveScreeningJobId, readActiveScreeningJobId, saveActiveScreeningJobId } from "./utils/screeningJobStorage.js";
 import {
@@ -115,17 +114,16 @@ import {
   OBJECT_TYPE_DISPLAY,
   PAIR_TYPE,
 } from "./utils/identityModel";
-import {
-  BarChart as RechartsBarChart,
-  Bar,
-  LineChart as RechartsLineChart,
-  Line,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
+const lazyChartPart = (name) => lazy(() => import("./components/UI/ChartPrimitives.jsx").then((module) => ({ default: module[name] })));
+const RechartsBarChart = lazyChartPart("BarChart");
+const Bar = lazyChartPart("Bar");
+const RechartsLineChart = lazyChartPart("LineChart");
+const Line = lazyChartPart("Line");
+const ResponsiveContainer = lazyChartPart("ResponsiveContainer");
+const XAxis = lazyChartPart("XAxis");
+const YAxis = lazyChartPart("YAxis");
+const CartesianGrid = lazyChartPart("CartesianGrid");
+const Tooltip = lazyChartPart("Tooltip");
 
 const initialFilters = {
   active: true,
@@ -142,7 +140,6 @@ const initialFilters = {
 const NAV = [
   { id: "home", label: "Home", icon: Home },
   { id: "visualization", label: "Visualization", icon: Globe2 },
-  { id: "heatmap", label: "Heat Map", icon: Gauge },
   { id: "smart", label: "Smart Filter", icon: Filter },
   { id: "collision", label: "Collision Analysis", icon: Radar },
   { id: "maneuver", label: "Maneuver", icon: Rocket },
@@ -156,7 +153,10 @@ export default function App() {
   const [snapshot, setSnapshot] = useState(null);
   const lastCatalogSnapshotRef = useRef(null);
   const [forecast, setForecast] = useState(null);
-  const [platform, setPlatform] = useState({ health: null, analytics: null, conjunctions: [], screeningProxies: [], conjunctionStatus: { api_status: "idle", result_status: "not_started" }, screeningAttempt: null, smart: null });
+  const [platform, setPlatform] = useState(() => {
+    const cached = readAcceptedScreeningCache();
+    return { health: null, analytics: null, conjunctions: cached?.events || [], screeningProxies: [], conjunctionStatus: cached?.status || { api_status: "idle", result_status: "not_started" }, screeningAttempt: null, smart: null };
+  });
   const [archivedJobSelection, setArchivedJobSelection] = useState(null);
   const [archiveRestoreBusy, setArchiveRestoreBusy] = useState(false);
   const [filters, setFilters] = useState(initialFilters);
@@ -171,8 +171,11 @@ export default function App() {
   const [maneuver, setManeuver] = useState(null);
   const [maneuverRequest, setManeuverRequest] = useState(null);
   const [referenceManeuverEvent, setReferenceManeuverEvent] = useState(null);
+  const [maneuverDemoBusy, setManeuverDemoBusy] = useState(false);
+  const [maneuverDemoAssessment, setManeuverDemoAssessment] = useState(null);
   const maneuverRequestGenerationRef = useRef(0);
   const [loading, setLoading] = useState(true);
+  const [backendBusy, setBackendBusy] = useState(false);
   const [pulse, setPulse] = useState(0);
   const explicitScreeningRefreshRef = useRef(null);
   const screeningLaunchRef = useRef({ runId: null });
@@ -184,6 +187,7 @@ export default function App() {
   const [notices, setNotices] = useState([]);
   const [watchlist, setWatchlist] = useState(() => new Set(readWatchlist()));
   const acceptedScreeningJobIdRef = useRef(platform.conjunctionStatus?.job_id || null);
+  const proxyFetchKeyRef = useRef(null);
   acceptedScreeningJobIdRef.current = platform.conjunctionStatus?.job_id || null;
   
   useEffect(() => {
@@ -210,7 +214,7 @@ export default function App() {
       activeController = controller;
       activeRequestId = currentRequestId;
       activeInvocationId = invocationId;
-      setLoading(true);
+      setLoading((wasLoading) => wasLoading && !lastCatalogSnapshotRef.current);
       const current = () => !cancelled && requests.isCurrent(currentRequestId);
       const catalogPromise = getCatalog({ signal: controller.signal }).then((catalog) => {
         const requestIsCurrent = current();
@@ -230,6 +234,7 @@ export default function App() {
         const acceptedCatalog = retainCatalogSnapshot(lastCatalogSnapshotRef.current, catalog);
         lastCatalogSnapshotRef.current = acceptedCatalog;
         setSnapshot(acceptedCatalog);
+        setBackendBusy(acceptedCatalog?.source_state?.status === "unavailable" && String(acceptedCatalog?.source_state?.last_error_code || "").toLowerCase().includes("backend busy"));
         setLoading(false);
         setPulse((value) => value + 1);
         return acceptedCatalog;
@@ -297,7 +302,7 @@ export default function App() {
           screening: { horizon_hours: 24, sample_step_seconds: 60, screening_threshold_km: 25, start_utc: startUtc },
         };
         setPlatform((previous) => beginScreeningAttempt(previous, queuedStatus));
-        getConjunctions({ limit: 120, horizonHours: 24, sampleStepSeconds: 60, screeningThresholdKm: 25, startUtc, catalogIdentity, diagnosticInvocationId: invocationId,
+        getConjunctions({ limit: 2000, horizonHours: 24, sampleStepSeconds: 60, screeningThresholdKm: 25, startUtc, catalogIdentity, diagnosticInvocationId: invocationId,
           onStatus: (job) => {
             if (screeningRunRef.current.runId !== runId) {
               console.warn("[ORION screening diagnostic] job status ignored: run identity changed", { invocationId, requestId: currentRequestId, expectedRunId: runId, receivedJobId: job?.job_id || null });
@@ -305,6 +310,7 @@ export default function App() {
             }
             if (job.job_id) screeningRunRef.current.jobId = job.job_id;
             if (job.job_id) saveActiveScreeningJobId(job.job_id);
+              setBackendBusy(job.progress?.stage === "status_retry");
             if (job.status !== screeningRunRef.current.lastLoggedStatus) {
               screeningRunRef.current.lastLoggedStatus = job.status;
               console.info("[ORION lifecycle] screening status", { invocationId, requestId: currentRequestId, runId, jobId: job.job_id || null, status: job.status || job.result_status || "unknown" });
@@ -347,6 +353,7 @@ export default function App() {
             validPhysicalEventCount: physicalEvents.length,
           });
           setPlatform((previous) => finishScreeningAttempt(previous, runId, resultPayload, physicalEvents));
+          if (accepted) saveAcceptedScreeningCache({ ...payload, api_status: payload.api_status || "available" }, physicalEvents);
           if (accepted) {
             setEventSelection((previous) => screeningRunSequenceRef.current === finishingRun.sequence
               ? reconcilePhysicalEventSelection(previous, physicalEvents)
@@ -370,8 +377,8 @@ export default function App() {
           message: error?.message || "Catalogue request failed.",
         });
       });
-      Promise.all([catalogPromise, getSystemHealth({ signal: controller.signal }), getAnalytics({ signal: controller.signal }), getScreeningProxies({ limit: 120, signal: controller.signal }), getSmartFilter({ signal: controller.signal })])
-        .then(([catalog, healthPayload, analyticsPayload, proxyPayload, smartPayload]) => {
+      Promise.all([catalogPromise, getSystemHealth({ signal: controller.signal }), getAnalytics({ signal: controller.signal }), getSmartFilter({ signal: controller.signal })])
+        .then(([catalog, healthPayload, analyticsPayload, smartPayload]) => {
           if (!catalog || !current()) {
             console.info("[ORION screening diagnostic] secondary catalogue results ignored", {
               invocationId,
@@ -381,11 +388,10 @@ export default function App() {
             });
             return;
           }
-          const localProxies = applyOperationalPrioritization(validateAndFilterEvents(proxyPayload?.data || []));
-          logPairTypeDistribution(localProxies);
+          setBackendBusy([healthPayload, analyticsPayload, smartPayload].some((payload) => payload?.backend_busy));
           setPlatform((previous) => ({ ...previous, health: healthPayload?.data || healthPayload,
-            analytics: analyticsPayload?.data || buildLocalAnalytics(catalog, localProxies), screeningProxies: localProxies,
-            smart: smartPayload?.data || buildLocalSmart(localProxies, catalog?.stats?.tracked_objects || 0),
+            analytics: analyticsPayload?.data || buildLocalAnalytics(catalog, []),
+            smart: smartPayload?.data || buildLocalSmart([], catalog?.stats?.tracked_objects || 0),
           }));
         }).catch((error) => {
           console.warn("[ORION screening diagnostic] secondary refresh requests rejected", {
@@ -419,6 +425,7 @@ export default function App() {
         onStatus: (job) => {
           if (!isCurrentResume() || job.job_id && job.job_id !== savedJobId) return;
           if (job.job_id) saveActiveScreeningJobId(job.job_id);
+          setBackendBusy(job.progress?.stage === "status_retry");
           setPlatform((previous) => updateScreeningAttempt(previous, runId, {
             api_status: job.api_status || "available",
             result_status: job.status || job.result_status || "running",
@@ -442,6 +449,7 @@ export default function App() {
         if (accepted && ["complete", "partial"].includes(payload?.completion_status)) saveActiveScreeningJobId(savedJobId);
         else clearActiveScreeningJobId(savedJobId);
         setPlatform((previous) => finishScreeningAttempt(previous, runId, resultPayload, physicalEvents));
+        if (accepted) saveAcceptedScreeningCache({ ...payload, api_status: payload.api_status || "available" }, physicalEvents);
         if (accepted) {
           setEventSelection((previous) => screeningRunSequenceRef.current === finishingRun.sequence
             ? reconcilePhysicalEventSelection(previous, physicalEvents)
@@ -470,6 +478,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!["smart", "analytics"].includes(activePage) || !snapshot) return undefined;
+    const snapshotKey = snapshot.generated_at || `${snapshot.source_state?.source || "unknown"}:${snapshot.objects?.length || 0}`;
+    if (proxyFetchKeyRef.current === snapshotKey) return undefined;
+    proxyFetchKeyRef.current = snapshotKey;
+    const controller = new AbortController();
+    getScreeningProxies({ limit: 120, signal: controller.signal }).then((payload) => {
+      if (controller.signal.aborted) return;
+      const proxies = applyOperationalPrioritization(validateAndFilterEvents(payload?.data || []));
+      logPairTypeDistribution(proxies);
+      setPlatform((previous) => ({ ...previous, screeningProxies: proxies }));
+    }).catch((error) => {
+      if (error?.name !== "AbortError") proxyFetchKeyRef.current = null;
+    });
+    return () => controller.abort();
+  }, [activePage, snapshot]);
+
+  useEffect(() => {
     if (!isPlaying) return undefined;
     const timer = window.setInterval(() => {
       setForecastHours((value) => (value >= 168 ? 0 : value + 3));
@@ -479,6 +504,27 @@ export default function App() {
 
   const maneuverAssessmentEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, platform.conjunctions);
   const maneuverScreeningJobId = platform.conjunctionStatus?.job_id || null;
+
+  async function loadManeuverDemo() {
+    setManeuverDemoBusy(true);
+    try {
+      const response = await fetch("/sample_conjunction_data.cdm", { cache: "no-cache" });
+      if (!response.ok) throw new Error(`Sample CDM could not be loaded (HTTP ${response.status}).`);
+      const cdmText = await response.text();
+      const assessment = await calculateReferenceCdmPc({ cdmText, sourceLabel: "public/sample_conjunction_data.cdm", assumeIndependentCovariances: true });
+      const parameters = { eventId: assessment.data.event_id, maneuveringObjectId: assessment.data.object_1.id, burnLeadSeconds: 5400, direction: "along_track+", deltaVMs: 0.05 };
+      const maneuverAssessment = await calculateReferenceManeuver(parameters);
+      setManeuverRequest(null);
+      setManeuver(null);
+      setManeuverDemoAssessment({ data: maneuverAssessment.data, parameters });
+      setReferenceManeuverEvent(assessment.data);
+      setActivePage("maneuver");
+    } catch (error) {
+      setManeuverDemoAssessment({ error: error?.message || "The demo conjunction could not be assessed." });
+    } finally {
+      setManeuverDemoBusy(false);
+    }
+  }
 
   useEffect(() => {
     const requestGeneration = ++maneuverRequestGenerationRef.current;
@@ -659,7 +705,13 @@ export default function App() {
       const archivedJob = await restoreArchivedScreeningJob(jobId);
       setArchivedJobSelection(archivedJob);
       const recordCount = archivedJob.result.data.length;
-      pushNotice(setNotices, `Restored archived job ${archivedJob.job_id} (${archivedJob.status}; ${recordCount} stored assessments). Current live results were preserved.`, "success");
+      const demoEvents = validateAndFilterEvents(archivedJob.result.data).filter((item) => item.result_kind === "physics_assessment");
+      const demoStatus = { ...archivedJob.result, api_status: "available", job_id: archivedJob.job_id, completion_status: archivedJob.status };
+      setPlatform((previous) => ({ ...previous, conjunctions: demoEvents, conjunctionStatus: demoStatus, screeningAttempt: null }));
+      saveActiveScreeningJobId(archivedJob.job_id);
+      saveAcceptedScreeningCache(demoStatus, demoEvents);
+      setEventSelection((previous) => reconcilePhysicalEventSelection(previous, demoEvents));
+      pushNotice(setNotices, `DEMO snapshot loaded from archived job ${archivedJob.job_id} (${archivedJob.status}; ${recordCount} stored assessments). The current live catalog was not changed.`, "success");
     } catch (error) {
       pushNotice(setNotices, `Archive restore failed: ${error?.message || "the archived screening job could not be restored."}`, "warning");
     } finally {
@@ -676,6 +728,7 @@ export default function App() {
           setSearch={setGlobalSearch}
           refresh={startScreening}
           loading={loading}
+          backendBusy={backendBusy}
           notificationsOpen={notificationsOpen}
           setNotificationsOpen={setNotificationsOpen}
           notices={notices}
@@ -683,9 +736,9 @@ export default function App() {
           snapshot={snapshot}
           suggestions={searchSuggestions}
         />
-        <main className="content-main">
+        <main className="content-main"><Suspense fallback={<div className="og-card loading-skeleton" role="status" aria-label="Loading page"><span /><span /><span /></div>}>
           {activePage === "home" ? (
-            <HomePage snapshot={snapshot} platform={platform} highPriority={highPriority} navigate={navigate} selectEvent={selectEvent} />
+            <HomePage snapshot={snapshot} platform={platform} maneuver={maneuver} navigate={navigate} loading={loading} />
           ) : null}
           {activePage === "visualization" ? (
             <VisualizationPage
@@ -711,7 +764,6 @@ export default function App() {
               onGlobeReportDownload={handleGlobeReportDownload}
             />
           ) : null}
-          {activePage === "heatmap" ? <HeatMapPage events={platform.conjunctions} /> : null}
           {activePage === "smart" ? (
             <SmartFilterWorkbench snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} download={handleDownload} />
           ) : null}
@@ -732,6 +784,8 @@ export default function App() {
               onScenarioPc={handleScenarioPc}
               onUseReferenceEvent={handleUseReferenceEvent}
               onStartScreening={startScreening}
+              onLoadDemo={() => handleRestoreArchivedJob("fcec3945251c45f38f215485ecbb5605")}
+              demoBusy={archiveRestoreBusy}
               selectEvent={selectEvent}
               toggleWatchlist={toggleWatchlist}
               watchlist={watchlist}
@@ -740,8 +794,8 @@ export default function App() {
               onShowInGlobe={handleShowInGlobe}
             />
           ) : null}
-          {activePage === "maneuver" ? <ManeuverWorkbench event={maneuverEvent} events={platform.conjunctions} screeningJobId={platform.conjunctionStatus?.job_id} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); selectEvent(selectManeuverEvent(platform.conjunctions, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: platform.conjunctionStatus?.job_id || null })} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} onClearReferenceEvent={() => setReferenceManeuverEvent(null)} /> : null}
-          {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics} events={platform.screeningProxies} snapshot={snapshot} /> : null}
+          {activePage === "maneuver" ? <ManeuverWorkbench event={maneuverEvent} events={platform.conjunctions} screeningJobId={platform.conjunctionStatus?.job_id} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); selectEvent(selectManeuverEvent(platform.conjunctions, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: platform.conjunctionStatus?.job_id || null })} onLoadDemo={loadManeuverDemo} demoBusy={maneuverDemoBusy} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} demoAssessment={maneuverDemoAssessment} onClearReferenceEvent={() => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); }} /> : null}
+          {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics || buildLocalAnalytics(snapshot, platform.screeningProxies || [])} events={platform.screeningProxies} snapshot={snapshot} /> : null}
           {activePage === "reports" ? <ReportsPage
             event={topEvent}
             maneuverEvent={maneuverEvent}
@@ -758,55 +812,21 @@ export default function App() {
             smart={platform.smart}
           /> : null}
           {activePage === "upload" ? <CdmReferenceAssessment standalone /> : null}
-        </main>
+        </Suspense></main>
       </div>
     </div>
   );
 }
 
-class SceneErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { error };
-  }
-
-  componentDidCatch(error, info) {
-    console.error("[ORION visualization] scene render failed", {
-      message: error?.message || "Unknown scene rendering error",
-      componentStack: info?.componentStack || "unavailable",
-    });
-  }
-
-  render() {
-    if (this.state.error) {
-      return <div className="scene-render-error" role="alert">
-        <strong>Globe rendering failed</strong>
-        <span>{this.state.error.message || "Unknown rendering error"}</span>
-        <button type="button" onClick={() => this.setState({ error: null })}>Retry globe</button>
-      </div>;
-    }
-    return this.props.children;
-  }
-}
-
 function Sidebar({ activePage, navigate, health }) {
   const [collapsed, setCollapsed] = useState(false);
-  const collisionStatus = health?.collision_models?.pc_surrogate?.status
-    || health?.collision_models?.risk_classifier?.status
-    || health?.collision_models?.status
-    || health?.ml_model?.status
-    || "checking";
   return (
     <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
       <button type="button" className="sidebar-collapse" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? "›" : "‹"}</button>
       <button className="brand-lockup" type="button" onClick={() => navigate("home")}>
         <span className="brand-mark"><Radar size={22} /></span>
         <span>
-          <strong>ORION SSA</strong>
+          <strong>Vyoma SSA</strong>
           <small>Risk Intelligence</small>
         </span>
       </button>
@@ -818,10 +838,6 @@ function Sidebar({ activePage, navigate, health }) {
           </button>
         ))}
       </nav>
-      <div className="sidebar-status">
-        <div><Activity size={14} /><span>Collision Model</span><strong>{collisionStatus}</strong></div>
-        <div><DatabaseZap size={14} /><span>Dataset</span><strong>{health?.dataset_source || "unavailable"}</strong></div>
-      </div>
     </aside>
   );
 }
@@ -871,232 +887,6 @@ function TopBar({ search, setSearch, refresh, loading, notificationsOpen, setNot
 }
 
 
-
-function HomePage({ snapshot, platform, highPriority, navigate, selectEvent }) {
-  const stats = snapshot?.stats || {};
-  const briefing = platform?.smart?.briefing || "Analyzing orbital environment and preparing mission briefing.";
-  const analytics = platform?.analytics || {};
-  const eventSummary = researchPcCatalogSummary(platform?.conjunctions || []);
-  const classData = ["Low", "Medium", "High", "Unclassified"].map((name) => ({ name, groups: eventSummary.classCounts[name] || 0 }));
-  const pcHistogram = eventSummary.histogram.map((bin) => ({ range: bin.label, events: bin.count }));
-  const modelStatuses = Object.entries(platform?.health?.collision_models || {}).filter(([, model]) => model && typeof model === "object" && model.status).map(([name, model]) => `${name.replaceAll("_", " ")}: ${model.status}`);
-
-  return (
-    <div className="page-stack">    
-      <section className="home-hero">
-        <div>
-          <p className="eyebrow">ORION SSA Research Prototype</p>
-            <h1>Screening propagated trajectories for close approaches.</h1>
-          <p>
-            ORION preserves WGS-72 SGP4 propagation and keeps heuristic proxies separate from trajectory assessments. Foster 2D Pc is implemented for sourced covariance/HBR inputs; the current TLE feed does not provide those inputs.
-          </p>
-          <div className="hero-actions">
-            <button className="secondary-action" type="button" onClick={() => navigate("visualization")}>Open Visualization</button>
-            <button className="secondary-action" type="button" onClick={() => navigate("smart")}>Explore Filter</button>
-            <button className="secondary-action" type="button" onClick={() => navigate("heatmap")}>Open Heat Map</button>
-            <button className="secondary-action" type="button" onClick={() => navigate("collision")}>Open Collision Analysis</button>
-          </div>
-        </div>
-        <div className="hero-briefing">
-          <span><ShieldCheck size={18} /> Research Prototype Briefing</span>
-          <p>{briefing}</p>
-        </div>
-      </section>
-
-      <section className="og-kpis" aria-label="Screening overview">
-        <article className="og-card og-kpi"><b>{eventSummary.total}</b><span>Events screened</span></article>
-        <article className="og-card og-kpi"><b>{eventSummary.valid}</b><span>Valid interior-TCA events</span></article>
-        <article className="og-card og-kpi"><b>{(eventSummary.classCounts.Medium || 0) + (eventSummary.classCounts.High || 0)}</b><span>Medium or High Pc-class encounter groups</span></article>
-        <article className="og-card og-kpi"><b>{modelStatuses.length ? modelStatuses.join(" · ") : "Status not reported"}</b><span>Models status</span></article>
-      </section>
-      <section className="split-grid">
-        <Panel title="Research Pc class counts · encounter groups" icon={Gauge}>
-          {eventSummary.encounterCount ? <div className="home-chart"><ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={classData}><CartesianGrid strokeDasharray="3 3" stroke="#26364d"/><XAxis dataKey="name" stroke="#9fb7d9"/><YAxis allowDecimals={false} stroke="#9fb7d9"/><Tooltip/><Bar dataKey="groups" fill="#22d3ee" radius={[6,6,0,0]}/></RechartsBarChart></ResponsiveContainer></div> : <p className="muted">No screening events are available for class counts.</p>}
-        </Panel>
-        <Panel title="Research Pc log10 histogram" icon={LineChart}>
-          {eventSummary.withResearchPc ? <div className="home-chart"><ResponsiveContainer width="100%" height="100%"><RechartsBarChart data={pcHistogram}><CartesianGrid strokeDasharray="3 3" stroke="#26364d"/><XAxis dataKey="range" stroke="#9fb7d9"/><YAxis allowDecimals={false} stroke="#9fb7d9"/><Tooltip/><Bar dataKey="events" fill="#8b5cf6" radius={[6,6,0,0]}/></RechartsBarChart></ResponsiveContainer></div> : <p className="muted">No finite research Pc values are available for the histogram.</p>}
-        </Panel>
-      </section>
-
-     
-        <KpiGrid stats={stats} analytics={analytics} smart={platform?.smart} />
-        <section className="split-grid">
-          <Panel title="Heuristic-Only Proxy Review · Relative Bands" icon={AlertTriangle}>
-            <EventList events={highPriority?.slice(0, 8) || []} onSelect={selectEvent} />
-          </Panel>
-          <Panel title="Heuristic Proxy Class Distribution" icon={Gauge}>
-             <BarList data={analytics.risk_distribution || {}} total={analytics.total_screening_proxy_pairs || 1} />
-              </Panel>
-        </section>
-      
-    </div>
-  );
-}
-
-function HeatMapPage({ events = [] }) {
-  const data = useMemo(() => buildResearchPcHeatmap(events), [events]);
-  const color = (value) => {
-    const t = Math.max(0, Math.min(1, value / 30));
-    return `hsl(${190 - t * 150} 85% ${22 + t * 28}%)`;
-  };
-  return <div className="og-page og-heatmap">
-    <header className="og-workbench-head"><div><p className="eyebrow">Research Pc · screening events</p><h1>Heat Map</h1><p className="og-sub">Cells average the named metric over valid physical events with finite research Pc and valid plotted coordinates.</p></div></header>
-    <section className="og-card">
-      <div className="og-section-head"><div><h2>{data.metric}</h2><p className="og-sub">Clipped at 30 for display. Empty cells contain no plotted events; missing or invalid values are excluded, never imputed.</p></div><span className="og-chip">{data.plottedCount} plotted · {data.excludedCount} excluded</span></div>
-      {data.plottedCount ? <><div className="research-heatmap" role="img" aria-label={`${data.metric} heat map across primary-object altitude and speed`}>
-        {data.cells.map((cell) => <div key={`${cell.x}-${cell.y}`} className="research-heatmap-cell" title={cell.value == null ? "No valid research Pc values in this cell" : `${data.metric}: ${cell.value.toFixed(2)} · ${cell.count} event(s)`} style={{ background: cell.value == null ? "rgba(255,255,255,.025)" : color(cell.value) }}>{cell.value == null ? "" : cell.value.toFixed(1)}</div>)}
-      </div><div className="heatmap-axis-labels"><span>Speed magnitude: {data.minSpeed.toFixed(2)}–{data.maxSpeed.toFixed(2)} km/s</span><span>Primary altitude: {data.minAltitude.toFixed(0)}–{data.maxAltitude.toFixed(0)} km</span></div></> : <p className="muted">No valid physical events with finite research Pc and plotted altitude/speed are available. {data.excludedCount} input event(s) were excluded.</p>}
-    </section>
-  </div>;
-}
-
-
-function VisualizationPage(props) {
-  const {
-    snapshot,
-    filters,
-    setFilters,
-    forecastHours,
-    setForecastHours,
-    isPlaying,
-    setIsPlaying,
-    activeFrame,
-    selectedObject,
-    setSelectedObject,
-    selectedRisk,
-    setSelectedRisk,
-    analyticsOpen,
-    setAnalyticsOpen,
-    pulse,
-    loading,
-    pendingFocusId,
-    pendingGlobeSelection,
-    onClearPendingFocus,
-    download,
-    onGlobeReportDownload,
-  } = props;
-  const stats = snapshot?.stats || {};
-
-  // Track auto-focus triggers for Show in Globe navigation
-  const [focusKey, setFocusKey] = useState(0);
-
-  // Keep the selected event and its originating job after pending navigation state is cleared.
-  const [localGlobeSelection, setLocalGlobeSelection] = useState(null);
-
-  // Consume pendingFocusId: auto-select the object and focus on it
-  useEffect(() => {
-    if (!pendingFocusId || !snapshot?.objects) return;
-    const match = snapshot.objects.find((obj) => obj.id === pendingFocusId);
-    setLocalGlobeSelection(pendingGlobeSelection || {
-      event: null,
-      screeningJobId: null,
-      resultKind: null,
-      error: "The original Globe event handoff is unavailable.",
-    });
-    if (match) {
-      setSelectedObject(match);
-      setSelectedRisk(null);
-      setAnalyticsOpen(true);
-      // Trigger camera focus
-      setFocusKey((k) => k + 1);
-    } else {
-      setSelectedObject(null);
-      setSelectedRisk(null);
-      setAnalyticsOpen(true);
-    }
-    onClearPendingFocus();
-  }, [pendingFocusId, snapshot]);
-
-  const resolvedGlobeSelection = useMemo(() => {
-    if (!localGlobeSelection) return { event: null, error: null };
-    try {
-      return { ...resolveGlobeEventSelection(localGlobeSelection), error: null };
-    } catch (error) {
-      return { event: null, error: error?.message || "The original Globe event selection is unavailable." };
-    }
-  }, [localGlobeSelection]);
-
-  return (
-    <div className="mission-scene-shell">
-      <SceneErrorBoundary>
-      <SSAScene
-        snapshot={snapshot}
-        filters={filters}
-        forecastHours={forecastHours}
-        activeFrame={activeFrame}
-        selectedObject={selectedObject}
-        highlightedObjectIds={resolvedGlobeSelection.event ? [resolvedGlobeSelection.event.primary?.id, resolvedGlobeSelection.event.secondary?.id].filter(Boolean) : []}
-        selectedRisk={selectedRisk}
-        focusKey={focusKey}
-        onSelectObject={(object) => {
-          setSelectedObject(object);
-          setSelectedRisk(null);
-          setAnalyticsOpen(true);
-        }}
-        onSelectRisk={(risk) => {
-          setSelectedRisk(risk);
-          setSelectedObject(null);
-          setAnalyticsOpen(true);
-        }}
-      />
-      </SceneErrorBoundary>
-      <div className="hud-layer">
-        {loading && !snapshot ? <div className="scene-data-notice" role="status">Loading catalog objects…</div> : null}
-        {!loading && snapshot && !snapshot.objects?.length && snapshot.source_state?.status !== "unavailable" ? <div className="scene-data-notice" role="status">Catalog loaded with no objects to plot.</div> : null}
-        {snapshot?.source_state?.status === "unavailable" && !snapshot?.objects?.length ? <div className="scene-data-notice" role="status">Catalog unavailable. The globe and controls are active, but no catalog objects are available to plot.</div> : null}
-        {resolvedGlobeSelection.error ? <div className="scene-data-notice" role="status">Event report unavailable: {resolvedGlobeSelection.error}</div> : null}
-        <motion.header className="top-command-bar" initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-          <div className="brand-block">
-            <div className="brand-mark"><Radar size={22} /></div>
-            <div><p className="eyebrow">Orbital Environment</p><h1>Visualization</h1></div>
-          </div>
-          <div className="status-cluster">
-            <StatusMetric icon={<Satellite size={16} />} label="Tracked" value={stats.tracked_objects || 0} />
-            <StatusMetric icon={<ShieldAlert size={16} />} label="Heuristic Index" value={Number.isFinite(stats.global_heuristic_risk_score) ? stats.global_heuristic_risk_score.toFixed(3) : "Unavailable"} accent="risk" />
-            <StatusMetric icon={<DatabaseZap size={16} />} label="Feed" value={sourceLabel(snapshot?.source_summary?.status)} />
-            <button className="icon-button" type="button" aria-label="Open analytics panel" onClick={() => setAnalyticsOpen(true)}><PanelRightOpen size={17} /></button>
-          </div>
-        </motion.header>
-        <section className="left-rail"><ControlPanel filters={filters} setFilters={setFilters} stats={stats} /></section>
-        <section className={`right-rail ${analyticsOpen ? "" : "rail-closed"}`}>
-          {analyticsOpen ? (
-            <AnalyticsPanel
-              object={selectedObject}
-              selectedEvent={resolvedGlobeSelection.event}
-              eventScreeningJobId={resolvedGlobeSelection.screeningJobId}
-              risk={selectedRisk}
-              snapshot={snapshot}
-              activeFrame={activeFrame}
-              onClose={() => {
-                if (selectedObject || selectedRisk) {
-                  setSelectedObject(null);
-                  setSelectedRisk(null);
-                } else {
-                  setAnalyticsOpen(false);
-                }
-              }}
-              onDownloadReport={resolvedGlobeSelection.event && onGlobeReportDownload ? () => onGlobeReportDownload(localGlobeSelection) : null}
-            />
-          ) : null}
-        </section>
-        <section className="bottom-rail">
-          <TimelinePanel
-            forecastHours={forecastHours}
-            setForecastHours={setForecastHours}
-            isPlaying={isPlaying}
-            setIsPlaying={setIsPlaying}
-            activeFrame={activeFrame}
-          />
-          <TelemetryStrip pulse={pulse} snapshot={snapshot} loading={loading} />
-        </section>
-        <div className="floating-actions">
-          <button className="round-action" type="button" onClick={() => setIsPlaying((value) => !value)}>{isPlaying ? <Pause size={18} /> : <Play size={18} />}</button>
-          <button className="round-action" type="button" onClick={() => document.querySelector(".left-rail")?.classList.toggle("rail-open")}><SlidersHorizontal size={18} /></button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ScreeningRunSummary({ eventStatus = {}, attemptStatus = null, screeningStatus = {}, sourceSummary = {}, sourceState = {}, eventCount = 0, returnedInvalidCount = 0, assessmentEvents = [] }) {
   const statusLine = screeningSummaryDisplay(eventStatus, attemptStatus);
@@ -1151,13 +941,13 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   const progress = attemptStatus?.progress;
   const progressPercent = Number.isFinite(progress?.percent) ? progress.percent : null;
   const stateLabel = { ready: "Ready", starting: "Starting", running: "Running", completed: "Completed", failed: "Failed" }[state];
-  const source = sourceState?.source || sourceSummary?.primary_source || "Source unavailable";
-  const lastRun = eventStatus?.timestamp || eventStatus?.finished_at || attemptStatus?.finished_at || screeningStatus?.finished_at || "Not recorded";
+  const source = sourceState?.source || sourceSummary?.primary_source || null;
+  const lastRun = eventStatus?.timestamp || eventStatus?.finished_at || attemptStatus?.finished_at || screeningStatus?.finished_at || null;
   const pairCount = screeningStatus?.candidate_pair_count ?? eventStatus?.screening?.candidate_pair_count ?? "Unavailable";
   return <section className="panel collision-screening-controls" aria-label="Screening controls">
     <div className="collision-screening-heading">
       <div><span className={`screening-state-badge screening-state-${state}`}>Screening: {stateLabel}</span>
-        <p className="muted">Source: {source} · {pairCount} pairs screened · {eventCount} candidate event{eventCount === 1 ? "" : "s"} · Last accepted run: {lastRun}</p>
+        <p className="muted">{source ? `Source: ${source} · ` : ""}{pairCount !== "Unavailable" ? `${pairCount} pairs screened · ` : ""}{eventCount} candidate event{eventCount === 1 ? "" : "s"}{lastRun ? ` · Last accepted run: ${lastRun}` : " · No prior screening run"}</p>
       </div>
       <button className="primary-action" type="button" onClick={onStartScreening} disabled={state === "starting" || state === "running"}>
         {state === "starting" || state === "running" ? "Screening…" : state === "failed" ? "Retry Screening" : "Start Screening"}
@@ -1173,7 +963,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   </section>;
 }
 
-export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe }) {
+export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [eventSort, setEventSort] = useState("research_pc");
@@ -1225,7 +1015,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const anomalyRankById = rankOrbitalAnomalyEvents(events || []);
   const chosenPhysical = event?.result_kind === "physics_assessment";
   const reportBase = chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null;
-  return <CollisionWorkbench
+  return <><CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} /><CollisionWorkbench
     events={events || []} event={event} eventStatus={eventStatus} screeningStatus={screeningStatus}
     screeningJobId={screeningJobId} selectEvent={selectEvent}
     onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")}
@@ -1237,335 +1027,12 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
     onStartScreening={onStartScreening}
     screeningControls={<CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />}
     diagnostics={<details className="og-acc"><summary>Screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>}
-  />;
-  /* Legacy stacked view retained below only as a migration reference. */
-  if (!event) {
-    const emptyStateStatus = screeningStatusForEmptyResults(eventStatus, attemptStatus);
-    const unavailable = emptyStateStatus?.api_status === "unavailable" || emptyStateStatus?.api_status === "error";
-    const screeningNotStarted = emptyStateStatus?.result_status === "not_started";
-    const completedEmpty = emptyStateStatus?.result_status === "valid_empty";
-    const partial = emptyStateStatus?.result_status === "partial";
-    const noUsableTracks = emptyStateStatus?.result_status === "unavailable";
-    const screeningPending = ["pending", "queued", "running"].includes(emptyStateStatus?.result_status) || emptyStateStatus?.api_status === "pending";
-    const screeningTimedOut = emptyStateStatus?.result_status === "timeout";
-    const screeningCancelled = emptyStateStatus?.result_status === "cancelled";
-    const noValidEventAvailable = (events || []).length > 0 && !(events || []).some((item) => item?.physics_result?.status === "valid");
-    const emptyTitle = selectionNotice ? "No physical event selected"
-      : noValidEventAvailable ? "No valid close approach is available"
-        : screeningPending ? "Screening in progress"
-          : screeningTimedOut ? "Screening is taking longer than expected"
-            : screeningCancelled ? "Screening cancelled"
-              : screeningNotStarted ? "Screening not started"
-                : unavailable || noUsableTracks ? "Trajectory screening unavailable"
-                  : partial ? "Trajectory screening incomplete"
-                    : completedEmpty ? "No close approaches in screened horizon" : "No trajectory assessments";
-    const selectionNoticeText = selectionNotice
-      ? `${selectionNotice}${completedEmpty ? " The accepted run found no qualifying close approaches, and the previous event has been cleared." : noValidEventAvailable ? " The accepted run has no valid event; invalid assessments remain in diagnostics and are excluded from the risk-ranked list." : (events || []).length ? " Choose a returned event below." : ""}`
-      : null;
-    const emptyText = selectionNoticeText
-      || (noValidEventAvailable ? "The accepted run has no valid interior-TCA event to select automatically. Invalid duplicate or unassessable trajectories are kept in screening diagnostics and receive no risk rank."
-        : screeningPending ? "Stage 2A trajectory screening is running. Its status will update here when the backend reports progress or completion."
-          : screeningTimedOut ? (emptyStateStatus?.reason || "Screening is still running; catalog data remains available and results will update when complete.")
-            : screeningCancelled ? (emptyStateStatus?.reason || "The screening job was cancelled. Select Start Screening to try again.")
-              : screeningNotStarted ? "Select Start Screening to run a physical close-approach screen on the current catalog."
-                : unavailable || noUsableTracks ? (emptyStateStatus?.reason || "The latest screening attempt did not produce an available physical assessment.")
-                  : partial ? "Some catalog objects or candidate calculations were incomplete. Review screening metadata before interpreting the result."
-                    : completedEmpty ? "The completed run found no qualifying close approaches for this source, horizon, sampling interval and distance threshold. No event was synthesized."
-                      : "No physical close-approach result is available.");
-
-    return <div className="page-stack">
-      <PageHeader eyebrow="Collision Analysis" title="Trajectory Screening" text="Run a physical close-approach screen using the current orbital catalog and configured screening horizon." />
-      <CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} />
-      <CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />
-      <details className="collision-tools-details"><summary>Collision probability tools · Upload Conjunction Data</summary><CdmReferenceAssessment onUseReferenceEvent={onUseReferenceEvent} /></details>
-      <details className="advanced-screening-details"><summary>Advanced screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>
-      <EmptyState
-        title={emptyTitle}
-        text={emptyText}
-      />
-      {availableEvents.length ? <Panel title="Screened Events" icon={Radar}>
-        <p className="muted">Showing {availableEvents.length} event rows from {(events || []).length} returned screening assessments. Invalid assessments remain visible for diagnosis and receive no priority rank.</p>
-        <CollisionPriorityTable events={getCollisionEventsForDisplay(availableEvents)} anomalyRanks={anomalyRankById} screeningJobId={screeningJobId} onSelect={(item) => selectEvent(item, "collision")} onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")} />
-      </Panel> : null}
-    </div>;
-  }
-
-  // Resolve canonical identities for display
-  const pIdentity = buildCanonicalIdentity(event.primary);
-  const sIdentity = buildCanonicalIdentity(event.secondary);
-  const pairType = event.pair_type || getPairType(event.primary, event.secondary);
-
-  // Build display strings
-  const pDisplay = `${pIdentity.name} · ID: ${pIdentity.id}`;
-  const sDisplay = `${sIdentity.name} · ID: ${sIdentity.id}`;
-  const pTypeDisplay = pIdentity.displayType;
-  const sTypeDisplay = sIdentity.displayType;
-  const physical = event.result_kind === "physics_assessment";
-  const physics = event.physics_result || {};
-  const tcaValue = formatScientificField(physics.tca, 3);
-  const missValue = formatScientificField(physics.miss_distance, 3);
-  const relativeSpeed = formatScientificField(physics.relative_speed_at_tca, 4);
-  const pcResult = event.collision_probability || null;
-  const pcClassification = pcResult?.probability_classification;
-  const evidencePriority = collisionEventPriority(event);
-  const evidenceRank = rankCollisionEvents(events).findIndex((item) => item.id === event.id) + 1;
-  const mlResult = event.ml_result || {};
-  const comparisonResult = event.comparison_result || {};
-  const provenance = event.provenance || {};
-  const computedPcMatches = physical && isUsablePc(pcResult) && pcResult.event_id === event.id;
-  const sourcePc = pcResult?.source_reported_event_id === event.id && isValidProbability(pcResult?.source_reported_pc) ? pcResult.source_reported_pc : null;
-  const researchPcDisplay = researchPcPresentation(event.automatic_research_pc_assessment);
-  const physicsRiskAssessment = computedPcMatches
-    ? pcResult.risk_assessment
-    : event.automatic_research_pc_assessment?.risk_assessment;
-  const physicsRiskDisplay = physicsPcRiskPresentation(physicsRiskAssessment);
-  const aiPriority = event.ai_risk_assessment;
-  const aiScoreDisplay = Number.isFinite(aiPriority?.score) ? `${(aiPriority.score * 100).toFixed(1)} / 100` : "Unavailable";
-
-  const watched = watchlist.has(event.primary.id) || watchlist.has(event.secondary.id);
-  const eventReportPath = physical
-    ? screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null
-    : `/api/reports/${encodeURIComponent(event.id)}.pdf`;
-  const eventReportCsvPath = physical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null;
-  const eventReportJsonPath = physical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null;
-  return (
-    <div className="page-stack">
-      <PageHeader
-        eyebrow="Collision Analysis"
-        title={`${pDisplay} vs ${sDisplay}`}
-        text={physical
-          ? `${pTypeDisplay} vs ${sTypeDisplay} — ${pairType}. Selected conjunction details and assessment evidence.`
-          : `${pTypeDisplay} vs ${sTypeDisplay} — ${pairType}. This record is a heuristic screening proxy only; it is not a trajectory-derived conjunction assessment.`}
-        action={<div className="report-action-group" aria-label="Selected collision report downloads"><button className="primary-action" type="button" disabled={!eventReportPath} title={physical && !screeningJobId ? "The selected event's completed screening job is unavailable." : undefined} onClick={() => eventReportPath && download(eventReportPath, `${event.id}-report.pdf`)}>PDF</button><button className="secondary-action" type="button" disabled={!eventReportCsvPath} onClick={() => eventReportCsvPath && download(eventReportCsvPath, `${event.id}-report.csv`)}>CSV</button><button className="secondary-action" type="button" disabled={!eventReportJsonPath} onClick={() => eventReportJsonPath && download(eventReportJsonPath, `${event.id}-report.json`)}>JSON</button></div>}
-      />
-      <CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} />
-      <Panel title="Selected Collision Report Preview" icon={FileText}>
-        <div className="readout-list">
-          <span>Event / object pair<strong>{event.id} · {event.primary?.name || event.primary?.id} ({event.primary?.id}, {event.primary?.object_type || "type unavailable"}) / {event.secondary?.name || event.secondary?.id} ({event.secondary?.id}, {event.secondary?.object_type || "type unavailable"})</strong></span>
-          <span>TCA / geometry<strong>{tcaValue} · {missValue} · relative speed {relativeSpeed}</strong></span>
-          <span>Source-reported Pc<strong>{sourcePc == null ? "Not reported by this event" : `${formatProbabilityScientific(sourcePc)} · ${formatProbabilityPercentage(sourcePc)} · ${pcResult.source_reported_pc_method || "method undeclared"}`}</strong></span>
-          <span>Event-specific Foster Pc<strong>{computedPcMatches ? `${formatProbabilityScientific(pcResult.pc)} · ${formatProbabilityPercentage(pcResult.pc)}` : `Unavailable · ${pcResult?.reason_code || "event-specific covariance/HBR inputs unavailable"}`}</strong></span>
-          <span>Research Pc / score / class<strong>{researchPcDisplay.value} · {researchPcDisplay.percentage} · {physicsRiskDisplay.value}</strong></span>
-          <span>Uncertainty provenance<strong>{pcResult?.covariance_status || (event.automatic_research_pc_assessment?.covariance_method ? "assumed research model" : "covariance unavailable")} · {pcResult?.covariance_frame || event.automatic_research_pc_assessment?.covariance_frame || physics.state_information?.source_frame || "frame unavailable"} · epoch {pcResult?.covariance_epoch || event.automatic_research_pc_assessment?.covariance_epoch_utc || "unavailable"} · encounter-plane σ {event.automatic_research_pc_assessment?.encounter_plane_sigma_min_km ?? "unavailable"}/{event.automatic_research_pc_assessment?.encounter_plane_sigma_max_km ?? "unavailable"} km · {event.automatic_research_pc_assessment?.covariance_policy_name || event.automatic_research_pc_assessment?.covariance_policy_id || "policy unavailable"} · HBR {pcResult?.hbr_km ?? event.automatic_research_pc_assessment?.hbr_km ?? "unavailable"} km ({pcResult?.hbr_source || event.automatic_research_pc_assessment?.hbr_source || "source unavailable"})</strong></span>
-          <span>Collision AI<strong>{event.collision_ai_assessment?.status || "unavailable"} · Pc surrogate {event.collision_ai_assessment?.pc_surrogate?.status || "unavailable"} · classifier {event.collision_ai_assessment?.risk_classifier?.status || "unavailable"}</strong></span>
-          <span>Method / provenance<strong>{physics.provenance?.method || provenance.method || "unavailable"} v{physics.provenance?.method_version || provenance.method_version || "unavailable"} · {provenance.source || provenance.source_type || "source unavailable"}</strong></span>
-        </div>
-        <p className="muted">This preview keeps reported, event-specific Foster, and assumption-based research Pc separate. The downloadable reports include full assumptions, sensitivity, covariance/HBR provenance, AI status, and limitations.</p>
-      </Panel>
-      <CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />
-      <details className="collision-tools-details"><summary>Collision probability tools · Upload Conjunction Data</summary><CdmReferenceAssessment onUseReferenceEvent={onUseReferenceEvent} /></details>
-      <div className="collision-maneuver-entry"><span>Continue to maneuver assessment using this selected event's identity and states.</span><button className="secondary-action" type="button" onClick={() => selectEvent(event, "maneuver")}>Open Maneuver Assessment</button></div>
-      <details className="advanced-screening-details"><summary>Advanced screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>
-      <section className="selected-event-summary" aria-label="Selected event summary">
-         <div className="selected-event-heading"><div><span className="reference-eyebrow">Selected conjunction</span><h2>{pDisplay} vs {sDisplay}</h2><p>{physical ? `Priority #${aiPriority?.final_priority_rank || evidenceRank || "?"} · review index ${aiScoreDisplay} · ${aiPriority?.ranking_explanation || evidencePriority.basis}` : `Heuristic review only · rank ${event.risk_level || "unavailable"}`}</p></div><button className="secondary-action" type="button" onClick={() => selectEvent(event, "maneuver")}>Open Maneuver Assessment</button></div>
-        <div className="selected-event-metrics">
-          <span>TCA<strong>{physical ? tcaValue : "Unavailable · proxy only"}</strong></span>
-          <span>Miss distance<strong>{physical ? missValue : "Unavailable · proxy only"}</strong></span>
-           <span>Relative speed<strong>{physical ? `${relativeSpeed} km/s` : "Unavailable · proxy only"}</strong></span>
-          <span>Event-specific Foster Pc<strong>{computedPcMatches ? `${formatProbabilityScientific(pcResult.pc)} · ${formatProbabilityPercentage(pcResult.pc)}` : operationalFosterStatus(event, false)}</strong></span>
-          {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>Assumption-based research Pc<strong>{`${researchPcDisplay.value} · ${researchPcDisplay.percentage} (unvalidated research estimate)`}</strong></span> : null}
-          <span>Physics Pc risk score and final class<strong>{physicsRiskDisplay.value}</strong></span>
-           {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <span>Research Pc sensitivity scenarios<strong>{researchPcDisplay.sensitivity}</strong></span> : null}
-           <span>Source-reported Pc<strong>{sourcePc != null ? `${formatProbabilityScientific(sourcePc)} · ${formatProbabilityPercentage(sourcePc)} · ${pcResult.source_reported_pc_method || "method undeclared"}` : "Not provided by this event's source"}</strong></span>
-           <span>Rule-based geometry review index<strong>{physical ? `${aiScoreDisplay} · ${aiPriority?.prediction_method || "method unavailable"}; not Pc` : "Unavailable · proxy-only record"}</strong></span>
-           <span>Final ranking basis<strong>{physical ? aiPriority?.ranking_explanation || evidencePriority.basis : "Catalog heuristic only; not a probability"}</strong></span>
-        </div>
-         {event.automatic_research_pc_assessment?.status === "prior_based_research_estimate" ? <details className="selected-research-assumptions"><summary>Research estimate assumptions and provenance</summary><p>{(event.automatic_research_pc_assessment.assumptions || []).join(" ")}</p><p>{event.automatic_research_pc_assessment.covariance_policy_name || event.automatic_research_pc_assessment.method_name} · HBR source {event.automatic_research_pc_assessment.provenance?.source || "ESA population size prior"}.</p><p>{event.automatic_research_pc_assessment.risk_assessment?.classification_basis || "Risk classification unavailable."}</p></details> : null}
-          <label className="uncertainty-what-if">Uncertainty scale what-if<select value={uncertaintyScale} onChange={(e) => setUncertaintyScale(e.target.value)}><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></select></label>
-          <p className="muted" role="status">{uncertaintyWhatIfStatus === "loading" ? "Recomputing research Pc with the TLE-age baseline…" : uncertaintyWhatIfStatus === "available" && uncertaintyWhatIf ? `What-if only · TLE-age position-sigma baseline scaled ${uncertaintyScale}× · exact log10 Pc ${uncertaintyWhatIf.log10_pc}` : uncertaintyWhatIfStatus === "error" ? "Uncertainty what-if could not be computed for this event." : "Uncertainty what-if requires a completed screening job."}</p>
-      </section>
-      <section className="collision-layout">
-        <Panel title="Screened Events" icon={Radar}>
-          <details className="collision-filter-details"><summary>Search and filter events</summary><div className="collision-filters">
-            <label>Search events<input type="search" value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Object name, catalog ID, or event ID" /></label>
-            <label>Pair type<select value={pairFilter} onChange={(e) => setPairFilter(e.target.value)}>{COLLISION_PAIR_FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-            <label>Sort events<select value={eventSort} onChange={(e) => setEventSort(e.target.value)}><option value="research_pc">Exact research log10 Pc, highest first</option><option value="evidence_priority">Evidence priority, highest first</option><option value="tca_soonest">TCA, soonest first</option><option value="miss_nearest">Miss distance, nearest first</option></select></label>
-            <label>Screening status<select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="all">All statuses</option><option value="valid">Valid interior TCA</option><option value="boundary">Horizon-edge minimum</option><option value="invalid">Invalid</option><option value="unavailable">Unavailable</option></select></label>
-            <label>Rule-based geometry review band<select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}><option value="all">All review states</option><option value="CRITICAL">Band 1</option><option value="HIGH">Band 2</option><option value="MEDIUM">Band 3</option><option value="LOW">Band 4</option><option value="REVIEW_REQUIRED">Review required</option><option value="UNCLASSIFIED">Unclassified</option></select></label>
-            <label>Available quantities<select value={quantityFilter} onChange={(e) => setQuantityFilter(e.target.value)}><option value="all">All available / unavailable</option><option value="geometry">TCA and miss distance available</option><option value="relative_velocity">Relative velocity available</option><option value="pc">Pc available (covariance and HBR required)</option></select></label>
-            <label>Min miss distance (km)<input type="number" min="0" value={minimumMiss} onChange={(e) => setMinimumMiss(e.target.value)} /></label>
-            <label>Max miss distance (km)<input type="number" min="0" value={maximumMiss} onChange={(e) => setMaximumMiss(e.target.value)} /></label>
-            <label>From TCA date (UTC)<input type="date" value={fromTca} onChange={(e) => setFromTca(e.target.value)} /></label>
-            <label>To TCA date (UTC)<input type="date" value={toTca} onChange={(e) => setToTca(e.target.value)} /></label>
-            <label className="filter-checkbox"><input type="checkbox" checked={physicalOnly} onChange={(e) => setPhysicalOnly(e.target.checked)} /> Physical assessments only</label>
-          </div></details>
-          <p className="muted">Showing {availableEvents.length} event rows from {(events || []).length} returned screening assessments. “All statuses” includes invalid assessments for review; invalid physics assessments receive no priority rank. Search covers event and catalog identities, names, object types, and pair type.</p>
-          {availableEvents.length ? <CollisionPriorityTable events={getCollisionEventsForDisplay(availableEvents)} anomalyRanks={anomalyRankById} screeningJobId={screeningJobId} onSelect={(item) => selectEvent(item, "collision")} onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")} /> : <p className="muted">No events match these filters.</p>}
-        </Panel>
-        <details className="advanced-selected-details"><summary>Advanced selected-event details and diagnostics</summary><div className="detail-stack">
-          <div className="event-hero">
-            {physical ? <RiskBadge risk={physics.status || "unavailable"} label={physics.status === "boundary" ? "Horizon-edge minimum" : physics.status || "unavailable"} /> : <RiskBadge risk={event.risk_level} label={`Relative rank: ${event.risk_level}`} />}
-            <strong>{physical ? `Physics status: ${physics.status || "unavailable"}` : `Heuristic priority ${event.priority_score}/100`}</strong>
-            <span>{physical
-              ? `Threshold ${physics.screening_threshold_km ?? "unavailable"} km · ${physics.screening_horizon_start || "unavailable"} to ${physics.screening_horizon_end || "unavailable"}`
-              : event.suggested_action}</span>
-          </div>
-          <Panel title={physical ? "Selected Conjunction: Key Results" : "Screening Proxy Details"} icon={Radar}>
-            {physical ? <CollisionProbabilityCard result={pcResult} sourceReportedPc={pcResult?.source_reported_pc} sourceReportedMethod={pcResult?.source_reported_pc_method} /> : <CollisionProbabilityCard result={null} />}
-            <MetricRow
-              metrics={[
-              [physical ? "Assessment Status" : "Heuristic Risk Index", physical ? (physics.status || "Unavailable") : Number(event.risk_score).toFixed(3)],
-              ["TCA", physical ? tcaValue : "Unavailable — proxy only"],
-              ["Miss Distance", physical ? missValue : "Unavailable — proxy only"],
-              ["Relative Speed", physical ? relativeSpeed : "Unavailable — proxy only"],
-              ["Relative Velocity (TEME)", physical ? formatScientificField(physics.relative_velocity_at_tca, 6) : "Unavailable — proxy only"],
-              ["Evidence Priority", physical ? `#${evidenceRank || "?"} - ${evidencePriority.label}` : `Heuristic - ${event.risk_level || "unavailable"}`],
-              ["Foster Pc reference category", physical ? (pcClassification?.category || "Unavailable · no event-specific Pc") : "Unavailable · proxy only"],
-              ["Geometry review band (rule-based)", physical ? ({ CRITICAL: "Band 1", HIGH: "Band 2", MEDIUM: "Band 3", LOW: "Band 4", REVIEW_REQUIRED: "Review required" }[event.review_priority?.category] || "Unclassified") : `Proxy heuristic · ${event.risk_level || "unavailable"}`],
-              ["AI prioritization (not Pc)", physical && event.ai_risk_assessment ? `${(event.ai_risk_assessment.score * 100).toFixed(1)} / 100 · ${event.ai_risk_assessment.category} · ${event.ai_risk_assessment.prediction_method}` : "Unavailable · valid geometry inputs required"],
-              ["Final priority rank", physical ? `#${event.ai_risk_assessment?.final_priority_rank || "?"}` : "Proxy heuristic only"],
-              ]}
-            />
-          </Panel>
-          <Panel title="Why this result?" icon={Target}>
-            <div className="readout-list collision-why-result">
-              <span>Pc status<strong>{physical && isUsablePc(pcResult) ? `${pcResult.method || "Foster 2D"} · ${pcResult.status}` : physical && pcResult?.status === "available" ? `${pcDisplayStatus(pcResult)} · no valid numeric probability was returned` : physical ? `Unavailable · ${(pcResult?.reason_codes || []).join(", ") || (pcResult?.reason || "Event-matched covariance and HBR are unavailable.")}` : "Unavailable · heuristic proxy has no encounter covariance or HBR"}</strong></span>
-              <span>Priority and basis<strong>{physical ? `Rank #${evidenceRank || "?"} - ${evidencePriority.label}. ${evidencePriority.basis} ${pcClassification?.status === "classified" ? `${pcClassification.policy_name || "Pc reference bands"}: ${pcClassification.explanation}` : event.review_priority?.explanation || "Geometry-based review priority only; no calibrated risk classification is available."}` : "Catalog heuristic ranking only; not a probability or physical conjunction classification."}</strong></span>
-              <span>AI classification<strong>{physical && event.ai_risk_assessment ? `${event.ai_risk_assessment.category} · deterministic live-geometry queue index ${(event.ai_risk_assessment.score * 100).toFixed(1)} / 100; not a trained prediction or Pc. ${event.ai_risk_assessment.explanation}` : physical ? "Unavailable: required valid geometry features are missing." : "Unavailable: a screening proxy has no event-level physical inference."}</strong></span>
-            </div>
-          </Panel>
-          <details className="advanced-result-details"><summary>Advanced details: Pc inputs, covariance, HBR, AI and screening diagnostics</summary>
-          {physical ? <Panel title="ORION Review Priority" icon={Cpu}>
-            <div className="readout-list">
-              <span>Geometry review band (rule-based) <strong>{{ CRITICAL: "Band 1", HIGH: "Band 2", MEDIUM: "Band 3", LOW: "Band 4", REVIEW_REQUIRED: "Review required" }[event.review_priority?.category] || "Unclassified"}</strong></span>
-              <span>Policy version <strong>{event.review_priority?.policy_version || "unavailable"}</strong></span>
-              <span>Explanation <strong>{event.review_priority?.explanation || "Review priority is unclassified because required evidence is unavailable."}</strong></span>
-              {event.review_priority?.reason_codes?.map((code) => <span key={code}>Reason <strong>{code}</strong></span>)}
-              {event.review_priority?.limitations?.map((limitation, index) => <span key={index}>Limitation <strong>{limitation}</strong></span>)}
-            </div>
-          </Panel> : null}
-          {physical && event.ai_risk_assessment ? <Panel title="AI Risk Prioritization · Deterministic Fallback" icon={Cpu}>
-            <div className="readout-list">
-              <span>Score and category<strong>{(event.ai_risk_assessment.score * 100).toFixed(1)} / 100 · {event.ai_risk_assessment.category} (queue index; not Pc)</strong></span>
-              <span>Model identity<strong>{event.ai_risk_assessment.model_name} v{event.ai_risk_assessment.model_version}; {event.ai_risk_assessment.prediction_method}</strong></span>
-              <span>Final priority<strong>#{event.ai_risk_assessment.final_priority_rank || "unranked"} · {event.ai_risk_assessment.ranking_explanation || "Ranking awaits screening-set aggregation."}</strong></span>
-              <span>Ranking evidence<strong>Geometry #{event.ai_risk_assessment.geometry_rank || "—"}; Foster Pc #{event.ai_risk_assessment.foster_pc_rank || "—"}; research Pc #{event.ai_risk_assessment.research_pc_rank || "—"}. {event.ai_risk_assessment.explanation}</strong></span>
-              <span>Quality and limitation<strong>{(event.ai_risk_assessment.model_quality?.limitations || []).join(" ")}</strong></span>
-              <span>ESA historical model<strong>{mlResult?.model_name || "ESA log10-risk regressor"} is withheld for live inference: feature semantics remain unverified. Historical target is final ESA event log10 risk, not collision probability.</strong></span>
-            </div>
-          </Panel> : null}
-          {physical && physics.status === "valid" ? <Panel title="Covariance, HBR and Pc Inputs" icon={Target}>
-            <CollisionPcSummary sourceResult={pcResult} scenarioResult={event.scenario_collision_probability} />
-            <p className="muted">Geometry above comes from the CelesTrak GP/OMM trajectory screen. Upload a conjunction message or calculate a research Pc using the documented uncertainty assumptions when event-specific covariance and HBR are absent.</p>
-            <div className="split-grid">
-              <form className="readout-list" onSubmit={async (submitEvent) => {
-                submitEvent.preventDefault();
-                if (!screeningJobId) { setPcInputMessage("A completed screening job ID is required."); return; }
-                setPcInputBusy(true); setPcInputMessage("Validating CDM against the selected event…");
-                try {
-                  const result = await onImportCdm({ eventId: event.id, cdmXml, sourceLabel: cdmSourceLabel, assumeIndependentCovariances: cdmAssumeIndependent });
-                  setPcInputMessage(`Imported CDM assessment: ${result.data?.collision_probability?.status || "unavailable"}${result.data?.collision_probability?.reason_codes?.length ? ` · ${result.data.collision_probability.reason_codes.join(", ")}` : ""}. Source authentication was not performed.`);
-                } catch (error) { setPcInputMessage(error?.message || "CDM input was rejected."); }
-                finally { setPcInputBusy(false); }
-              }}>
-                <strong>Upload Conjunction Data</strong>
-                <label>CDM source label (user-declared)<input required maxLength={200} value={cdmSourceLabel} onChange={(e) => setCdmSourceLabel(e.target.value)} /></label>
-                <label>CDM file<input required type="file" accept=".xml,.cdm,.kvn,.txt,.json,application/xml,text/xml,application/json,text/plain" onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) { setCdmXml(""); return; }
-                  if (file.size > 1_000_000) { setCdmXml(""); setPcInputMessage("CDM input exceeds the 1 MB limit."); return; }
-                  setCdmXml(await file.text());
-                }} /></label>
-                <small>The uploaded file must match both object IDs, exact TCA, and the event frame shown here ({physics.state_information?.source_frame || "unavailable"}). XML/KVN covariance uses its declared RTN convention. JSON is accepted when its supported inertial frame matches this event; unsupported terrestrial frames are rejected because no validated Earth-orientation transform is applied.</small>
-                <label className="filter-checkbox"><input type="checkbox" checked={cdmAssumeIndependent} onChange={(e) => setCdmAssumeIndependent(e.target.checked)} /> Explicitly assume independent object covariance</label>
-                <button className="secondary-action" type="submit" disabled={pcInputBusy || !screeningJobId || !cdmXml || !cdmSourceLabel.trim()}>{pcInputBusy ? "Validating..." : "Match CDM to event and calculate imported Pc"}</button>
-              </form>
-              <form className="readout-list" onSubmit={async (submitEvent) => {
-                submitEvent.preventDefault();
-                if (!screeningJobId) { setPcInputMessage("A completed screening job ID is required."); return; }
-                let primaryMatrix; let secondaryMatrix; let hbrValue;
-                try {
-                  primaryMatrix = JSON.parse(scenarioPrimary);
-                  secondaryMatrix = JSON.parse(scenarioSecondary);
-                  hbrValue = Number(scenarioHbr);
-                  if (!Number.isFinite(hbrValue) || hbrValue <= 0) throw new Error("Combined HBR must be a positive number in km.");
-                } catch (error) { setPcInputMessage(error?.message || "Enter both covariance matrices as valid JSON."); return; }
-                setPcInputBusy(true); setPcInputMessage("Calculating a separate assumed research scenario…");
-                try {
-                  const result = await onScenarioPc({ eventId: event.id, covariancePrimaryKm2: primaryMatrix, covarianceSecondaryKm2: secondaryMatrix, hbrKm: hbrValue, assumeIndependentCovariances: scenarioAssumeIndependent, assumptions: scenarioAssumptionsText });
-                  const scenario = result.data?.scenario_collision_probability;
-                  setPcInputMessage(`Research scenario status: ${scenario?.status || "unavailable"}${scenario?.reason_codes?.length ? ` · ${scenario.reason_codes.join(", ")}` : ""}. This result remains separate from imported CDM Pc.`);
-                } catch (error) { setPcInputMessage(error?.message || "Scenario inputs were rejected."); }
-                finally { setPcInputBusy(false); }
-              }}>
-                <strong>Explicit assumed scenario (not observed data)</strong>
-                <small>Enter two positive-definite 3×3 position covariance matrices in km². They are bound to {physics.state_information?.source_frame || "the event frame unavailable"} at {physics.tca?.value || "the event TCA unavailable"}.</small>
-                <label>Primary object covariance (JSON km²)<textarea required value={scenarioPrimary} onChange={(e) => setScenarioPrimary(e.target.value)} placeholder="[[...,...,...],[...,...,...],[...,...,...]]" rows={3} /></label>
-                <label>Secondary object covariance (JSON km²)<textarea required value={scenarioSecondary} onChange={(e) => setScenarioSecondary(e.target.value)} placeholder="[[...,...,...],[...,...,...],[...,...,...]]" rows={3} /></label>
-                <label>Assumed combined hard-body radius (km)<input required type="number" min="0" step="any" value={scenarioHbr} onChange={(e) => setScenarioHbr(e.target.value)} /></label>
-                <label>Scenario assumptions and basis<textarea required minLength={10} maxLength={1000} value={scenarioAssumptionsText} onChange={(e) => setScenarioAssumptionsText(e.target.value)} rows={2} /></label>
-                <label className="filter-checkbox"><input type="checkbox" checked={scenarioAssumeIndependent} onChange={(e) => setScenarioAssumeIndependent(e.target.checked)} /> Explicitly assume independent object covariance</label>
-                <button className="secondary-action" type="submit" disabled={pcInputBusy || !screeningJobId}>{pcInputBusy ? "Calculating…" : "Calculate separate scenario Pc"}</button>
-              </form>
-            </div>
-            {event.scenario_inputs ? <details className="muted"><summary>Reproducibility inputs and sensitivity</summary><p>Primary covariance (km², {event.scenario_inputs.frame}, TCA {event.scenario_inputs.tca_utc}): <code>{JSON.stringify(event.scenario_inputs.covariance_primary_km2)}</code></p><p>Secondary covariance (km²): <code>{JSON.stringify(event.scenario_inputs.covariance_secondary_km2)}</code></p><p>Combined HBR: {event.scenario_inputs.hbr_km} km. Independent covariances explicitly assumed: {event.scenario_inputs.assume_independent_covariances ? "yes" : "no"}. Declared basis: {event.scenario_inputs.declared_assumptions}</p><p>Sensitivity: not calculated because no uncertainty ranges were supplied for covariance or HBR. This scenario remains assumption-dependent and is not operationally calibrated.</p></details> : null}
-            {pcInputMessage ? <p className="muted" role="status">{pcInputMessage}</p> : null}
-            {event.scenario_collision_probability ? <p className="muted">Stored scenario result: {pcDisplayStatus(event.scenario_collision_probability)}{isUsablePc(event.scenario_collision_probability) ? ` · ${formatCollisionProbability(event.scenario_collision_probability.pc)}` : ` · ${(event.scenario_collision_probability.reason_codes || []).join(", ") || (event.scenario_collision_probability.status === "available" ? "INVALID_PC_VALUE" : "no numeric Pc produced")}`}. Assumptions: {(event.scenario_assumptions || []).join(" ")}</p> : null}
-          </Panel> : physical ? <>
-            <Panel title="Physical Pc Status" icon={Target}>
-              <CollisionPcSummary sourceResult={pcResult} scenarioResult={event.scenario_collision_probability} />
-            </Panel>
-            <p className="muted">Covariance/HBR input is restricted to a valid interior-TCA physical event. Boundary and invalid events retain their explicit Pc status and reason; proxy results cannot receive a Pc assessment.</p>
-          </> : null}
-          <section className="split-grid">
-            <Panel title="Physics Assessment" icon={Target}>
-              <details>
-                <summary>Detailed physical measurements, covariance and Pc provenance</summary>
-                <PhysicsAvailability physics={physics} pcResult={pcResult} proxyOnly={!physical} />
-              </details>
-            </Panel>
-          <Panel title="ESA Historical Model (not live Pc)" icon={Cpu}>
-              <EventRiskEstimate eventId={event.id} physical={physical} mlResult={mlResult} comparisonResult={comparisonResult} explainReason={explainMlReason} />
-            </Panel>
-            <Panel title="AI Orbital Anomaly" icon={Radar}>
-              <EventAnomalyPanel physical={physical} eventId={event.id} result={event.anomaly_result} />
-            </Panel>
-          </section>
-          <section className="split-grid">
-            <Panel title="Screening Run Status" icon={Radar}>
-              <div className="readout-list">
-                <span>Completion <strong>{eventStatus?.completion_status || (eventStatus?.result_status === "partial" ? "partial" : eventStatus?.result_status?.startsWith("valid_") ? "complete" : eventStatus?.result_status || "unavailable")}</strong></span>
-                <span>Summary <strong>{screeningStatus?.reason_code || eventStatus?.reason || "See run summary and limits."}</strong></span>
-                <span>Candidate pairs / minima / refinements <strong>{screeningStatus ? `${screeningStatus.candidate_pair_count ?? "?"} / ${screeningStatus.candidate_local_minimum_count ?? "?"} / ${screeningStatus.refinement_count ?? "?"}` : "Unavailable"}</strong></span>
-                <span>Candidate cap reached <strong>{screeningStatus?.candidate_limit_reached == null ? "Unavailable" : screeningStatus.candidate_limit_reached ? "Yes · partial screen" : "No"}</strong></span>
-                <span>Catalog provenance <strong>{provenance.source || provenance.source_type || "Unavailable"} · {provenance.input_hash || "input hash unavailable"}</strong></span>
-              </div>
-            </Panel>
-            <Panel title={physical ? "Interpretation" : "Heuristic Rationale"} icon={Cpu}>
-              {physical
-                ? <p className="muted">TCA and miss distance come from two SGP4/SDP4 WGS-72 trajectories in TEME. The ESA model target is historical log10 event-risk; it is not Pc or a calibrated probability. Physical Pc remains unavailable unless valid covariance and HBR inputs are supplied. The model artifact is retained, but its output is withheld because equivalence between historical ESA CDM features and live TLE-derived features is unverified. On the mission-held-out test set it had MAE 6.8935 log10 units, Spearman 0.4424, and detected 0/145 high-risk labels at the fixed threshold.</p>
-                : <><p className="briefing-text">{event.suggested_action}</p><p className="muted">The score ranks catalog-level candidate pairs. It is not a probability, confidence estimate, or validated conjunction result.</p></>}
-            </Panel>
-          </section>
-          </details>
-          <section className="split-grid">
-            <Panel title="Object Information" icon={Satellite}>
-              <ObjectPair event={event} screeningJobId={screeningJobId} toggleWatchlist={toggleWatchlist} watched={watched} onShowInGlobe={onShowInGlobe} />
-            </Panel>
-            <Panel title="Review Workflow" icon={ShieldAlert}>
-              <div className="action-plan">
-                <span>{event.suggested_action}</span>
-                <button className="primary-action" type="button" onClick={() => selectEvent(event, "maneuver")}>Open Maneuver Availability</button>
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={() => physical
-                    ? downloadTrajectoryCsv(csvScreeningJobId)
-                    : download("/api/reports/screening-proxies.csv", "screening-proxies.csv")}
-                >
-                  Download {physical ? `${csvJobArchived ? "Archived " : ""}Trajectory Assessment` : "Heuristic Proxy"} CSV
-                </button>
-              </div>
-            </Panel>
-          </section>
-        </div></details>
-      </section>
-    </div>
-  );
+  /></>;
 }
 
 export function ManeuverPage(props) {
   return <ManeuverWorkbench {...props} />;
+
 }
 
 function AnalyticsPage({ analytics, events, snapshot }) {
@@ -1581,10 +1048,12 @@ function AnalyticsPage({ analytics, events, snapshot }) {
           <TrendLine points={analytics?.risk_timeline || []} />
         </Panel>
       </section>
-      <section className="split-grid">
+      <section className="analytics-matrix">
         <Panel title="Current Screening Proxy Matrix" icon={Gauge}>
           <RiskMatrix events={events} />
         </Panel>
+      </section>
+      <section className="analytics-matrix">
         <Panel title="Current Screening Proxy Scatter" icon={Target}>
           <Scatter events={events.slice(0, 24)} />
         </Panel>
@@ -1774,16 +1243,6 @@ function Panel({ title, icon: Icon, children }) {
   );
 }
 
-function StatusMetric({ icon, label, value, accent }) {
-  return (
-    <div className={`status-metric ${accent || ""}`}>
-      {icon}
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
 function EventList({ events, onSelect, detailed, compact }) {
   if (!events?.length) return <p className="muted">No screening events are available.</p>;
   const priorityRanks = new Map(rankCollisionEvents(events).map((event, index) => [event.id, index + 1]));
@@ -1873,7 +1332,7 @@ function Pipeline({ stages }) {
 
 function BarList({ data, total }) {
   const entries = Object.entries(data || {});
-  if (!entries.length) return <p className="muted">Awaiting backend analytics.</p>;
+  if (!entries.length) return <p className="muted">No catalog objects are available for this breakdown.</p>;
   return (
     <div className="bar-list">
       {entries.map(([label, value]) => (
@@ -1888,7 +1347,7 @@ function BarList({ data, total }) {
 }
 
 function TrendLine({ points }) {
-  if (!points?.length) return <p className="muted">Heuristic forecast unavailable; no forecast frames were returned.</p>;
+  if (!points?.length) return <p className="muted">No forecast frames were returned for this catalog snapshot.</p>;
   const data = (points || []).map((point, index) => ({
     time: forecastHourLabel(point, index),
     risk: point.global_heuristic_risk_score != null && Number.isFinite(Number(point.global_heuristic_risk_score))
@@ -1986,9 +1445,9 @@ function RiskMatrix({ events }) {
 
   const [hover, setHover] = useState(null);
 
-  const width = 520;
-  const height = 260;
-  const pad = { l: 52, r: 16, t: 18, b: 46 };
+  const width = 1200;
+  const height = 520;
+  const pad = { l: 92, r: 28, t: 28, b: 76 };
 
   const safeEvents = (events || []).filter(Boolean);
   if (!safeEvents.length) return <p className="muted">No screening proxy pairs are available to plot.</p>;
@@ -2116,12 +1575,12 @@ function RiskMatrix({ events }) {
         <div style={{ color: "#38bdf8", fontWeight: 800, fontSize: 12, textTransform: "uppercase" }}>Proxy Priority Class Matrix</div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <span style={{ color: "#94a3b8", fontSize: 11, fontWeight: 750, textTransform: "uppercase" }}>Legend</span>
-          <div style={{ width: 120, height: 10, border: "1px solid rgba(255,255,255,0.08)", background: `linear-gradient(90deg, ${colorScale(0)} 0%, ${colorScale(0.25)} 25%, ${colorScale(0.45)} 45%, ${colorScale(0.7)} 70%, ${colorScale(0.9)} 90%, ${colorScale(1)} 100%)` }} />
+          <div className="proxy-matrix-legend" aria-label="Priority legend">{[["Low", "#22c55e"], ["Moderate", "#38bdf8"], ["High", "#ffd166"], ["Critical", "#ff8a3d"], ["Extreme", "#b91cff"]].map(([label, color]) => <span key={label}><i style={{ background: color }} />{label}</span>)}</div>
         </div>
       </div>
       <p className="muted">Each proxy-pair record is placed by its primary object's altitude and speed. Cell color uses a fixed ordinal mapping of relative priority labels; it is not a measured event-risk score. Catalog objects can appear in multiple pairs.</p>
 
-      <div style={{ position: "relative", width: "100%", height: 290, border: "1px solid rgba(255,255,255,0.08)", background: "#02030a", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ position: "relative", width: "100%", height: "clamp(360px, 42vw, 540px)", border: "1px solid rgba(255,255,255,0.08)", background: "#02030a", borderRadius: 10, overflow: "hidden" }}>
         <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" onMouseLeave={hideHover}>
           {/* grid lines */}
           {Array.from({ length: binsX + 1 }, (_, i) => (
@@ -2156,8 +1615,8 @@ function RiskMatrix({ events }) {
             const opacity = cell.has ? 0.95 : 1;
 
             return (
+              <g key={`c-${cell.ix}-${cell.iy}`}>
               <rect
-                key={`c-${cell.ix}-${cell.iy}`}
                 x={x}
                 y={y}
                 width={cellW}
@@ -2168,6 +1627,8 @@ function RiskMatrix({ events }) {
                 opacity={opacity}
                 onMouseMove={(e) => showHover(e, cell)}
               />
+              {cell.has && cellW >= 22 && <text x={x + cellW / 2} y={y + cellH / 2 + 5} fill="white" fontSize="13" fontWeight="700" textAnchor="middle" pointerEvents="none">{cell.count}</text>}
+              </g>
             );
           })}
 
@@ -2205,8 +1666,8 @@ function RiskMatrix({ events }) {
             className="heatmap-tooltip"
             style={{
               position: "absolute",
-              left: Math.min(520 - 220, Math.max(6, hover.x)),
-              top: Math.min(290 - 140, Math.max(6, hover.y)),
+              left: Math.min(1000 - 240, Math.max(6, hover.x)),
+              top: Math.min(500 - 160, Math.max(6, hover.y)),
               width: 220,
               pointerEvents: "none",
               border: "1px solid rgba(129,225,255,0.22)",
@@ -2273,12 +1734,12 @@ function Scatter({ events }) {
   return (
     <div className="scatter-graph" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "#02030a", borderRadius: 10, overflow: "hidden" }}>
       <div style={{ padding: 12, color: "#38bdf8", fontWeight: 900, fontSize: 12, textTransform: "uppercase" }}>Screening Proxy Scatter · one primary-object marker per proxy pair; objects can repeat</div>
-      <div style={{ width: "100%", height: 300 }}>
+      <div style={{ width: "100%", height: 380 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <RechartsLineChart data={points} margin={{ top: 14, right: 18, left: 28, bottom: 24 }}>
+          <RechartsLineChart data={points} margin={{ top: 18, right: 30, left: 26, bottom: 44 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#26364d" />
-            <XAxis dataKey="altitude" type="number" domain={[minAltitude, maxAltitude]} tick={{ fontSize: 11 }} stroke="#9fb7d9" unit=" km" />
-            <YAxis dataKey="speed" type="number" domain={[minSpeed, maxSpeed]} tick={{ fontSize: 11 }} stroke="#9fb7d9" unit=" km/s" />
+            <XAxis dataKey="altitude" type="number" domain={[minAltitude, maxAltitude]} tick={{ fontSize: 11 }} stroke="#9fb7d9" tickCount={5} tickFormatter={(v) => Math.round(v).toLocaleString()} interval="preserveStartEnd" label={{ value: "Primary altitude (km)", position: "insideBottom", offset: -18, fill: "#9fb7d9" }} />
+            <YAxis dataKey="speed" type="number" domain={[minSpeed, maxSpeed]} tick={{ fontSize: 11 }} stroke="#9fb7d9" tickCount={5} tickFormatter={(v) => Number(v).toFixed(1)} width={58} label={{ value: "Speed (km/s)", angle: -90, position: "insideLeft", fill: "#9fb7d9" }} />
             <Tooltip content={tooltip} />
             <Line
               type="linear"

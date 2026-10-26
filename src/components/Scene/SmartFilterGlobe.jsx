@@ -26,7 +26,7 @@ function CatalogMarkers({ objects }) {
       if (!(norm > 6378)) return null;
       // Orbit radius is intentionally compressed so LEO through GEO remain legible.
       const radius = 2.18 + Math.min(0.95, Math.log1p(norm - 6378) / Math.log1p(40000) * 0.95);
-      const color = object.category === "debris" ? "#ff9b52" : object.category === "rocket_body" ? "#ffd166" : object.category === "active" || object.category === "payload" ? "#38e7ff" : "#bdc8d4";
+      const color = object.category === "debris" ? "#070a10" : object.category === "rocket_body" ? "#ffd166" : object.category === "active" || object.category === "payload" ? "#ffffff" : "#8bd5ff";
       return <mesh key={object.id} position={[ecefX / norm * radius, z / norm * radius, ecefY / norm * radius]}>
         <sphereGeometry args={[object.category === "debris" ? 0.035 : 0.045, 8, 8]} />
         <meshBasicMaterial color={color} toneMapped={false} />
@@ -44,6 +44,6 @@ export function SmartFilterGlobe({ title, objects = [] }) {
       <color attach="background" args={["#030a16"]} /><ambientLight intensity={0.72} /><directionalLight position={[6, 5, 7]} intensity={2.1} />
       <Earth freezeRotation /><CatalogMarkers objects={objects} /><OrbitControls enablePan={false} minDistance={5.2} maxDistance={13} autoRotate autoRotateSpeed={0.24} />
     </Canvas> : <div className="smart-globe-unavailable">Earth view unavailable: no common-epoch propagated TEME position data for this snapshot.</div>}
-    <div className="smart-globe-legend"><span><i className="active-marker" /> Active / payload</span><span><i className="debris-marker" /> Debris</span><span><i className="rocket-marker" /> Rocket body</span><span><i className="unknown-marker" /> Other / unknown</span><small>SGP4 snapshot, TEME → pseudo-Earth-fixed by GMST. Orbit radius compressed for display; procedural land is illustrative, not geographic; no future trajectory shown.</small></div>
+    <div className="smart-globe-legend"><span><i className="active-marker" /> Satellite (working spacecraft)</span><span><i className="debris-marker" /> Debris</span><span><i className="rocket-marker" /> Rocket body</span><span><i className="unknown-marker" /> Other / unknown</span><small>SGP4 snapshot, TEME → pseudo-Earth-fixed by GMST. Orbit radius compressed for display; procedural land is illustrative, not geographic; no future trajectory shown.</small></div>
   </div>;
 }

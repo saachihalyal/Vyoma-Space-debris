@@ -44,7 +44,7 @@ def mission_report_pdf(
     else:
         physical_result_summary = "Physical screening status is unavailable; no conclusion about close approaches can be drawn."
     lines = [
-        "ORION SSA Research Prototype",
+        "Vyoma SSA Research Prototype",
         "Hybrid Data and Trajectory Screening Report",
         "",
         f"Generated UTC: {datetime.now(timezone.utc).isoformat()}",
@@ -134,7 +134,7 @@ def mission_report_pdf(
                 "Maneuver effects: unavailable",
             ]
         )
-    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="Vyoma SSA | Research Prototype | Not for operational decisions")
 
 
 def event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any] | None = None, screening_summary: dict[str, Any] | None = None, evaluation_metadata: dict[str, Any] | None = None) -> bytes:
@@ -184,7 +184,7 @@ def event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any] | None = No
                 f"Reason: {maneuver.get('reason', 'No validated maneuver result available.')}",
             ]
         )
-    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="Vyoma SSA | Research Prototype | Not for operational decisions")
 
 
 def event_report_payload(event: dict[str, Any], maneuver: dict[str, Any] | None = None, *, screening_job_id: str | None = None) -> dict[str, Any]:
@@ -304,6 +304,7 @@ def reference_maneuver_report_pdf(result: dict[str, Any]) -> bytes:
         f"Combined HBR: {hbr.get('value', 'unavailable')} {hbr.get('units', '')} | {hbr.get('source_type', 'unavailable')} | {hbr.get('description', 'unavailable')}",
         "",
         "Requested impulse",
+        "AI ranking not used: this standalone CDM report evaluates one specified impulse, not a candidate-ranking search.",
         f"Object ID: {maneuver.get('object_id', 'unavailable')}",
         f"Burn UTC: {maneuver.get('burn_time_utc', 'unavailable')} | RTN direction: {maneuver.get('direction', 'unavailable')}",
         f"Delta-v: {maneuver.get('delta_v_m_s', 'unavailable')} m/s",
@@ -316,16 +317,53 @@ def reference_maneuver_report_pdf(result: dict[str, Any]) -> bytes:
         f"Geometric miss-distance percentage change: {candidate.get('change_from_zero_burn_baseline_percent', 'unavailable')}% | {candidate.get('percentage_change_status', 'unavailable')} | positive means increased miss distance",
         "",
         "Collision probability",
-        f"Original reference Pc: {pc_before.get('pc', 'unavailable')} | status {pc_before.get('status', 'unavailable')} | original CDM TCA only",
-        f"Post-maneuver Pc: {pc_after.get('pc') if pc_after.get('pc') is not None else 'unavailable'} | status {pc_after.get('status', 'unavailable')} | {pc_after.get('reason_code', 'unavailable')}",
-        "Pc change: unavailable; covariance has not been propagated through the impulse to candidate TCA.",
-        "Fuel and maneuver feasibility: unavailable; mass and propulsion data were not supplied.",
+        f"Before Pc (zero-burn two-body): {pc_before.get('pc', 'unavailable')} | status {pc_before.get('status', 'unavailable')}",
+        f"After Pc (maneuver candidate): {pc_after.get('pc') if pc_after.get('pc') is not None else 'unavailable'} | status {pc_after.get('status', 'unavailable')}",
+        f"Pc reduction: {result.get('probability_change', {}).get('percentage_reduction', 'unavailable')}% | {result.get('probability_change', {}).get('status', 'unavailable')} | shared CDM covariance held fixed; not dynamically propagated",
         "",
         "Assumptions and limitations",
         *[f"- {item}" for item in result.get("assumptions", [])],
         *[f"- {item}" for item in result.get("limitations", [])],
     ]
-    return simple_pdf([part for line in lines for part in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([part for line in lines for part in _wrap_report_line(line, 56)], footer="Vyoma SSA | Research Prototype | Not for operational decisions")
+
+
+def reference_cdm_report_pdf(result: dict[str, Any]) -> bytes:
+    """Render the values from an isolated, source-supplied reference CDM Pc assessment."""
+    probability = result.get("collision_probability") or {}
+    if hasattr(probability, "model_dump"):
+        probability = probability.model_dump(mode="json")
+    first = result.get("object_1") or {}
+    second = result.get("object_2") or {}
+    lines = [
+        "Standalone Reference CDM Collision Assessment",
+        f"Event ID: {result.get('event_id', '')}",
+        f"Source: {result.get('source_label') or 'Bundled public NASA CARA reference CDM'}",
+        f"Input SHA-256: {result.get('input_sha256', '')}",
+        f"CDM message ID: {result.get('message_id', '')}",
+        f"Frame: {result.get('reference_frame', '')}",
+        f"TCA UTC: {result.get('tca_utc', '')}",
+        "",
+        "Objects",
+        f"Primary: {first.get('name', '')} | ID {first.get('id', '')}",
+        f"Secondary: {second.get('name', '')} | ID {second.get('id', '')}",
+        f"Source-reported miss distance: {result.get('source_reported_miss_distance_km', '')} km",
+        f"Source-reported Pc: {result.get('source_reported_pc', '')} | method {result.get('source_reported_pc_method', '')}",
+        "",
+        "Foster 2D result",
+        f"Collision probability: {probability.get('pc', '')}",
+        f"Method: {probability.get('method', '')} {probability.get('method_version', '')}",
+        f"Status: {probability.get('status', '')}",
+        f"Hard-body radius: {probability.get('hbr_km', '')} km | source {probability.get('hbr_source', '')}",
+        f"Covariance: {probability.get('covariance_status', '')} | frame {probability.get('covariance_frame', '')} | epoch {probability.get('covariance_epoch', '')}",
+        "",
+        "Scope",
+        "This is a standalone historical/reference CDM assessment. It uses the states and covariance supplied in the CDM at its declared TCA and is not a live catalog screening result.",
+        "The source and declared originator were not independently authenticated.",
+        *[f"Assumption: {item}" for item in probability.get("assumptions", [])],
+    ]
+    lines = [line for line in lines if not line.endswith(": ")]
+    return simple_pdf([part for line in lines for part in _wrap_report_line(line, 56)], footer="Vyoma SSA | Research Prototype | Not for operational decisions")
 
 
 def conjunctions_csv(events: list[dict[str, Any]], *, export_metadata: dict[str, Any] | None = None) -> str:
@@ -747,7 +785,7 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
             f"version {(event.get('provenance') or {}).get('method_version', 'unavailable')} | "
             f"input hash {(event.get('provenance') or {}).get('input_hash', 'unavailable')}"
         ),
-        "ORION internal geometry-only review priority (not a Pc risk class)",
+        "Vyoma geometry-only review priority (not a Pc risk class)",
         f"Geometry review band: {review_band} | policy version: {(event.get('review_priority') or {}).get('policy_version', 'unavailable')} | status: {(event.get('review_priority') or {}).get('status', 'unclassified')}",
         f"Explanation: {(event.get('review_priority') or {}).get('explanation', 'unavailable')}",
         f"Criteria: {_csv_value(_geometry_review_criteria((event.get('review_priority') or {}).get('criteria'))) or 'unavailable'} | reasons: {', '.join((event.get('review_priority') or {}).get('reason_codes', [])) or 'none'}",
@@ -892,7 +930,7 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
             lines.extend([part for line in candidate_lines for part in _wrap_report_line(line, 68)])
         if len(ranked_candidates) > 5:
             lines.append(f"{len(ranked_candidates) - 5} additional candidates are included in the CSV and JSON downloads.")
-    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="ORION SSA | Research Prototype | Not for operational decisions")
+    return simple_pdf([wrapped for line in lines for wrapped in _wrap_report_line(line, 56)], footer="Vyoma SSA | Research Prototype | Not for operational decisions")
 
 
 def _csv_value(value: Any) -> str:
@@ -927,7 +965,7 @@ def simple_pdf(lines: list[str], footer: str) -> bytes:
     pages: list[list[str]] = []
     current: list[str] = []
     for line in lines:
-        if len(current) >= 38:
+        if len(current) >= 38 or (len(current) >= 36 and str(line).rstrip().endswith(":")):
             pages.append(current)
             current = []
         current.append(str(line))

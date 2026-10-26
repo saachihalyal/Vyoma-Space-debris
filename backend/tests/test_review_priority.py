@@ -92,7 +92,7 @@ class ReviewPriorityTests(unittest.TestCase):
         self.assertIn(f"Geometry review band: {expected_band}", pdf)
         self.assertNotIn(priority["category"], pdf)
         self.assertIn(priority["policy_version"], pdf)
-        self.assertIn("ORION internal geometry-only review priority", pdf)
+        self.assertIn("Vyoma geometry-only review priority", pdf)
 
     def test_health_and_openapi_report_review_policy_and_capabilities(self):
         source_summary = SourceSummary(status="all_live", counts_by_source_type={"live": 1}, object_count=1)

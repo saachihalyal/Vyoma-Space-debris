@@ -1,0 +1,13 @@
+{
+  "viewport": "1600x1050",
+  "cold": {
+    "fcpMs": 1556,
+    "firstDataReadyMs": 10726,
+    "collisionFromHomeMs": 1261
+  },
+  "warm": {
+    "fcpMs": 312,
+    "collisionFromNavMs": 5580
+  },
+  "initialProxyRequests": 0
+}

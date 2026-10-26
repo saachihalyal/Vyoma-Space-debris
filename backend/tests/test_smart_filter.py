@@ -31,6 +31,10 @@ class PhysicsSmartFilterTests(unittest.TestCase):
         self.assertIsNone(row["model_prediction"])
         self.assertIsNone(row["confidence"])
 
+    def test_probability_scoring_uses_numeric_log_beneath_display_floor(self) -> None:
+        self.assertEqual(smart_filter._log10_pc("< 1e-30", -47.835758197384806), -47.835758197384806)
+        self.assertEqual(smart_filter._scientific_from_log10(-47.835758197384806), "< 1e-30")
+
     def test_missing_model_is_labeled_fallback_and_never_claims_a_prediction(self) -> None:
         missing = ARTIFACT_PATH.with_name("missing-smart-filter.joblib")
         with patch.object(smart_filter, "ARTIFACT_PATH", missing), patch.object(

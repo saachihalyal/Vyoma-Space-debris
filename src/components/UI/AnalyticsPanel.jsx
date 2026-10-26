@@ -1,6 +1,6 @@
 import { Download } from "lucide-react";
 import { motion } from "framer-motion";
-import { Crosshair, Gauge, Orbit, Satellite, ShieldAlert, TrendingUp } from "lucide-react";
+import { Crosshair, Orbit, Satellite, ShieldAlert } from "lucide-react";
 import { formatIndex, formatNumber } from "../../utils/orbitalMath";
 import { getObjectTypeLabel } from "../../utils/objectClassification";
 import { buildCanonicalIdentity, resolveById, OBJECT_TYPE } from "../../utils/identityModel";
@@ -49,18 +49,13 @@ export function AnalyticsPanel({ object, selectedEvent, eventScreeningJobId, ris
           <Readout label="Heuristic Debris Pressure Score" value={formatIndex(object.heuristic_debris_pressure_score)} />
           <Readout label="Heuristic Risk Index" value={formatIndex(object.heuristic_risk_score)} tone="risk" />
           <Readout label="Heuristic Forecast Score" value={formatIndex(object.heuristic_forecast_score)} tone="risk" />
-          <Readout label="State Validity" value={object.provenance?.validity_status || "not assessed"} />
-          <Readout label="Source Type" value={object.provenance?.source_type || "unknown"} />
           {selectedEvent ? <Readout label="Selected conjunction event" value={selectedEvent.id} /> : null}
           {selectedEvent ? <Readout label="Conjunction pair" value={`${selectedEvent.primary?.name || "Unknown"} (${selectedEvent.primary?.id || "ID unavailable"}) ↔ ${selectedEvent.secondary?.name || "Unknown"} (${selectedEvent.secondary?.id || "ID unavailable"})`} /> : null}
           {selectedEvent?.physics_result?.tca?.status === "available" ? <Readout label="Conjunction TCA (UTC)" value={selectedEvent.physics_result.tca.value} /> : null}
           {selectedEvent?.physics_result?.miss_distance?.status === "available" ? <Readout label="Closest approach" value={`${selectedEvent.physics_result.miss_distance.value} km`} /> : null}
-          {selectedEvent?.result_kind === "physics_assessment" ? <Readout label="Originating screening job" value={eventScreeningJobId || "Unavailable"} /> : null}
+          {selectedEvent?.result_kind === "physics_assessment" && eventScreeningJobId ? <Readout label="Originating screening job" value={eventScreeningJobId} /> : null}
           {selectedEvent?.result_kind === "screening_proxy" ? <Readout label="Event type" value="Heuristic proxy (not a physical conjunction)" /> : null}
         </div>
-        <MethodNote
-          text={`${object.name} (${objectType}) has object-level source metadata: ${object.provenance?.source || "provenance unavailable"}. Heuristic score method: ${object.heuristic_score_provenance?.method || "unavailable"}. These scores are not physical density or collision probability.`}
-        />
         {onDownloadReport ? (
           <button className="primary-action download-report-btn" type="button" onClick={onDownloadReport}>
             <Download size={16} /> Download Report
@@ -96,7 +91,6 @@ export function AnalyticsPanel({ object, selectedEvent, eventScreeningJobId, ris
             <span key={item}>{item}</span>
           ))}
         </div>
-        <MethodNote text={`${risk.explanation} Method: ${risk.provenance?.method || "unavailable"}.`} />
       </motion.aside>
     );
   }
@@ -118,7 +112,6 @@ export function AnalyticsPanel({ object, selectedEvent, eventScreeningJobId, ris
         <Readout label="Debris Objects" value={formatNumber(stats.debris_objects)} />
         <Readout label="Heuristic Forecast Trend" value={formatIndex(stats.heuristic_forecast_trend_score)} tone="risk" />
       </div>
-      <MethodNote text="The scene shows propagated catalog states and deterministic visualization geometry. It does not estimate physical untracked debris density, covariance, or collision probability." />
     </motion.aside>
   );
 }
@@ -144,19 +137,3 @@ function Readout({ label, value, tone }) {
   );
 }
 
-function MethodNote({ text }) {
-  return (
-    <div className="ai-block">
-      <div className="section-label">
-        <Gauge size={14} />
-        <span>Method and Availability</span>
-      </div>
-      <p>{text}</p>
-      <div className="confidence-strip">
-        <TrendingUp size={14} />
-        <span>ML model</span>
-        <strong>Unavailable</strong>
-      </div>
-    </div>
-  );
-}

@@ -145,7 +145,7 @@ test("Pc summary formats scientific notation, percentage, odds, method and sourc
   assert.match(markup, /NASA CARA fixture/);
   assert.match(markup, /SOURCE-REPORTED/);
   assert.match(markup, /CDM-reported Foster-1992/);
-  assert.match(markup, /kept separate from ORION/);
+  assert.match(markup, /kept separate from Vyoma/);
   assert.match(markup, /fixture\.cdm/);
   assert.match(markup, /SHA-256 abc123/);
 });

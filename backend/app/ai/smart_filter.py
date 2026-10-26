@@ -114,7 +114,11 @@ def smart_filter_model_status() -> dict[str, Any]:
     }
 
 
-def _log10_pc(scientific: str | None) -> float | None:
+def _log10_pc(scientific: str | None, numeric_log10: float | None = None) -> float | None:
+    # The scientific string is a presentation field and can be "< 1e-30".
+    # Use the numeric research result for scenario scoring when it is present.
+    if isinstance(numeric_log10, (int, float)) and not isinstance(numeric_log10, bool):
+        return float(numeric_log10) if math.isfinite(numeric_log10) and numeric_log10 <= 0 else None
     if not isinstance(scientific, str):
         return None
     try:
@@ -125,6 +129,8 @@ def _log10_pc(scientific: str | None) -> float | None:
 
 
 def _scientific_from_log10(value: float) -> str:
+    if value <= -30:
+        return "< 1e-30"
     exponent = math.floor(value)
     mantissa = 10 ** (value - exponent)
     return f"{mantissa:.5f}e{exponent:+d}"
@@ -153,7 +159,7 @@ def _assess_one(event: ConjunctionAssessmentEvent, model, metadata: dict[str, An
                     primary=event.primary, secondary=event.secondary,
                     covariance_scale=covariance_scale, hbr_scale=hbr_scale,
                 )
-                log_pc = _log10_pc(assessment.estimated_pc_scientific)
+                log_pc = _log10_pc(assessment.estimated_pc_scientific, assessment.log10_pc)
                 if assessment.status != "prior_based_research_estimate" or log_pc is None:
                     scenario_failures.append(assessment.reason_codes[0] if assessment.reason_codes else assessment.status)
                     continue

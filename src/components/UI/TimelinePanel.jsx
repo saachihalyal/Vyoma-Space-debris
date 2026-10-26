@@ -1,5 +1,4 @@
 import { Pause, Play, TimerReset } from "lucide-react";
-import { formatIndex } from "../../utils/orbitalMath";
 
 export function TimelinePanel({ forecastHours, setForecastHours, isPlaying, setIsPlaying, activeFrame }) {
   return (
@@ -30,10 +29,6 @@ export function TimelinePanel({ forecastHours, setForecastHours, isPlaying, setI
         />
       </div>
 
-      <div className="forecast-chip">
-        <span>corridor risk</span>
-        <strong>{formatIndex(activeFrame?.global_heuristic_risk_score)}</strong>
-      </div>
     </aside>
   );
 }

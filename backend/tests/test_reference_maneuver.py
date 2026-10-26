@@ -15,7 +15,7 @@ EVENT_ID = f"CDM-{CDM.input_sha256[:24]}"
 
 
 class ReferenceManeuverWorkflowTests(unittest.TestCase):
-    def test_reference_event_maneuver_recalculates_geometry_and_withholds_post_burn_pc(self) -> None:
+    def test_reference_event_maneuver_recalculates_geometry_and_shared_covariance_pc(self) -> None:
         with TestClient(main.app) as client:
             response = client.post("/api/collision-probability/reference-cases/nasa-cara-foster-2d/maneuver", json={
                 "event_id": EVENT_ID,
@@ -47,9 +47,11 @@ class ReferenceManeuverWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(candidate["percentage_change_status"], "available")
         self.assertEqual(result["probability_before"]["status"], "available")
-        self.assertIsNone(result["probability_after"]["pc"])
-        self.assertEqual(result["probability_after"]["reason_code"], "POST_MANEUVER_COVARIANCE_PROPAGATION_UNAVAILABLE")
-        self.assertIsNone(result["probability_change"]["value"])
+        self.assertIsNotNone(result["probability_before"]["pc"])
+        self.assertIsNotNone(result["probability_after"]["pc"])
+        self.assertEqual(result["probability_change"]["status"], "available")
+        self.assertAlmostEqual(result["probability_change"]["value"], result["probability_before"]["pc"] - result["probability_after"]["pc"])
+        self.assertTrue(any("held fixed" in item for item in result["assumptions"]))
         self.assertEqual(result["fuel"]["status"], "unavailable")
         self.assertEqual(payload["input_provenance"]["live_screening_binding"], "none")
 
@@ -91,9 +93,21 @@ class ReferenceManeuverWorkflowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF"))
-        self.assertIn(b"Post-maneuver Pc: unavailable", response.content)
+        self.assertIn(b"Before Pc", response.content)
+        self.assertIn(b"Pc reduction:", response.content)
         self.assertIn(b"Geometric miss-distance percentage change", response.content)
         self.assertIn(EVENT_ID.encode(), response.content)
+
+    def test_reference_maneuver_accepts_one_orbit_lead_time(self) -> None:
+        result = main._reference_maneuver_result(main.ReferenceManeuverRequest(
+            event_id=EVENT_ID,
+            maneuvering_object_id="000020580",
+            burn_lead_seconds=5400,
+            direction="along_track+",
+            delta_v_m_s=0.05,
+        ))
+        self.assertEqual(result["maneuver"]["lead_before_reference_tca_seconds"], 5400)
+        self.assertEqual(result["probability_before"]["status"], "available")
 
 
 if __name__ == "__main__":

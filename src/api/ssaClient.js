@@ -15,6 +15,33 @@ const maneuverRequests = new Map();
 const SCREENING_POLL_TIMEOUT_MS = 55 * 60 * 1000;
 const SCREENING_POLL_INTERVAL_MS = 1000;
 const SCREENING_STATUS_REQUEST_TIMEOUT_MS = 30 * 1000;
+const API_REQUEST_TIMEOUT_MS = 12 * 1000;
+
+async function fetchWithTimeoutRetry(url, options = {}, { timeoutMs = API_REQUEST_TIMEOUT_MS, retries = 1 } = {}) {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    if (options.signal?.aborted) throw new DOMException("Request aborted", "AbortError");
+    const controller = new AbortController();
+    const abortFromCaller = () => controller.abort();
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      if (response.status >= 500) {
+        await response.body?.cancel();
+        if (attempt < retries) continue;
+        throw new Error(`Backend busy: server returned HTTP ${response.status}.`);
+      }
+      return response;
+    } catch (error) {
+      if (options.signal?.aborted) throw new DOMException("Request aborted", "AbortError");
+      if (attempt >= retries) throw new Error("Backend busy: request timed out or could not connect.");
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abortFromCaller);
+    }
+  }
+  throw new Error("Backend busy: request failed.");
+}
 
 export function getCatalog({ limit = 900, signal } = {}) {
   if (signal?.aborted) return Promise.reject(new DOMException("Request aborted", "AbortError"));
@@ -40,7 +67,7 @@ export function getCatalog({ limit = 900, signal } = {}) {
 async function fetchCatalog(limit, signal) {
   try {
     const params = new URLSearchParams({ limit: String(limit), forecast_hours: "0" });
-    const response = await fetch(`${API_BASE}/api/catalog?${params}`, { signal });
+    const response = await fetchWithTimeoutRetry(`${API_BASE}/api/catalog?${params}`, { signal });
     if (!response.ok) {
       throw new Error(`SSA API returned ${response.status}`);
     }
@@ -93,7 +120,7 @@ export async function getForecast({ horizonHours = 168, steps = 9, signal } = {}
       horizon_hours: String(horizonHours),
       steps: String(steps),
     });
-    const response = await fetch(`${API_BASE}/api/forecast?${params}`, { signal });
+    const response = await fetchWithTimeoutRetry(`${API_BASE}/api/forecast?${params}`, { signal });
     if (!response.ok) {
       throw new Error(`SSA API returned ${response.status}`);
     }
@@ -347,7 +374,7 @@ export async function getPhysicalSmartFilter(screeningJobId, { signal } = {}) {
   if (typeof screeningJobId !== "string" || !/^[a-fA-F0-9]{32}$/.test(screeningJobId.trim())) {
     return { status: "unavailable", reason_code: "COMPLETED_SCREENING_JOB_REQUIRED", decisions: [], evaluation: null };
   }
-  const response = await fetch(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter`, { signal });
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter`, { signal });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(responseErrorMessage(payload, `Smart Filter evaluation returned HTTP ${response.status}`));
   if (payload?.result_type !== "physics_smart_filter" || !Array.isArray(payload?.decisions) || !payload?.evaluation) {
@@ -556,7 +583,7 @@ export async function restoreArchivedScreeningJob(screeningJobId) {
   if (typeof screeningJobId !== "string" || !/^[a-fA-F0-9]{32}$/.test(screeningJobId.trim())) {
     throw new Error("Enter a 32-character hexadecimal screening job ID to restore an archive.");
   }
-  const response = await fetch(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/restore`, { method: "POST" });
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/restore`, { method: "POST" });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(payload?.detail || `Archive restore failed with HTTP ${response.status}`);
   if (payload?.job_id !== screeningJobId.trim() || !payload?.archived || !Array.isArray(payload?.result?.data)) {
@@ -603,7 +630,7 @@ export async function downloadReport(path, filename) {
 
 async function getStructured(path, { signal } = {}, fallback) {
   try {
-    const response = await fetch(`${API_BASE}${path}`, { signal });
+    const response = await fetchWithTimeoutRetry(`${API_BASE}${path}`, { signal });
     if (!response.ok) {
       throw new Error(`SSA API returned ${response.status}`);
     }
@@ -612,7 +639,7 @@ async function getStructured(path, { signal } = {}, fallback) {
     if (error.name === "AbortError") {
       throw error;
     }
-    return fallback;
+    return { ...fallback, backend_busy: String(error?.message || "").toLowerCase().includes("backend busy") };
   }
 }
 

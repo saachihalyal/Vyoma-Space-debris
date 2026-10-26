@@ -37,10 +37,10 @@ test("Collision Analysis exposes separate CCSDS and TraCSS CDM assessment with e
 });
 
 test("bundled reference action is visible in both empty and selected-event views", () => {
-  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-  assert.equal((source.match(/<CdmReferenceAssessment onUseReferenceEvent=\{onUseReferenceEvent\} \/>/g) || []).length, 2);
-  assert.match(source, /collision-maneuver-entry/);
-  assert.match(source, /selectEvent\(event, "maneuver"\)/);
+  const source = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8");
+  assert.match(source, /<CdmReferenceAssessment onUseReferenceEvent=\{onUseReferenceEvent\} \/>/);
+  assert.match(source, /Upload Conjunction Data \/ Foster assessment/);
+  assert.match(readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8"), /selectEvent=\{selectEvent\}/);
 });
 
 test("bundled NASA CARA workflow calls its dedicated standalone reference endpoint", async () => {
@@ -59,13 +59,14 @@ test("bundled NASA CARA workflow calls its dedicated standalone reference endpoi
   }
 });
 
-test("live-event CDM import accepts all parser-supported document formats", () => {
-  const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+test("live-event CDM import accepts supported file formats and binds assessment to the selected event", () => {
+  const source = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8");
+  const handler = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   assert.match(source, /<strong>Upload Conjunction Data<\/strong>/);
-  assert.match(source, /uploaded file must match both object IDs, exact TCA/);
   assert.match(source, /\.xml,\.cdm,\.kvn,\.txt,\.json,application\/xml,text\/xml,application\/json,text\/plain/);
   assert.match(source, /must match both object IDs, exact TCA, and the event frame shown here/);
-  assert.match(source, /unsupported terrestrial frames are rejected because no validated Earth-orientation transform is applied/);
+  assert.match(source, /onImportCdm\(\{ eventId: chosen\.id, cdmXml/);
+  assert.match(handler, /handleImportEventCdm\(\{ eventId, cdmXml/);
   assert.match(source, /Match CDM to event and calculate imported Pc/);
 });
 

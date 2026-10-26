@@ -23,7 +23,7 @@ export function ManeuverUserUpload({ download = () => {} }) {
   const data = result?.data;
   return <section className="panel" aria-labelledby="maneuver-user-upload-title">
     <div className="panel-heading"><h2 id="maneuver-user-upload-title">Upload conjunction data for maneuver</h2></div>
-    <p className="muted">Upload one canonical ORION event as JSON, or one CSV row with an <code>event_json</code> column containing that event. Required: user_supplied provenance, valid UTC TCA, matching TEME Cartesian states in km and km/s, and both TLE element epochs. No states are inferred.</p>
+    <p className="muted">Upload one canonical Vyoma event as JSON, or one CSV row with an <code>event_json</code> column containing that event. Required: user_supplied provenance, valid UTC TCA, matching TEME Cartesian states in km and km/s, and both TLE element epochs. No states are inferred.</p>
     <form className="maneuver-search-form" onSubmit={submit}>
       <label>Conjunction file<input type="file" accept=".json,.csv,application/json,text/csv" onChange={(event) => setFile(event.target.files?.[0] || null)} /></label>
       <label>Burn lead before TCA (s)<input type="number" min="60" max="10800" value={leadSeconds} onChange={(event) => setLeadSeconds(event.target.value)} required /></label>

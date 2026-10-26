@@ -19,16 +19,43 @@ test("physical Smart Filter workbench is wired to API decisions and key science 
   const source = readFileSync(new URL("../src/components/UI/SmartFilterWorkbench.jsx", import.meta.url), "utf8");
   assert.match(source, /getPhysicalSmartFilter\(jobId/);
   assert.match(source, /physicalSmartFilterCsvPath\(jobId\)/);
-  assert.match(source, /evaluation\.before_count/);
-  assert.match(source, /evaluation\.kept_count/);
-  assert.match(source, /evaluation\.filtered_count/);
-  assert.match(source, /metrics\.recall_significant/);
-  assert.match(source, /metrics\.false_negative_significant_count/);
-  assert.match(source, /Trained on physics-generated labels, not on observed collisions/);
-  assert.match(source, /Catalog overview \(not the collision filter\)/);
-  assert.match(source, /r\.reason \|\| r\.reason_code/);
-  assert.match(source, /Download decisions CSV/);
+  assert.match(source, /before_count/);
+  assert.match(source, /kept_count/);
+  assert.match(source, /filtered_count/);
+  assert.match(source, /plainReason/);
+  assert.match(source, /Download CSV/);
   assert.match(source, /disabled=\{!jobId \|\| !decisions\.length\}/);
+  assert.match(source, /smart-filter-funnel/);
+  assert.match(source, /plainReason/);
+  assert.match(source, /smart-filter-globes/);
+  assert.match(source, /const grouped = \[\]/);
+  assert.match(source, /smart-filter-cloud-heading/);
+  assert.match(source, /Model: \{row\.model_status/);
+  assert.doesNotMatch(source, /Model confidence|Safety guard<|event_id\}<small>/);
+  assert.doesNotMatch(source, /Review band/);
+  assert.doesNotMatch(source, /filteredRate/);
+});
+
+test("visualization uses local hover details, typed colors, full-width matrix, and no Heat Map route", () => {
+  const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const visualization = readFileSync(new URL("../src/components/UI/VisualizationPage.jsx", import.meta.url), "utf8");
+  const field = readFileSync(new URL("../src/components/Scene/SatelliteField.jsx", import.meta.url), "utf8");
+  const globe = readFileSync(new URL("../src/components/Scene/SmartFilterGlobe.jsx", import.meta.url), "utf8");
+  assert.match(app, /import\("\.\/components\/UI\/VisualizationPage\.jsx"\)/);
+  assert.match(visualization, /const \[hoveredObject, setHoveredObject\] = useState\(null\)/);
+  assert.match(visualization, /onHoverObject=\{setHoveredObject\}/);
+  assert.match(visualization, /globe-hover-tooltip/);
+  assert.match(app, /Current Screening Proxy Matrix/);
+  assert.match(app, /Primary altitude \(km\)/);
+  assert.match(app, /Speed \(km\/s\)/);
+  assert.match(app, /activePage\) \|\| !snapshot/);
+  assert.doesNotMatch(app, /Load charts/);
+  assert.doesNotMatch(app, /label: "Heat Map"|navigate\("heatmap"\)|activePage === "heatmap"/);
+  assert.match(field, /"#070a10"/);
+  assert.match(field, /"#ffd166"/);
+  assert.match(field, /"#8bd5ff"/);
+  assert.match(globe, /"#ffffff"/);
+  assert.match(globe, /"#8bd5ff"/);
 });
 const proxy = {
   id: "SP-proxy-1",

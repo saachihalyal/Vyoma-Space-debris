@@ -1,0 +1,44 @@
+﻿[
+    {
+        "endpoint":  "/api/catalog?limit=900\u0026forecast_hours=0",
+        "status":  200,
+        "seconds":  0.710367,
+        "bytes":  142412,
+        "encoding":  "gzip"
+    },
+    {
+        "endpoint":  "/api/forecast?horizon_hours=168\u0026steps=9",
+        "status":  200,
+        "seconds":  0.675613,
+        "bytes":  8525,
+        "encoding":  "gzip"
+    },
+    {
+        "endpoint":  "/api/system-health",
+        "status":  200,
+        "seconds":  0.894699,
+        "bytes":  5968,
+        "encoding":  "gzip"
+    },
+    {
+        "endpoint":  "/api/analytics",
+        "status":  200,
+        "seconds":  0.979266,
+        "bytes":  922,
+        "encoding":  "gzip"
+    },
+    {
+        "endpoint":  "/api/smart-filter",
+        "status":  200,
+        "seconds":  0.938595,
+        "bytes":  7180,
+        "encoding":  "gzip"
+    },
+    {
+        "endpoint":  "/api/screening-proxies?limit=120",
+        "status":  200,
+        "seconds":  0.99048,
+        "bytes":  96840,
+        "encoding":  "gzip"
+    }
+]

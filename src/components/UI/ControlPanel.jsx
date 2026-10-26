@@ -20,7 +20,7 @@ const filterGroups = [
     ],
   },
   {
-    title: "Risk Levels",
+    title: "Orbital congestion (not collision probability)",
     icon: ShieldAlert,
     items: [
       ["low", "Low"],
@@ -57,7 +57,7 @@ export function ControlPanel({ filters, setFilters, stats }) {
               <Icon size={16} />
               <span>{group.title}</span>
             </div>
-            <div className={group.title === "Risk Levels" ? "risk-toggle-grid" : "toggle-stack"}>
+            <div className={group.title === "Orbital congestion (not collision probability)" ? "risk-toggle-grid" : "toggle-stack"}>
               {group.items.map(([key, label]) => (
                 <label className={`toggle-row ${filters[key] ? "enabled" : ""}`} key={key}>
                   <input
@@ -78,6 +78,7 @@ export function ControlPanel({ filters, setFilters, stats }) {
           </div>
         );
       })}
+      <div className="object-type-legend" aria-label="Object type legend"><strong>Object types</strong><span><i className="active" /> Satellite (working spacecraft)</span><span><i className="debris" /> Debris</span><span><i className="rocket" /> Rocket body</span><span><i className="other" /> Other / unknown</span></div>
     </aside>
   );
 }

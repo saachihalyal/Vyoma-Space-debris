@@ -7,7 +7,8 @@ import { selectedObjectWorldPosition, setHasSelectedObject } from "./positionSha
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 const tempVector = new THREE.Vector3();
-const debrisPalette = ["#22c55e", "#4ade80", "#a3e635", "#84cc16", "#65a30d"];
+const debrisPalette = ["#070a10"];
+const objectTypeColor = (category) => category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : ["active", "payload", "satellite"].includes(category) ? "#ffffff" : "#8bd5ff";
 
 function safeNum(v) {
   const n = Number(v);
@@ -266,7 +267,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       coreMesh.setMatrixAt(i, tempObject.matrix);
 
       const isDebris = c.category === "debris";
-      const baseColor = isDebris ? new THREE.Color(debrisColorFor(o, i)) : new THREE.Color(BAND_COLORS[o.band] || "#38bdf8");
+      const baseColor = new THREE.Color(objectTypeColor(c.category));
 
       const glowCol = baseColor.clone().multiplyScalar(0.42 + Math.min(1, intensity) * 1.2);
       const coreCol = baseColor.clone().multiplyScalar(0.55 + Math.min(1, intensity) * 1.35);
@@ -300,18 +301,9 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       bodyMesh.setMatrixAt(i, tempObject.matrix);
       panelMesh.setMatrixAt(i, tempObject.matrix);
 
-      if (isSelected) {
-        // Selected satellite → magenta
-        tempColor.setHex(0xff00aa);
-        bodyMesh.setColorAt(i, tempColor);
-        panelMesh.setColorAt(i, tempColor);
-      } else {
-        // Unselected satellite → white
-        tempColor.setHex(0xffffff);
-        bodyMesh.setColorAt(i, tempColor);
-        const panelCol = new THREE.Color("#f1f5f9");
-        panelMesh.setColorAt(i, panelCol);
-      }
+      tempColor.set(objectTypeColor(object.category));
+      bodyMesh.setColorAt(i, tempColor);
+      panelMesh.setColorAt(i, tempColor);
 
       // Glow: selected → much bigger, stronger magenta glow
       const glowScale = (1.05 + Math.min(1, p) * 1.5) * (isSelected ? 2.5 : 1.0);
@@ -320,7 +312,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       glowMesh.setMatrixAt(i, tempObject.matrix);
 
       const glowIntensity = isSelected ? 1.5 : (0.6 + Math.min(1, p) * 0.9);
-      const glowCol = new THREE.Color(isSelected ? "#ff00aa" : "#ffffff").multiplyScalar(glowIntensity);
+      const glowCol = new THREE.Color(objectTypeColor(object.category)).multiplyScalar(glowIntensity);
       glowMesh.setColorAt(i, glowCol);
     }
 
@@ -348,11 +340,11 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
 
       if (isSelected) {
         // Selected debris → magenta
-        const magenta = new THREE.Color("#ff00aa");
+        const magenta = new THREE.Color(objectTypeColor(object.category));
         coreMesh.setColorAt(i, magenta);
       } else {
         // Unselected debris → green from palette
-        const col = new THREE.Color(debrisColorFor(object, i));
+        const col = new THREE.Color(objectTypeColor(object.category));
         const coreCol = col.clone().multiplyScalar(0.95 + d * 0.4);
         coreMesh.setColorAt(i, coreCol);
       }
@@ -364,10 +356,10 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       glowMesh.setMatrixAt(i, tempObject.matrix);
 
       if (isSelected) {
-        const magentaGlow = new THREE.Color("#ff00aa").multiplyScalar(1.2 + d * 0.6);
+        const magentaGlow = new THREE.Color(objectTypeColor(object.category)).multiplyScalar(1.2 + d * 0.6);
         glowMesh.setColorAt(i, magentaGlow);
       } else {
-        const col = new THREE.Color(debrisColorFor(object, i));
+        const col = new THREE.Color(objectTypeColor(object.category));
         const glowCol = col.clone().multiplyScalar(0.75 + d * 0.6);
         glowMesh.setColorAt(i, glowCol);
       }

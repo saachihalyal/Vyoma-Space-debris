@@ -54,16 +54,15 @@ test("responsive conjunction cards separate Pc provenance, label rule-based revi
 });
 
 test("selected conjunction details keep Pc channels, AI queue and ranking basis compact while tools stay expandable", () => {
-  const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
-  assert.match(app, /<span>Event-specific Foster Pc/);
+  const app = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8");
   assert.match(app, /covariance_policy_name/);
-  assert.match(app, /<span>Source-reported Pc/);
-  assert.match(app, /<span>Rule-based geometry review index/);
-  assert.match(app, /<span>Final ranking basis/);
-  assert.match(app, /<summary>Research estimate assumptions and provenance<\/summary>/);
-  assert.match(app, /Collision probability tools/);
-  assert.match(app, /onAssessManeuver=\{\(item\) => selectEvent\(item, "maneuver"\)\}/);
-  assert.match(app, /onShowInGlobe=\{onShowInGlobe\}/);
+  assert.match(app, /Other Pc channels/);
+  assert.match(app, /Ranking details/);
+  assert.match(app, /AI class/);
+  assert.match(app, /Upload Conjunction Data/);
+  const pageWiring = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  assert.match(pageWiring, /onAssessManeuver=\{\(item\) => selectEvent\(item, "maneuver"\)\}/);
+  assert.match(pageWiring, /onShowInGlobe=\{onShowInGlobe\}/);
 });
 
 test("Show in Globe and Maneuver Assessment pass the exact selected event identity", () => {

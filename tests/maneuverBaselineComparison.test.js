@@ -34,6 +34,6 @@ test("Pc reduction appears only when the backend marks comparable numerical valu
     probabilityComparison: { status: "available", risk_reduction_pct: 50 },
   });
   assert.match(markup, /5\.000000e-3/);
-  assert.match(markup, /50%/);
+  assert.match(markup, /50\.00%/);
 });
 

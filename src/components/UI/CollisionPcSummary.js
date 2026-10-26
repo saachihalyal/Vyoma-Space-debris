@@ -27,7 +27,7 @@ export function CollisionPcSummary({ sourceResult, scenarioResult }) {
       ? h("span", null, importedCdm ? "CDM mean-state TCA" : "Pc encounter TCA", h("strong", null, sourceResult.tca_utc))
       : null,
     sourceResult?.covariance_sources?.length || sourceResult?.hbr_provenance
-      ? h("span", null, "Input authentication", h("strong", null, "User-declared source; not authenticated by ORION"))
+      ? h("span", null, "Input authentication", h("strong", null, "User-declared source; not authenticated by Vyoma"))
       : null,
     resultLine("Research scenario Pc - ESTIMATED (assumed inputs)", scenarioResult, "No user-entered scenario has been run."),
     provenanceLines("Scenario Pc", scenarioResult),
@@ -49,8 +49,8 @@ export function CollisionProbabilityCard({ result, sourceReportedPc = null, sour
   const probability = computedAvailable ? result.pc : reportedAvailable ? sourceReportedPc : null;
   const method = computedAvailable ? `${result.method || "Foster 2D"} v${result.method_version || "unknown"}` : reportedAvailable ? (sourceReportedMethod || "Source method not declared") : null;
   const provenance = computedAvailable
-    ? `${result.provenance?.source || "ORION calculation"}; covariance ${result.covariance_status || "unavailable"}; frame ${result.covariance_frame || "unavailable"}; epoch ${result.covariance_epoch || "unavailable"}; HBR ${result.hbr_provenance?.source_type || result.hbr_source || "unavailable"}`
-    : reportedAvailable ? "Value transcribed from the selected source CDM; it is not an ORION calculation." : null;
+    ? `${result.provenance?.source || "Vyoma calculation"}; covariance ${result.covariance_status || "unavailable"}; frame ${result.covariance_frame || "unavailable"}; epoch ${result.covariance_epoch || "unavailable"}; HBR ${result.hbr_provenance?.source_type || result.hbr_source || "unavailable"}`
+    : reportedAvailable ? "Value transcribed from the selected source CDM; it is not an Vyoma calculation." : null;
   const reasons = result?.reason_codes?.length ? result.reason_codes.join(", ") : result?.reason || "Event-matched covariance and HBR are unavailable.";
   return React.createElement("section", { className: "collision-probability-card", "aria-label": "Collision probability summary" },
     React.createElement("div", { className: "collision-probability-heading" },
@@ -69,7 +69,7 @@ export function CollisionProbabilityCard({ result, sourceReportedPc = null, sour
       ? React.createElement("div", { className: "collision-probability-source-reported" },
         React.createElement("span", { className: "screening-state-badge pc-state-source-reported" }, "SOURCE-REPORTED"),
         React.createElement("strong", null, `${formatProbabilityScientific(sourceReportedPc)} · ${formatProbabilityPercentage(sourceReportedPc)} · ${formatProbabilityOdds(sourceReportedPc)}`),
-        React.createElement("span", { className: "muted" }, `${sourceReportedMethod || "Source method not declared"}; kept separate from ORION's computed Pc.`),
+        React.createElement("span", { className: "muted" }, `${sourceReportedMethod || "Source method not declared"}; kept separate from Vyoma's computed Pc.`),
         React.createElement("span", { className: "muted" }, `Declared source: ${result.source_reported_pc_provenance?.source || "CDM source unavailable"}; SHA-256 ${result.source_reported_pc_provenance?.input_sha256 || "unavailable"}; authenticated: ${result.source_reported_pc_provenance?.authenticated === true ? "yes" : "no"}.`))
       : null,
     result?.status === "available" && !computedAvailable
@@ -81,7 +81,7 @@ export function unavailableNextAction(result) {
   const reasons = new Set(result?.reason_codes || []);
   const actions = [];
   if (reasons.has("NO_COVARIANCE")) actions.push("Import a CDM for this object pair and exact TCA that includes validated covariance for both objects.");
-  if (reasons.has("HBR_UNAVAILABLE")) actions.push("Provide the CDM's documented hard-body radius input(s); ORION will not infer HBR from radar cross-section.");
+  if (reasons.has("HBR_UNAVAILABLE")) actions.push("Provide the CDM's documented hard-body radius input(s); Vyoma will not infer HBR from radar cross-section.");
   if (reasons.has("INVALID_COVARIANCE")) actions.push("Correct the covariance validation issues and provide positive-definite covariance for both objects.");
   if (reasons.has("COVARIANCE_OBJECT_ID_MISMATCH")) actions.push("Use covariance records whose object IDs match the selected event pair.");
   if (reasons.has("INVALID_HBR")) actions.push("Provide a finite, positive hard-body radius with supported source provenance.");

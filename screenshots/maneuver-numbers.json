@@ -1,0 +1,11 @@
+{
+  "before_pc": 0.00001862233533366684,
+  "before_status": "available",
+  "after_pc": 0.000012570767030062724,
+  "after_status": "available",
+  "pc_reduction": 32.496340981894654,
+  "pc_reduction_status": "available",
+  "miss_before_km": 12.303331498628602,
+  "miss_after_km": 13.174713448814797,
+  "event_id": "CDM-008e1a98c04bf9b076ae16f3"
+}
