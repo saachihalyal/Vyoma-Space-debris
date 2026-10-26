@@ -43,7 +43,7 @@ DEFAULT_SAMPLE_STEP_SECONDS = 60
 DEFAULT_SCREENING_THRESHOLD_KM = 25.0
 MAX_RELATIVE_SPEED_BOUND_KM_S = 30.0
 MAX_SAMPLE_EPOCHS = 10_000
-MAX_CANDIDATE_PAIRS = 2_000_000
+MAX_CANDIDATE_PAIRS = 80_000
 MAX_CANDIDATE_MINIMA = 2_000_000
 MAX_LOCAL_MINIMA_PER_PAIR = 128
 TCA_TIME_TOLERANCE_SECONDS = 0.01
@@ -85,6 +85,7 @@ class _Track:
     satellite: Satrec
     propagation_errors: set[int] = field(default_factory=set)
     maximum_sampled_speed_km_s: float = 0.0
+    altitude_range_km: tuple[float, float] | None = None
 
 
 @dataclass
@@ -419,6 +420,15 @@ def screen_tle_records(
 
     stage_started = time.perf_counter()
     tracks, rejected = _prepare_tracks(records, objects, unavailable_objects, include_synthetic_test_records)
+    # Orbital radial ranges are a cheap necessary-condition filter for a close
+    # approach. Keep a generous 100 km margin for perturbations and model error.
+    for track in tracks:
+        semi_major_axis_km = float(track.satellite.a) * 6378.135
+        eccentricity = float(track.satellite.ecco)
+        track.altitude_range_km = (
+            semi_major_axis_km * (1.0 - eccentricity) - 6378.135,
+            semi_major_axis_km * (1.0 + eccentricity) - 6378.135,
+        )
     stage_timings["track_preparation_seconds"] = time.perf_counter() - stage_started
     summary = {
         "status": "partial" if sample_epoch_cap_reached else "unavailable" if not tracks else "valid",
@@ -534,6 +544,12 @@ def screen_tle_records(
                         distance = float(np.linalg.norm(delta))
                         if distance > broad_phase_radius_km or tracks[i].obj.id == tracks[j].obj.id:
                             continue
+                        first_range = tracks[i].altitude_range_km
+                        second_range = tracks[j].altitude_range_km
+                        if first_range and second_range:
+                            radial_gap = max(first_range[0] - second_range[1], second_range[0] - first_range[1], 0.0)
+                            if radial_gap > screening_threshold_km + 100.0:
+                                continue
                         pair = (j, i)  # tracks are sorted by catalog ID.
                         tracker = candidate_trackers.get(pair)
                         if tracker is None:

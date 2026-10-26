@@ -3,7 +3,7 @@ html{background:radial-gradient(900px 600px at 12% 8%,rgba(109,40,217,.32),trans
 body,#root{background:transparent !important}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.55;background-image:radial-gradient(1px 1px at 20px 30px,#fff,transparent),radial-gradient(1px 1px at 120px 80px,rgba(255,255,255,.7),transparent),radial-gradient(1.5px 1.5px at 220px 150px,rgba(180,220,255,.8),transparent),radial-gradient(1px 1px at 320px 40px,rgba(255,255,255,.6),transparent),radial-gradient(1px 1px at 60px 180px,rgba(255,255,255,.5),transparent);background-size:360px 220px}
 :focus-visible{outline:2px solid var(--og-cyan);outline-offset:2px}
-.og-page{max-width:1440px;margin:0 auto;padding:8px 8px 40px;color:var(--og-text);font-size:16px;line-height:1.5}
+.og-page{width:100%;max-width:none;margin:0;padding:8px 8px 40px;color:var(--og-text);font-size:16px;line-height:1.5}
 .og-page h1{font-size:28px;margin:0 0 4px}
 .og-sub{color:var(--og-muted);font-size:14px;margin:0 0 20px}
 .og-card{background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025));border:1px solid var(--og-line);border-radius:20px;padding:24px;backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07)}

@@ -564,7 +564,7 @@ async def analytics(limit: int = Query(850, ge=25, le=2_000)) -> dict:
 
 @app.get("/api/conjunctions")
 async def conjunctions(
-    limit: int = Query(100, ge=1, le=2000),
+    limit: int = Query(100, ge=1, le=400),
     min_pc: float | None = None,
     risk: str | None = None,
     horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=72),
@@ -776,7 +776,7 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
 
 @app.post("/api/conjunction-jobs", status_code=202)
 async def create_conjunction_job(
-    limit: int = Query(100, ge=1, le=2000),
+    limit: int = Query(100, ge=1, le=400),
     horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=72),
     sample_step_seconds: int = Query(DEFAULT_SAMPLE_STEP_SECONDS, ge=10, le=300),
     screening_threshold_km: float = Query(DEFAULT_SCREENING_THRESHOLD_KM, gt=0, le=1_000),
