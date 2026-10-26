@@ -29,7 +29,9 @@ test("Collision Analysis exposes backend states and keeps detailed screening dia
 test("selected event summary exposes geometry, separate Pc sources, ranking basis, and a maneuver entry", () => {
   assert.match(collisionWorkbenchSource, /Encounter group counts/);
   assert.match(collisionWorkbenchSource, /Research Pc/);
-  assert.match(collisionWorkbenchSource, /Physics class:.*AI class/);
+  assert.match(collisionWorkbenchSource, /const classAgreement =/);
+  assert.match(collisionWorkbenchSource, /Physics class: \{getClass\(item\)\} · \{classAgreement\(item\)\}/);
+  assert.match(collisionWorkbenchSource, /physicsClass === aiClass \? "agrees" : "differs"/);
   assert.match(collisionWorkbenchSource, /Ranking details/);
   assert.match(collisionWorkbenchSource, /onAssessManeuver\(chosen\)/);
   assert.match(appSource, /CollisionAnalysisSummary/);

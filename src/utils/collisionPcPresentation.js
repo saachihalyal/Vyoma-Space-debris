@@ -2,12 +2,12 @@ import { isUsablePc } from "../components/UI/CollisionPcSummary.js";
 
 const SUPERSCRIPT = Object.freeze({ "-": "⁻", "+": "⁺", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" });
 
-export const compactPcText = (value) => String(value ?? "Not calculated").replace(/([\d.]+)e([+-]?\d+)/i, "$1 x 10^$2");
+export const compactPcText = (value) => String(value ?? "No Pc value in event data").replace(/([\d.]+)e([+-]?\d+)/i, "$1 x 10^$2");
 
 export function formatPriorProbability(value, exponentShift = 0) {
   if (typeof value === "string" && /^< 1e[+-]?\d+$/i.test(value.trim())) {
     const exponent = Number(value.trim().slice(4)) + exponentShift;
-    if (!Number.isFinite(exponent)) return "Unavailable";
+    if (!Number.isFinite(exponent)) return "Invalid probability value";
     if (exponent < -300) return "< 1e-300";
     if (exponent > 300) return "> 1e300";
     return `< 1e${exponent}`;
@@ -16,7 +16,7 @@ export function formatPriorProbability(value, exponentShift = 0) {
     if (value === 0) return "0";
     return formatPriorProbability((value * (10 ** exponentShift)).toExponential(3));
   }
-  if (typeof value !== "string" || !value.trim()) return "Unavailable";
+  if (typeof value !== "string" || !value.trim()) return "No probability value in event data";
   const match = value.trim().match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))[eE]([+-]?\d+)$/);
   if (!match) {
     const numeric = Number(value);
@@ -25,7 +25,7 @@ export function formatPriorProbability(value, exponentShift = 0) {
   }
   const exponent = Number(match[2]) + exponentShift;
   const mantissa = Number(match[1]);
-  if (!Number.isFinite(exponent) || !Number.isFinite(mantissa)) return "Unavailable";
+  if (!Number.isFinite(exponent) || !Number.isFinite(mantissa)) return "Invalid probability value";
   if (exponent < -300) return "< 1e-300";
   if (exponent > 300) return "> 1e300";
   if (mantissa === 0) return "0";
@@ -39,9 +39,9 @@ export function researchPcPresentation(assessment) {
     const reasonDetail = [assessment?.reason_message, reasonCodes.length ? `Reason code: ${reasonCodes.join(", ")}.` : null]
       .filter(Boolean).join(" ");
     return {
-      value: "Unavailable",
-      percentage: "Unavailable",
-      sensitivity: "Unavailable",
+      value: "No valid research Pc estimate",
+      percentage: "No percentage value",
+      sensitivity: "No sensitivity result",
       reason: assessment?.status === "event_specific_foster_available"
         ? assessment?.reason_message || "Not applicable: a validated event-specific Foster Pc is available; no assumption-based substitute was generated."
         : reasonDetail || (assessment?.status === "not_estimable"
@@ -84,7 +84,7 @@ export function physicsPcRiskPresentation(assessment) {
       || !Number.isFinite(assessment.risk_score)
       || !["Low", "Medium", "High"].includes(assessment.final_risk_class)
       || !["event_specific_foster_pc", "research_pc"].includes(assessment.risk_score_pc_channel)) {
-    return { value: "Unavailable · no class is inferred without a valid physics Pc", basis: null };
+    return { value: "No class without a valid physics Pc", basis: null };
   }
   return {
     value: `${assessment.risk_score.toFixed(1)} / 100 · ${assessment.final_risk_class} · based on ${assessment.risk_score_pc_channel}`,
@@ -102,7 +102,7 @@ export function operationalFosterStatus(event, computedMatchesEvent = false) {
     return "Rejected: Pc event identity mismatch";
   }
   if (event?.physics_result?.status === "invalid") {
-    return "Not calculated: invalid physics assessment";
+    return "No Pc value: invalid physics assessment";
   }
   const missing = [];
   if (reasons.has("NO_COVARIANCE")) missing.push("event-matched covariance for both objects");
@@ -110,10 +110,10 @@ export function operationalFosterStatus(event, computedMatchesEvent = false) {
   if (reasons.has("INVALID_COVARIANCE")) missing.push("valid positive-definite event-matched covariance");
   if (reasons.has("INVALID_HBR")) missing.push("a valid sourced HBR");
   if (missing.length) {
-    return `Unavailable: missing ${missing.join(" and ")}.`;
+    return `No Foster Pc: missing ${missing.join(" and ")}.`;
   }
   const codes = [...reasons];
-  return `Unavailable: ${codes.length ? codes.join(", ") : pc?.reason || "event-matched covariance and HBR are unavailable"}.`;
+  return `No Foster Pc: ${codes.length ? codes.join(", ") : pc?.reason || "event-matched covariance and HBR were not supplied"}.`;
 }
 
 export function hasValidEventFosterPc(event) {

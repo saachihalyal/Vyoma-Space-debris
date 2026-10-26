@@ -169,10 +169,11 @@ test("horizon-boundary assessments are kept outside valid conjunction cards and 
   assert.match(markup, /disabled=""/);
 });
 
-test("malformed AI data is shown as unavailable, not low", () => {
+test("malformed AI data gets a concise missing-score reason and is not classified as low", () => {
   const markup = render([{ id: "malformed-ai", result_kind: "physics_assessment", primary: { id: "A" }, secondary: { id: "B" }, physics_result: { status: "valid" }, ai_risk_assessment: { category: "High", score: null } }]);
   assert.match(markup, /Review priority \(rule-based\)/);
-  assert.match(markup, /Review priority \(rule-based\): Unavailable/);
+  assert.match(markup, /Review priority \(rule-based\): No score returned/);
+  assert.match(markup, /Physics class Class not assigned · AI class not returned/);
   assert.doesNotMatch(markup, /AI class High/);
 });
 
@@ -187,9 +188,9 @@ test("collision surrogates remain distinct from deterministic fallback values", 
       risk_classifier: { status: "fallback", deterministic_reference_risk_class: "Low", fallback_method: "physics_research_pc_classification" },
     },
   }]);
-  assert.match(markup, /Physics-supervised collision models.*fallback/);
-  assert.match(markup, /AI unavailable; deterministic research reference -7\.6990 log10\(Pc\)/);
-  assert.match(markup, /AI unavailable; deterministic physics class Low/);
+  assert.match(markup, /Collision model · fallback/);
+  assert.match(markup, /AI estimate not emitted; deterministic research reference -7\.6990 log10\(Pc\)/);
+  assert.match(markup, /AI class not emitted; deterministic physics class Low/);
   assert.doesNotMatch(markup, /AI predicted log10/);
 });
 

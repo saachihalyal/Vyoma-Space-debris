@@ -82,7 +82,7 @@ export function collisionEventPriority(event) {
   const sourcePc = event?.source_reported_pc ?? pc?.source_reported_pc;
   const sourceEventId = event?.source_reported_event_id ?? pc?.source_reported_event_id;
   if (sourceEventId === event?.id && validPc(sourcePc)) {
-    return { tier: 1, value: sourcePc, label: "Source-reported Pc", basis: "Source-reported value; displayed separately from ORION-computed Pc." };
+    return { tier: 1, value: sourcePc, label: "Source-reported Pc", basis: "Source-reported value; displayed separately from Vyoma-computed Pc." };
   }
   const geometry = event?.review_priority;
   const geometryOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
@@ -93,7 +93,7 @@ export function collisionEventPriority(event) {
       value: geometryOrder[geometry.category],
       tieBreak: Number.isFinite(missFraction) && missFraction >= 0 ? missFraction : Number.POSITIVE_INFINITY,
       label: "Geometry review priority",
-      basis: geometry.explanation || "ORION geometry-only review priority; not a collision-risk classification.",
+      basis: geometry.explanation || "Vyoma geometry-only review priority; not a collision-risk classification.",
     };
   }
   return { tier: 4, value: Number.POSITIVE_INFINITY, label: "Unclassified", basis: geometry?.explanation || "Required evidence for priority is unavailable." };

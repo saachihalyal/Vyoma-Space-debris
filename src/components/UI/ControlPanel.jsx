@@ -78,7 +78,7 @@ export function ControlPanel({ filters, setFilters, stats }) {
           </div>
         );
       })}
-      <div className="object-type-legend" aria-label="Object type legend"><strong>Object types</strong><span><i className="active" /> Satellite (working spacecraft)</span><span><i className="debris" /> Debris</span><span><i className="rocket" /> Rocket body</span><span><i className="other" /> Other / unknown</span></div>
+      <div className="object-type-legend" aria-label="Orbital congestion (not collision probability)"><strong>Orbital congestion (not collision probability)</strong><span><i className="active" /> Satellite</span><span><i className="debris" /> Debris</span><span><i className="rocket" /> Rocket body</span><span><i className="other" /> Other / unknown</span></div>
     </aside>
   );
 }

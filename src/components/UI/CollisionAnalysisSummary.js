@@ -22,7 +22,10 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
   const validEvents = screened.filter((event) => event?.physics_result?.status === "valid");
   const allLow = validEvents.length > 0 && researchPcCatalogSummary(validEvents).classCounts.Medium === 0 && researchPcCatalogSummary(validEvents).classCounts.High === 0;
   const closestMissKm = validEvents.map((event) => event?.physics_result?.miss_distance?.value).filter(Number.isFinite).sort((a, b) => a - b)[0];
-  const highestPc = validEvents.map((event) => event?.collision_probability?.pc ?? event?.automatic_research_pc_assessment?.pc).filter((value) => Number.isFinite(value) && value >= 0).sort((a, b) => b - a)[0];
+  const highestResearchLogPc = validEvents.map((event) => event?.automatic_research_pc_assessment?.log10_pc).filter(Number.isFinite).sort((a, b) => b - a)[0];
+  const highestPcText = Number.isFinite(highestResearchLogPc)
+    ? highestResearchLogPc < -300 ? "< 1e-300" : (10 ** highestResearchLogPc).toExponential(2)
+    : "not computed in this screening";
   const geometryReviewCount = displayed.filter((event) => event?.review_priority?.status === "classified").length;
   const aiOutputs = displayed.filter((event) => event?.collision_ai_assessment?.status === "available");
   const highest = highestPriorityEvent(displayed);
@@ -32,9 +35,14 @@ export function CollisionAnalysisSummary({ events = [], displayedEvents = [], sc
     : "None";
 
   return React.createElement("section", { className: "collision-analysis-summary", "aria-label": "Collision Analysis summary" },
-    allLow ? React.createElement("p", { className: "no-actionable-conjunctions" }, `No actionable conjunctions in the current catalog (closest approach ${Number.isFinite(closestMissKm) ? `${closestMissKm.toFixed(2)} km` : "not computed in this screening"}, highest Pc ${Number.isFinite(highestPc) ? highestPc.toExponential(2) : "not computed in this screening"})`) : null,
-    researchSummary.classCounts.High === 0 && validEvents.length > 0 ? React.createElement("p", { className: "muted" }, `No High-probability events in this screening (highest Pc ${Number.isFinite(highestPc) ? highestPc.toExponential(2) : "not computed in this screening"})`) : null,
-    React.createElement("p", { className: "muted" }, "Research Pc classes: Low < 1e-7, Medium 1e-7 to < 1e-4, High ≥ 1e-4."),
+    allLow ? React.createElement("p", { className: "no-actionable-conjunctions" }, `No actionable conjunctions in the current catalog (closest approach ${Number.isFinite(closestMissKm) ? `${closestMissKm.toFixed(2)} km` : "not computed in this screening"}, highest Pc ${highestPcText})`) : null,
+    researchSummary.classCounts.High === 0 && screened.length > 0 ? React.createElement("p", { className: "muted" }, `No High-probability events in this screening (highest Pc ${highestPcText})`) : null,
+    (() => {
+      const thresholds = validEvents.map((event) => event?.automatic_research_pc_assessment?.risk_assessment?.thresholds).find((value) => Number.isFinite(value?.medium_pc_inclusive) && Number.isFinite(value?.high_pc_inclusive));
+      const medium = thresholds?.medium_pc_inclusive ?? 1e-7;
+      const high = thresholds?.high_pc_inclusive ?? 1e-4;
+      return React.createElement("p", { className: "muted" }, `Research Pc classes: Low < ${medium.toExponential()}, Medium ${medium.toExponential()} to < ${high.toExponential()}, High ≥ ${high.toExponential()}.`);
+    })(),
     React.createElement("div", { className: "collision-analysis-summary-counts" },
       [
         ["Total screened conjunctions", String(total)],

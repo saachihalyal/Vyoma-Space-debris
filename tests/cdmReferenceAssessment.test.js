@@ -125,12 +125,12 @@ test("sample conjunction download is bundled in the public directory", () => {
   assert.match(sample, /CCSDS_CDM_VERS/);
 });
 
-test("reports page separates collision and maneuver documents and restores the saved snapshot", () => {
+test("reports page separates collision and maneuver documents without a demo snapshot shortcut", () => {
   const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   assert.match(source, /Collision report/);
   assert.match(source, /Maneuver report/);
-  assert.match(source, /Load saved demo snapshot/);
-  assert.match(source, /onRestoreArchive\("fcec3945251c45f38f215485ecbb5605"\)/);
+  assert.doesNotMatch(source, /Load saved demo snapshot/);
+  assert.match(source, /Restore Archived Screening Job/);
   assert.match(source, /Source-reported Pc/);
   assert.match(source, /Event-specific Foster Pc/);
   assert.match(source, /Research Pc/);

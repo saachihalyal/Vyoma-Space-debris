@@ -28,7 +28,8 @@ test("physical Smart Filter workbench is wired to API decisions and key science 
   assert.match(source, /smart-filter-funnel/);
   assert.match(source, /plainReason/);
   assert.match(source, /smart-filter-globes/);
-  assert.match(source, /const grouped = \[\]/);
+  assert.match(source, /const groupMap = new Map\(\)/);
+  assert.match(source, /groupMap\.get\(key\)\.rows\.push\(row\)/);
   assert.match(source, /smart-filter-cloud-heading/);
   assert.match(source, /Model: \{row\.model_status/);
   assert.doesNotMatch(source, /Model confidence|Safety guard<|event_id\}<small>/);

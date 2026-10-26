@@ -38,7 +38,7 @@ def mission_report_pdf(
             f"Screening completed successfully; {len(physics_events):,} qualifying physical close approaches returned."
         )
     elif completion_status == "partial":
-        physical_result_summary = "Screening completed partially; returned events may be incomplete. See screening status and limits."
+        physical_result_summary = "Screening completed with limited coverage; returned events may be incomplete. See screening status and limits."
     elif completion_status == "failed" or screening_status == "unavailable":
         physical_result_summary = "Physical screening failed or was unavailable; no conclusion about close approaches can be drawn."
     else:
@@ -774,9 +774,9 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
         f"Reason codes: {', '.join(physics.get('reason_codes', [])) or 'none'}",
         f"Screening job ID: {(screening_summary or {}).get('screening_job_id', 'unavailable')}",
         f"Screening job lifecycle: {(screening_summary or {}).get('screening_job_status', 'unavailable')} | archive status: {'archived / read-only snapshot' if (screening_summary or {}).get('screening_job_archived') else 'live job'}",
-        f"Screening run completion: {(screening_summary or {}).get('completion_status', (screening_summary or {}).get('status', 'unavailable'))} | reason: {(screening_summary or {}).get('reason_code', 'unavailable')} | candidate cap: {(screening_summary or {}).get('candidate_limit_reached', 'unavailable')}",
+        f"Screening run completion: {'completed with limited coverage' if (screening_summary or {}).get('completion_status', (screening_summary or {}).get('status')) == 'partial' else (screening_summary or {}).get('completion_status', (screening_summary or {}).get('status', 'not recorded'))} | reason: {(screening_summary or {}).get('reason_code', 'not recorded')} | candidate cap: {(screening_summary or {}).get('candidate_limit_reached', 'not recorded')}",
         *_wrap_report_line(f"Coverage counts: requested objects {(screening_summary or {}).get('objects_requested', 'unavailable')} | records received {(screening_summary or {}).get('catalog_records_received', 'unavailable')} | objects used {(screening_summary or {}).get('objects_used', (screening_summary or {}).get('valid_track_count', 'unavailable'))} | candidate pairs {(screening_summary or {}).get('candidate_pairs', (screening_summary or {}).get('candidate_pair_count', 'unavailable'))} | refinements {(screening_summary or {}).get('refinements', (screening_summary or {}).get('refinement_count', 'unavailable'))} | physical events {(screening_summary or {}).get('physical_events', (screening_summary or {}).get('close_approach_count', 'unavailable'))}"),
-        *_wrap_report_line(f"Coverage caps hit: {_csv_value((screening_summary or {}).get('caps_hit')) or 'none recorded'} | partial reasons: {_csv_value((screening_summary or {}).get('partial_reasons')) or 'none recorded'}"),
+        *_wrap_report_line(f"Coverage caps hit: {_csv_value((screening_summary or {}).get('caps_hit')) or 'none recorded'} | coverage reasons: {_csv_value((screening_summary or {}).get('partial_reasons')) or 'none recorded'}"),
         *_wrap_report_line(
             "Input provenance: "
             f"source {(event.get('provenance') or {}).get('source', 'unavailable')} | "
@@ -861,6 +861,11 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
         stage2a_tca = (stage2a_block.get("tca") or {}).get("value", "unavailable") if isinstance(stage2a_block.get("tca"), dict) else stage2a_block.get("tca_utc", "unavailable")
         stage2a_miss = (stage2a_block.get("miss_distance") or {}).get("value", "unavailable") if isinstance(stage2a_block.get("miss_distance"), dict) else stage2a_block.get("miss_distance_km", "unavailable")
         maneuver_ml = maneuver.get("ml_result") or {}
+        maneuver_ml_reason = (
+            "the configured 5,400-second burn lead is outside the ranker's supported 60–1,800-second range; physics ranking was used"
+            if maneuver_ml.get("reason_code") == "MANEUVER_CANDIDATE_CONFIGURATION_INVALID"
+            else maneuver_ml.get("reason") or maneuver_ml.get("reason_code") or "No reason recorded"
+        )
         maneuver_ml_evaluation = maneuver_ml.get("evaluation_summary") or {}
         probability_before = maneuver.get("probability_before") or {}
         probability_after = maneuver.get("probability_after") or {}
@@ -888,7 +893,7 @@ def _trajectory_event_report_pdf(event: dict[str, Any], maneuver: dict[str, Any]
             f"Zero-burn closest-approach TCA offset from original TCA: {baseline.get('zero_burn_tca_offset_from_reference_seconds') if baseline.get('zero_burn_tca_offset_from_reference_seconds') is not None else 'unavailable'} s",
             f"Baseline interpretation: {baseline.get('interpretation') or 'Comparison details unavailable; candidate changes cannot be interpreted against the original event.'}",
             f"Assumptions: {_csv_value(maneuver.get('assumptions')) or 'unavailable'}",
-            f"Maneuver ML status: {maneuver_ml.get('status', 'unavailable')} | reason: {maneuver_ml.get('reason_code', 'unavailable')}",
+            f"Maneuver ML status: {maneuver_ml.get('status', 'not recorded')} | reason: {maneuver_ml_reason}",
             f"Maneuver surrogate: {maneuver_ml.get('model_name', 'unavailable')} v{maneuver_ml.get('model_version', 'unavailable')} | synthetic training labels: {maneuver_ml.get('synthetic_training_labels', True)} | candidate ranking used: {maneuver_ml.get('ranking_used', False)}",
             f"Maneuver ML model: {maneuver_ml.get('model_name', 'unavailable')} v{maneuver_ml.get('model_version', 'unavailable')}",
             f"Maneuver ML score meaning: {maneuver_ml.get('score_name', 'unavailable')} ({maneuver_ml.get('score_units', 'unavailable')}); {maneuver_ml.get('score_semantics', 'unavailable')}",
@@ -962,13 +967,24 @@ def _wrap_report_line(value: str, max_length: int = 96) -> list[str]:
 
 
 def simple_pdf(lines: list[str], footer: str) -> bytes:
+    # Render concise explanations where a report field has no supplied value.
+    display = lambda text: re.sub(
+        r"\b(unavailable|not calculated|not reported)\b",
+        lambda match: {
+            "unavailable": "not provided in this report",
+            "not calculated": "no value calculated",
+            "not reported": "not supplied by source",
+        }[match.group(1).lower()],
+        str(text),
+        flags=re.IGNORECASE,
+    )
     pages: list[list[str]] = []
     current: list[str] = []
     for line in lines:
         if len(current) >= 38 or (len(current) >= 36 and str(line).rstrip().endswith(":")):
             pages.append(current)
             current = []
-        current.append(str(line))
+        current.append(display(line))
     if current:
         pages.append(current)
 

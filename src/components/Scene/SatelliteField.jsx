@@ -349,19 +349,16 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
         coreMesh.setColorAt(i, coreCol);
       }
 
-      const glowScale = (1.05 + d * 1.35) * (isSelected ? 2.8 : 1.0);
+      const glowScale = isSelected ? 1.12 : 1.1;
       tempObject.scale.setScalar(glowScale);
       tempObject.updateMatrix();
 
       glowMesh.setMatrixAt(i, tempObject.matrix);
 
       if (isSelected) {
-        const magentaGlow = new THREE.Color(objectTypeColor(object.category)).multiplyScalar(1.2 + d * 0.6);
-        glowMesh.setColorAt(i, magentaGlow);
+        glowMesh.setColorAt(i, new THREE.Color("#cbd5e1"));
       } else {
-        const col = new THREE.Color(objectTypeColor(object.category));
-        const glowCol = col.clone().multiplyScalar(0.75 + d * 0.6);
-        glowMesh.setColorAt(i, glowCol);
+        glowMesh.setColorAt(i, new THREE.Color("#cbd5e1"));
       }
     }
 
@@ -527,13 +524,10 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <sphereGeometry args={[0.055, 12, 12]} />
+          <sphereGeometry args={[0.037, 12, 12]} />
           <meshBasicMaterial
             vertexColors
-            transparent
-            opacity={0.52}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
+            transparent opacity={0.95} depthWrite={false}
             toneMapped={false}
           />
         </instancedMesh>

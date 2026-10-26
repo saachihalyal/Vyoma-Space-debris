@@ -32,12 +32,13 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {}, physi
     const index = ids.findIndex((id, i) => objects.get(id)?.category === "debris" || /\bDEB(?:RIS)?\b/i.test(names[i] || ""));
     return index >= 0 ? names[index] || objects.get(ids[index])?.name || "Debris cloud" : "Other pairs";
   };
-  const grouped = [];
+  const groupMap = new Map();
   rows.forEach((row) => {
-    const key = cloudName(row), current = grouped[grouped.length - 1];
-    if (!current || current.key !== key) grouped.push({ key, rows: [] });
-    grouped[grouped.length - 1].rows.push(row);
+    const key = cloudName(row);
+    if (!groupMap.has(key)) groupMap.set(key, { key, rows: [] });
+    groupMap.get(key).rows.push(row);
   });
+  const grouped = [...groupMap.values()];
   const plainReason = (row) => {
     const reason = `${row.reason_code || ""} ${row.reason || ""}`.toUpperCase();
     if (reason.includes("UNCERTAIN_SCENARIOS")) return "Some uncertainty cases could not be calculated, so this pair stays for review.";
@@ -62,7 +63,7 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {}, physi
       {data.decisions?.some((row) => row.model_status !== "available") && <p className="og-sub">Some event features were incomplete. Those pairs were kept for review by the safety rules.</p>}
       <section className="og-card"><div className="og-section-head"><div><h2>{isKept ? "Kept" : "Filtered"} event pairs</h2><p>Model decision is shown for each event.</p></div><button className="og-btn" disabled={!jobId || !decisions.length} onClick={() => jobId && download(physicalSmartFilterCsvPath(jobId), `${jobId}-smart-filter.csv`)}>Download CSV</button></div>
         <div role="tablist" aria-label="Filter decision"><button role="tab" aria-selected={isKept} className="og-btn" onClick={() => setTab("retain")}>Kept ({evaluation.kept_count || 0})</button> <button role="tab" aria-selected={!isKept} className="og-btn" onClick={() => setTab("filter")}>Filtered ({evaluation.filtered_count || 0})</button></div>
-        <div className="og-table-wrap"><table className="og-table"><thead><tr><th>Object pair</th><th>Miss distance</th><th>Pc</th><th>Reason</th></tr></thead><tbody>{grouped.map((group) => <React.Fragment key={group.key}><tr className="smart-filter-cloud-heading"><th colSpan={4}>{group.key} · {group.rows.length} pair{group.rows.length === 1 ? "" : "s"}</th></tr>{group.rows.map((row) => <tr key={row.event_id}><td>{pairName(row)}<small>Model: {row.model_status === "available" ? (row.model_prediction === "significant" ? "kept" : "filtered") : "safety review"}</small></td><td>{Number.isFinite(row.miss_distance_km) ? `${number(row.miss_distance_km, 3)} km` : "No miss distance in event record"}</td><td>{row.maximum_scenario_pc_scientific || "No probability returned for this event"}</td><td>{plainReason(row)}</td></tr>)}</React.Fragment>)}</tbody></table></div>
+        <div className="og-table-wrap"><table className="og-table"><thead><tr><th>Object pair</th><th>Miss distance</th><th>Pc</th><th>Reason</th></tr></thead><tbody>{grouped.map((group) => <React.Fragment key={group.key}><tr className="smart-filter-cloud-heading"><th colSpan={4}>{group.key} · {group.rows.length} pairs</th></tr>{group.rows.map((row) => <tr key={row.event_id}><td>{pairName(row)}<small>Model: {row.model_status === "available" ? (row.model_prediction === "significant" ? "kept" : "filtered") : "safety review"}</small></td><td>{Number.isFinite(row.miss_distance_km) ? `${number(row.miss_distance_km, 3)} km` : "No miss distance in event record"}</td><td>{row.maximum_scenario_pc_scientific || "No probability returned for this event"}</td><td>{plainReason(row)}</td></tr>)}</React.Fragment>)}</tbody></table></div>
         {!rows.length && <p>No event pairs in this group.</p>}
       </section>
     </>}
