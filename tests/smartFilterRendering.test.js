@@ -69,8 +69,8 @@ test("visualization uses local hover details, typed colors, full-width matrix, a
   assert.match(visualization, /onHoverObject=\{setHoveredObject\}/);
   assert.match(visualization, /globe-hover-tooltip/);
   assert.match(app, /Current Screening Proxy Matrix/);
-  assert.match(app, /Primary altitude \(km\)/);
-  assert.match(app, /Speed \(km\/s\)/);
+  assert.match(app, /Orbital altitude \(km\)/);
+  assert.match(app, /Primary-object speed magnitude \(km\/s\)/);
   assert.match(app, /activePage\) \|\| !snapshot/);
   assert.doesNotMatch(app, /Load charts/);
   assert.doesNotMatch(app, /label: "Heat Map"|navigate\("heatmap"\)|activePage === "heatmap"/);

@@ -16,7 +16,6 @@ import {
   Globe2,
   Home,
   LayoutDashboard,
-  LineChart,
   Loader2,
   PanelRightOpen,
   Pause,
@@ -29,7 +28,6 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
-  Target,
   X,
   Zap,
 } from "lucide-react";
@@ -85,7 +83,8 @@ import { BuildVersionBadge } from "./components/UI/BuildVersionBadge.jsx";
 import { buildSmartFilterView } from "./utils/smartFilterView";
 import { captureGlobeEventSelection, downloadGlobeEventReport, resolveGlobeEventSelection } from "./utils/globeEventReport.js";
 const EventRiskEstimate = lazy(() => import("./components/UI/EventRiskEstimate.js").then((module) => ({ default: module.EventRiskEstimate })));
-import { forecastHourLabel, proxyPriorityClassIndex } from "./utils/analyticsPresentation.js";
+import { proxyPriorityClassIndex } from "./utils/analyticsPresentation.js";
+import { CatalogDensityGlobe } from "./components/Scene/CatalogDensityGlobe.jsx";
 import { beginScreeningAttempt, collisionScreeningState, createExplicitRefreshHandler, finishScreeningAttempt, reconcilePhysicalEventSelection, resolvePhysicalEventSelection, screeningResultMatchesRun, screeningStatusForEmptyResults, screeningSummaryDisplay, shouldStartScreeningRun, updateScreeningAttempt } from "./utils/screeningRefreshPolicy.js";
 import { readWatchlist } from "./utils/watchlistStorage.js";
 import { researchPcCatalogSummary } from "./utils/researchPcAnalytics.js";
@@ -114,17 +113,6 @@ import {
   OBJECT_TYPE_DISPLAY,
   PAIR_TYPE,
 } from "./utils/identityModel";
-const lazyChartPart = (name) => lazy(() => import("./components/UI/ChartPrimitives.jsx").then((module) => ({ default: module[name] })));
-const RechartsBarChart = lazyChartPart("BarChart");
-const Bar = lazyChartPart("Bar");
-const RechartsLineChart = lazyChartPart("LineChart");
-const Line = lazyChartPart("Line");
-const ResponsiveContainer = lazyChartPart("ResponsiveContainer");
-const XAxis = lazyChartPart("XAxis");
-const YAxis = lazyChartPart("YAxis");
-const CartesianGrid = lazyChartPart("CartesianGrid");
-const Tooltip = lazyChartPart("Tooltip");
-
 const initialFilters = {
   active: true,
   debris: true,
@@ -925,7 +913,7 @@ export default function App() {
             />
           ) : null}
           {activePage === "maneuver" ? <ManeuverWorkbench event={maneuverEvent} events={savedEvents} screeningJobId={maneuverScreeningJobId} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); selectEvent(selectManeuverEvent(savedEvents, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: maneuverScreeningJobId })} onLoadDemo={loadManeuverDemo} demoBusy={maneuverDemoBusy} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} demoAssessment={maneuverDemoAssessment} onClearReferenceEvent={() => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); }} /> : null}
-          {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics || buildLocalAnalytics(snapshot, platform.screeningProxies || [])} events={platform.screeningProxies} snapshot={snapshot} /> : null}
+          {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics || buildLocalAnalytics(snapshot, platform.screeningProxies || [])} events={platform.screeningProxies} snapshot={snapshot} objects={snapshot?.objects || []} catalogEvents={eventLibrary?.events || []} /> : null}
           {activePage === "reports" ? <ReportsPage
             event={topEvent}
             events={eventLibrary?.events || platform.conjunctions}
@@ -1155,27 +1143,21 @@ export function ManeuverPage(props) {
 
 }
 
-function AnalyticsPage({ analytics, events, snapshot }) {
+function AnalyticsPage({ analytics, events, snapshot, objects = [], catalogEvents = [] }) {
   return (
     <div className="page-stack">
-      <PageHeader eyebrow="Catalog Analytics" title="Catalog Heuristic Analysis" text="Current catalog aggregates, generated heuristic proxy pairs, and a formula-based 168-hour score forecast. This page has no historical conjunction-event store; its charts are not historical collision records or physical collision probabilities." />
+      <PageHeader eyebrow="Catalog Analytics" title="Catalog Heuristic Analysis" text="Current catalog distribution, screening proxy matrix, and common-epoch catalog density with saved close approach locations." />
       <section className="split-grid">
         <Panel title="Current Catalog by Orbit Band" icon={BarChart3}>
           <BarList data={analytics?.band_distribution || {}} total={snapshot?.stats?.tracked_objects || 1} />
         </Panel>
-        <Panel title="168-Hour Heuristic Forecast" icon={LineChart}>
-          <p className="muted">Formula-based score projections from the current catalog snapshot at forecast-hour offsets; not historical observations or trajectory-propagated future conjunctions.</p>
-          <TrendLine points={analytics?.risk_timeline || []} />
+        <Panel title="Catalog Density and Saved Close Approaches" icon={Globe2}>
+          <CatalogDensityGlobe objects={objects} events={catalogEvents} />
         </Panel>
       </section>
       <section className="analytics-matrix">
         <Panel title="Current Screening Proxy Matrix" icon={Gauge}>
           <RiskMatrix events={events} />
-        </Panel>
-      </section>
-      <section className="analytics-matrix">
-        <Panel title="Current Screening Proxy Scatter" icon={Target}>
-          <Scatter events={events.slice(0, 24)} />
         </Panel>
       </section>
     </div>
@@ -1398,66 +1380,6 @@ function BarList({ data, total }) {
   );
 }
 
-function TrendLine({ points }) {
-  if (!points?.length) return <p className="muted">No forecast frames were returned for this catalog snapshot.</p>;
-  const data = (points || []).map((point, index) => ({
-    time: forecastHourLabel(point, index),
-    risk: point.global_heuristic_risk_score != null && Number.isFinite(Number(point.global_heuristic_risk_score))
-      ? Number(point.global_heuristic_risk_score)
-      : null
-  }));
-
-  return (
-    <div style={{ width: "100%", height: 250 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <RechartsLineChart
-          data={data}
-          margin={{
-            top: 10,
-            right: 20,
-            left: 0,
-            bottom: 10
-          }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="#26364d"
-          />
-
-          <XAxis
-            dataKey="time"
-            stroke="#9fb7d9"
-            tick={{ fontSize: 11 }}
-          />
-
-          <YAxis
-            stroke="#9fb7d9"
-            tick={{ fontSize: 11 }}
-            domain={[0, 1]}
-          />
-
-          <Tooltip
-            contentStyle={{
-              background: "#0f172a",
-              border: "1px solid #334155",
-              color: "#fff"
-            }}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="risk"
-            stroke="#38bdf8"
-            strokeWidth={3}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-        </RechartsLineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
 function ObjectPair({ event, screeningJobId, toggleWatchlist, watched, onShowInGlobe }) {
   // Use canonical identities for display
   const pIdentity = buildCanonicalIdentity(event.primary);
@@ -1497,9 +1419,9 @@ function RiskMatrix({ events }) {
 
   const [hover, setHover] = useState(null);
 
-  const width = 1200;
-  const height = 520;
-  const pad = { l: 92, r: 28, t: 28, b: 76 };
+  const width = 1600;
+  const height = 780;
+  const pad = { l: 104, r: 32, t: 32, b: 84 };
 
   const safeEvents = (events || []).filter(Boolean);
   if (!safeEvents.length) return <p className="muted">No screening proxy pairs are available to plot.</p>;
@@ -1527,8 +1449,8 @@ function RiskMatrix({ events }) {
   const rvMax = Math.max(...points.map((p) => p.rv));
 
   // Use a fixed binning resolution for stable UI.
-  const binsX = 22;
-  const binsY = 12;
+  const binsX = 32;
+  const binsY = 18;
 
   const cellW = (width - pad.l - pad.r) / binsX;
   const cellH = (height - pad.t - pad.b) / binsY;
@@ -1632,7 +1554,7 @@ function RiskMatrix({ events }) {
       </div>
       <p className="muted">Each proxy-pair record is placed by its primary object's altitude and speed. Cell color uses a fixed ordinal mapping of relative priority labels; it is not a measured event-risk score. Catalog objects can appear in multiple pairs.</p>
 
-      <div style={{ position: "relative", width: "100%", height: "clamp(360px, 42vw, 540px)", border: "1px solid rgba(255,255,255,0.08)", background: "#02030a", borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ position: "relative", width: "100%", height: "clamp(560px, 56vw, 780px)", border: "1px solid rgba(255,255,255,0.08)", background: "#02030a", borderRadius: 10, overflow: "hidden" }}>
         <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" onMouseLeave={hideHover}>
           {/* grid lines */}
           {Array.from({ length: binsX + 1 }, (_, i) => (
@@ -1750,66 +1672,6 @@ function RiskMatrix({ events }) {
   );
 }
 
-function Scatter({ events }) {
-  const points = (events || []).map((event) => ({
-    id: event.id,
-    name: event.primary?.name || event.id,
-    norad: event.primary?.id,
-    altitude: Number(event.primary?.altitude_km),
-    speed: Number(event.primary?.velocity_kms),
-    score: Number(event.risk_score),
-    risk: event.risk_level,
-    priority: event.priority_score,
-  })).filter((point) => Number.isFinite(point.altitude) && Number.isFinite(point.speed) && Number.isFinite(point.score));
-
-  if (!points.length) return <p className="muted">No screening proxy pairs are available to plot.</p>;
-
-  const minAltitude = Math.min(...points.map((point) => point.altitude));
-  const maxAltitude = Math.max(...points.map((point) => point.altitude));
-  const minSpeed = Math.min(...points.map((point) => point.speed));
-  const maxSpeed = Math.max(...points.map((point) => point.speed));
-  const tooltip = ({ active, payload }) => {
-    const point = payload?.[0]?.payload;
-    if (!active || !point) return null;
-    return (
-      <div className="heatmap-tooltip">
-        <strong>{point.name}</strong>
-        <Row label="Object ID" value={point.norad} />
-        <Row label="Heuristic Risk Index" value={point.score.toFixed(3)} />
-        <Row label="Heuristic Priority" value={point.priority} />
-        <Row label="Object Altitude" value={`${point.altitude.toFixed(1)} km`} />
-        <Row label="Object Speed Magnitude" value={`${point.speed.toFixed(3)} km/s`} />
-      </div>
-    );
-  };
-
-  return (
-    <div className="scatter-graph" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "#02030a", borderRadius: 10, overflow: "hidden" }}>
-      <div style={{ padding: 12, color: "#38bdf8", fontWeight: 900, fontSize: 12, textTransform: "uppercase" }}>Screening Proxy Scatter · one primary-object marker per proxy pair; objects can repeat</div>
-      <div style={{ width: "100%", height: 380 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RechartsLineChart data={points} margin={{ top: 18, right: 30, left: 26, bottom: 44 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#26364d" />
-            <XAxis dataKey="altitude" type="number" domain={[minAltitude, maxAltitude]} tick={{ fontSize: 11 }} stroke="#9fb7d9" tickCount={5} tickFormatter={(v) => Math.round(v).toLocaleString()} interval="preserveStartEnd" label={{ value: "Primary altitude (km)", position: "insideBottom", offset: -18, fill: "#9fb7d9" }} />
-            <YAxis dataKey="speed" type="number" domain={[minSpeed, maxSpeed]} tick={{ fontSize: 11 }} stroke="#9fb7d9" tickCount={5} tickFormatter={(v) => Number(v).toFixed(1)} width={58} label={{ value: "Speed (km/s)", angle: -90, position: "insideLeft", fill: "#9fb7d9" }} />
-            <Tooltip content={tooltip} />
-            <Line
-              type="linear"
-              dataKey="speed"
-              stroke="rgba(255,255,255,0)"
-              activeDot={false}
-              dot={(props) => {
-                const point = props.payload;
-                const color = ({ Critical: "#ef4444", High: "#ff8a3d", Medium: "#ffd166", Low: "#38bdf8", Safe: "#22c55e" })[point?.risk] || "#38bdf8";
-                return <circle cx={props.cx} cy={props.cy} r={3 + Math.max(0, Math.min(1, point?.score || 0)) * 8} fill={color} opacity={0.86} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />;
-              }}
-            />
-          </RechartsLineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
 function Row({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
