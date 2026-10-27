@@ -26,8 +26,14 @@ test("Collision Analysis exposes backend states and keeps detailed screening dia
   assert.match(collisionWorkbenchSource, /Run full screening/);
 });
 
-test("selected event summary exposes geometry, separate Pc sources, ranking basis, and a maneuver entry", () => {
-  assert.match(collisionWorkbenchSource, /Encounter group counts/);
+test("Collision restores prioritized events and separate physics and AI assessment panels", () => {
+  assert.match(collisionWorkbenchSource, /Prioritized Events/);
+  assert.match(collisionWorkbenchSource, /collision-assessment-grid/);
+  assert.match(collisionWorkbenchSource, /Physics Assessment/);
+  assert.match(collisionWorkbenchSource, /AI Assessment/);
+  assert.match(collisionWorkbenchSource, /collision-kpis/);
+  assert.match(collisionWorkbenchSource, /What-if uncertainty/);
+  assert.match(collisionWorkbenchSource, /Class thresholds follow the configured research Pc cutoffs/);
   assert.match(collisionWorkbenchSource, /Research Pc/);
   assert.match(collisionWorkbenchSource, /const classAgreement =/);
   assert.match(collisionWorkbenchSource, /Physics class: \{getClass\(item\)\} · \{classAgreement\(item\)\}/);
