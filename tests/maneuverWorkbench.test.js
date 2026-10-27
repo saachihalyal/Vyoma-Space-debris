@@ -16,7 +16,8 @@ test("Maneuver Workbench uses the one-button flow with advanced fields collapsed
   assert.match(source, /const defaultLeadSeconds = 1800/);
   assert.match(source, /Avoidance Action Plan/);
   assert.match(source, /Find safest maneuver/);
-  assert.match(source, /Try sample conjunction/);
+  assert.match(source, /Try NASA example \(Medium risk\)/);
+  assert.match(source, /Loads the bundled NASA CARA conjunction case and its reference maneuver assessment/);
   assert.match(theme, /\.og-card/);
   assert.match(app, /everyManeuverEventBelowFloor/);
   assert.match(app, /loadManeuverDemo\(\)/);

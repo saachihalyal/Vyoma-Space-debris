@@ -57,7 +57,7 @@ test("selected conjunction details keep Pc channels, AI queue and ranking basis 
   const app = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8")
     + readFileSync(new URL("../src/components/UI/CollisionPriorityTable.js", import.meta.url), "utf8");
   assert.match(app, /covariance_policy_name/);
-  assert.match(app, /Other Pc channels/);
+  assert.match(app, /Separate collision probability channels/);
   assert.match(app, /Ranking details/);
   assert.match(app, /AI class/);
   assert.match(app, /Upload Conjunction Data/);

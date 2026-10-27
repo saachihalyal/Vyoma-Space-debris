@@ -43,4 +43,7 @@ test("Collision Analysis summary reports full-screening coverage and exact resea
   assert.match(markup, /Alpha \(A\) vs Beta \(B\)[\s\S]*log10 Pc -5/);
   assert.match(markup, /Ranking basis: exact unfloored log10 Pc, descending; miss\/sigma is the tie-breaker/);
   assert.match(markup, /Medium: 1/);
+  assert.match(markup, /<details class="og-acc screening-details"><summary>Screening details<\/summary>/);
+  assert.match(markup, /Histogram of exact research log10 Pc values/);
+  assert.doesNotMatch(markup, /No actionable conjunctions/);
 });

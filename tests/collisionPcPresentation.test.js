@@ -56,7 +56,7 @@ test("TLE-only Foster Pc unavailability explains the missing covariance and HBR 
     physics_result: { status: "valid" },
     collision_probability: { status: "unavailable", reason_codes: ["NO_COVARIANCE", "HBR_UNAVAILABLE"] },
   });
-  assert.match(status, /No Foster Pc: missing event-matched covariance for both objects and a sourced hard-body radius\./);
+  assert.match(status, /No Foster Pc: missing event-matched covariance for both objects and a sourced hard-body radius \(HBR\)\./);
 });
 
 test("unevaluable research Pc shows a human explanation and the machine reason code", () => {

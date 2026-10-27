@@ -9,6 +9,8 @@ import { beginScreeningAttempt, collisionScreeningState, createExplicitRefreshHa
 import { maneuverPageState, resolveManeuverEvent } from "../src/utils/maneuverSelection.js";
 import { readWatchlist } from "../src/utils/watchlistStorage.js";
 
+const capturedScreeningEvent = JSON.parse(readFileSync(new URL("./fixtures/capturedRealScreeningEvent.json", import.meta.url), "utf8"));
+
 test("detached request chains consume expected aborts but report other failures", async () => {
   let reported = 0;
   await ignoreAbort(Promise.reject(Object.assign(new Error("cancelled"), { name: "AbortError" })), () => { reported += 1; });
@@ -782,21 +784,9 @@ test("missing, malformed, and duplicate physical event IDs fail closed", () => {
   assert.equal(retainSelectedPhysicalEvent(duplicateA, [duplicateA, duplicateB]), null);
 });
 
-test("accepted job, exact event selection, and maneuver request stay associated", async () => {
-  const jobAEvent = {
-    id: "CA-stable-identity",
-    result_kind: "physics_assessment",
-    primary: { id: "A" },
-    secondary: { id: "B" },
-    physics_result: { status: "valid", tca: { value: "2030-01-01T00:00:00.000000+00:00" } },
-    record_marker: "job-A",
-  };
+test("accepted job preserves exact event selection and blocks maneuver requests below the Pc floor", async () => {
+  const jobAEvent = { ...capturedScreeningEvent, record_marker: "job-A" };
   const jobBExactEvent = { ...jobAEvent, record_marker: "job-B" };
-  const jobBOtherTca = {
-    ...jobBExactEvent,
-    id: "CA-same-pair-other-tca",
-    physics_result: { status: "valid", tca_status: "valid", tca: { value: "2030-01-01T08:00:00.000000+00:00" } },
-  };
   const prior = {
     conjunctions: [jobAEvent],
     conjunctionStatus: { job_id: "job-A", result_status: "valid_non_empty" },
@@ -807,31 +797,16 @@ test("accepted job, exact event selection, and maneuver request stay associated"
     job_id: "job-B",
     completion_status: "complete",
     result_status: "valid_non_empty",
-    data: [jobBOtherTca, jobBExactEvent],
-  }, [jobBOtherTca, jobBExactEvent]);
+    data: [jobBExactEvent],
+  }, [jobBExactEvent]);
   const selection = reconcilePhysicalEventSelection(
     { event: jobAEvent, context: jobAEvent, notice: null },
     accepted.conjunctions,
   );
-  const maneuverEvent = resolveManeuverEvent(selection.event, accepted.conjunctions);
-  const originalFetch = globalThis.fetch;
-  const calls = [];
-  globalThis.fetch = async (url, options) => {
-    calls.push({ url: String(url), options });
-    return new Response(JSON.stringify({ screening_job_id: "job-B", data: { status: "available_with_warning", event_id: jobBExactEvent.id } }), { status: 200 });
-  };
-  try {
-    await getManeuver(maneuverEvent, { screeningJobId: accepted.conjunctionStatus.job_id });
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-
   assert.equal(accepted.conjunctionStatus.job_id, "job-B");
-  assert.strictEqual(maneuverEvent, jobBExactEvent);
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].url, /\/api\/conjunctions\/CA-stable-identity\/maneuver/);
-  assert.match(calls[0].url, /screening_job_id=job-B/);
-  assert.equal(JSON.parse(calls[0].options.body).record_marker, "job-B");
+  assert.strictEqual(selection.event, jobBExactEvent);
+  assert.equal(resolveManeuverEvent(selection.event, accepted.conjunctions), null);
+  await assert.rejects(getManeuver(null, { screeningJobId: accepted.conjunctionStatus.job_id }), /selected Stage 2A event ID is required/);
 });
 
 test("mismatched or superseded screening results cannot replace accepted events or selection", () => {
