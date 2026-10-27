@@ -36,6 +36,18 @@ test("Collision Analysis begins with title and events without diagnostic charts 
   assert.match(collisionWorkbenchSource, /screening-progress-strip/);
 });
 
+test("Collision Analysis reports 72-hour class counts and shows event-bound 2x Pc sensitivity without changing the main class", () => {
+  assert.match(appSource, /useState\(72\)/);
+  assert.match(appSource, /getConjunctions\(\{ limit: 400, horizonHours/);
+  assert.match(appSource, /sensitivityPcCacheRef = useRef\(new Map\(\)\)/);
+  assert.match(appSource, /covarianceScale: 2/);
+  assert.match(appSource, /const key = `\$\{item\.screening_job_id\}\|\$\{item\.id\}\|2`/);
+  assert.match(collisionWorkbenchSource, /Low \{currentClassCounts\.Low\}.*Medium \{currentClassCounts\.Medium\}.*High \{currentClassCounts\.High\}/);
+  assert.match(collisionWorkbenchSource, /Sensitivity · Pc at 2x uncertainty/);
+  assert.match(collisionWorkbenchSource, /const sensitivityPc = sensitivity\?\.status/);
+  assert.match(collisionWorkbenchSource, /data-c=\{getClass\(item\)\}/);
+});
+
 test("Collision restores prioritized events and separate physics and AI assessment panels", () => {
   assert.match(collisionWorkbenchSource, /Prioritized Events/);
   assert.match(collisionWorkbenchSource, /collision-assessment-grid/);

@@ -90,7 +90,7 @@ function EncounterPlanePlot({ event }) {
   </figure>;
 }
 
-export function CollisionWorkbench({ events = [], event, screeningStatus = {}, eventStatus = {}, screeningAttempt = null, currentEvents = [], references = [], screeningHorizonHours = 72, setScreeningHorizonHours = () => {}, selectEvent = () => {}, onShowInGlobe = () => {}, onAssessManeuver = () => {}, download = () => {}, screeningJobId, eventReportPath, eventReportCsvPath, eventReportJsonPath, onImportCdm = async () => {}, onStartScreening = () => {} }) {
+export function CollisionWorkbench({ events = [], event, screeningStatus = {}, eventStatus = {}, screeningAttempt = null, currentEvents = [], references = [], sensitivityPcByEvent = {}, screeningHorizonHours = 72, setScreeningHorizonHours = () => {}, selectEvent = () => {}, onShowInGlobe = () => {}, onAssessManeuver = () => {}, download = () => {}, screeningJobId, eventReportPath, eventReportCsvPath, eventReportJsonPath, onImportCdm = async () => {}, onStartScreening = () => {} }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("research_pc");
   const [classFilter, setClassFilter] = useState("All");
@@ -145,7 +145,8 @@ export function CollisionWorkbench({ events = [], event, screeningStatus = {}, e
   const highestCurrentPc = highestCurrentEvent
     ? getResearch(highestCurrentEvent)?.estimated_pc_scientific || `10^${getLogPc(highestCurrentEvent).toFixed(3)}`
     : null;
-  const acceptedRunComplete = ["complete", "partial"].includes(eventStatus?.completion_status);
+  const acceptedHorizon = eventStatus?.screening?.horizon_hours ?? eventStatus?.horizon_hours;
+  const acceptedRunComplete = ["complete", "partial"].includes(eventStatus?.completion_status) && Number.isFinite(acceptedHorizon);
   const progressActive = ["pending", "queued", "starting", "running"].includes(screeningAttempt?.result_status);
   return <main className="og-page og-collision" aria-label="Collision Analysis workbench">
     <header className="og-workbench-head"><h1>Collision Analysis</h1><div className="screening-launch-controls"><label className="og-field">Horizon<select aria-label="Screening horizon" value={screeningHorizonHours} onChange={(change) => setScreeningHorizonHours(Number(change.target.value))}><option value={24}>24 h</option><option value={72}>72 h</option><option value={168}>7 days</option></select></label><button className="og-btn primary" onClick={onStartScreening} type="button" disabled={progressActive}>Run full screening</button></div></header>
@@ -158,9 +159,14 @@ export function CollisionWorkbench({ events = [], event, screeningStatus = {}, e
         {matchingGroups.map((group) => {
           const item = group.representative;
           const p = objectInfo(item.primary); const s = objectInfo(item.secondary); const shownPc = researchPcPresentation(getResearch(item));
+          const sensitivity = sensitivityPcByEvent[`${item.screening_job_id}|${item.id}|2`];
+          const sensitivityPc = sensitivity?.status === "available"
+            ? researchPcPresentation(sensitivity.assessment).value
+            : sensitivity?.status === "not_available" ? "Not returned" : "Calculating";
           return <button type="button" key={item.id} className={`og-event ${chosen?.id === item.id ? "on" : ""}`} data-c={getClass(item)} onClick={() => selectEvent(item, "collision")}>
             <b>{p.name} / {s.name}</b><span className={`og-chip ${getClass(item)}`}>{getClass(item)}</span>
             <small>{item.screening_library_current ? "Current" : `Saved screening · ${item.screening_run_date ? new Date(item.screening_run_date).toLocaleDateString() : "run date not recorded"}`}</small><small>Pc {compactPcText(shownPc.value)} · TCA {tcaText(item)}</small><small>Physics: {getClass(item)} · {classAgreement(item)}</small>
+            <small className="collision-sensitivity-cell"><span>Sensitivity · Pc at 2x uncertainty</span><b>{sensitivityPc}</b></small>
             <small>Priority (heuristic): {reviewBand(item.review_priority?.category)} · {Number.isFinite(item.review_priority?.score) ? item.review_priority.score : ""}</small>
             {group.extraObjects > 0 ? <small>+{group.extraObjects} co-located objects</small> : null}
           </button>;
@@ -173,6 +179,7 @@ export function CollisionWorkbench({ events = [], event, screeningStatus = {}, e
         })}
       </aside>
       <div className="og-detail collision-event-detail">
+        {acceptedRunComplete ? <section className="collision-screening-counts" aria-label={`${acceptedHorizon} hour screening results`}><b>{acceptedHorizon === 168 ? "7 days" : `${acceptedHorizon} h`} screening results</b><span>Low {currentClassCounts.Low}</span><span>Medium {currentClassCounts.Medium}</span><span>High {currentClassCounts.High}</span></section> : null}
         {acceptedRunComplete && currentClassCounts.High === 0 && highestCurrentPc ? <p className="collision-no-high" role="status">No High-probability events found (highest Pc {highestCurrentPc})</p> : null}
         {chosen ? <>
           <section className="og-card og-hero"><div><span className="og-sub">{primary.displayType} · {primary.id} vs {secondary.displayType} · {secondary.id}</span><h2>{primary.name} · {secondary.name}</h2><div className="og-pc collision-primary-pc">{pcView.value}</div><div className="og-pcsub">Research Pc · {pcView.percentage}</div><span className="og-chip">Physics: {getClass(chosen)}</span> <span className="og-chip">{classAgreement(chosen)}</span><span className="og-chip">Priority (heuristic): {reviewBand(chosen.review_priority?.category)}</span></div></section>

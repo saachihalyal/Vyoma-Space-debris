@@ -142,6 +142,8 @@ export default function App() {
   const [uncertaintyScale, setUncertaintyScale] = useState(1);
   const [scenarioClassCounts, setScenarioClassCounts] = useState(null);
   const scenarioClassCacheRef = useRef(new Map());
+  const [sensitivityPcByEvent, setSensitivityPcByEvent] = useState({});
+  const sensitivityPcCacheRef = useRef(new Map());
   const [snapshot, setSnapshot] = useState(null);
   const [eventLibrary, setEventLibrary] = useState(null);
   const lastCatalogSnapshotRef = useRef(null);
@@ -536,6 +538,37 @@ export default function App() {
   }, [isPlaying]);
 
   const savedEvents = eventLibrary ? eventLibrary.events : platform.conjunctions;
+  useEffect(() => {
+    if (activePage !== "collision" || !Array.isArray(savedEvents) || !savedEvents.length) return undefined;
+    const controller = new AbortController();
+    let active = true;
+    const candidates = savedEvents.filter((item) => item?.result_kind === "physics_assessment"
+      && item?.physics_result?.status === "valid" && item?.screening_job_id && item?.id);
+    const cache = sensitivityPcCacheRef.current;
+    const publishCache = () => setSensitivityPcByEvent(Object.fromEntries(cache));
+    publishCache();
+    (async () => {
+      for (const item of candidates) {
+        const key = `${item.screening_job_id}|${item.id}|2`;
+        if (cache.has(key)) continue;
+        try {
+          const result = await calculateResearchPcWhatIf({
+            screeningJobId: item.screening_job_id,
+            eventId: item.id,
+            covarianceScale: 2,
+            signal: controller.signal,
+          });
+          if (result?.success === true && result?.data) cache.set(key, { status: "available", assessment: result.data });
+          else cache.set(key, { status: "not_available" });
+        } catch (error) {
+          if (error?.name === "AbortError" || controller.signal.aborted) return;
+          cache.set(key, { status: "not_available" });
+        }
+        if (active) publishCache();
+      }
+    })();
+    return () => { active = false; controller.abort(); };
+  }, [activePage, savedEvents]);
   const maneuverAssessmentEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, savedEvents);
   const maneuverScreeningJobId = maneuverAssessmentEvent?.screening_job_id || platform.conjunctionStatus?.job_id || null;
   const validManeuverEvents = useMemo(() => eligibleManeuverEvents(savedEvents), [savedEvents]);
@@ -897,6 +930,7 @@ export default function App() {
               screeningHorizonHours={screeningHorizonHours}
               setScreeningHorizonHours={setScreeningHorizonHours}
               currentEvents={platform.conjunctions}
+              sensitivityPcByEvent={sensitivityPcByEvent}
               uncertaintyScale={uncertaintyScale}
               setUncertaintyScale={setUncertaintyScale}
               uncertaintyWhatIf={scenarioClassCounts?.assessments?.[selectedEvent?.id] || null}
@@ -1083,7 +1117,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   </section>;
 }
 
-export function CollisionPage({ event, events, eventLibrary, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null, currentEvents = [], screeningHorizonHours = 72, setScreeningHorizonHours = () => {} }) {
+export function CollisionPage({ event, events, eventLibrary, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null, currentEvents = [], sensitivityPcByEvent = {}, screeningHorizonHours = 72, setScreeningHorizonHours = () => {} }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [eventSort, setEventSort] = useState("research_pc");
@@ -1125,7 +1159,7 @@ export function CollisionPage({ event, events, eventLibrary, eventStatus, attemp
   const reportBase = chosenPhysical && eventScreeningJobId ? selectedEventReportPath(eventScreeningJobId, event.id) : null;
   return <CollisionWorkbench
     events={events || []} event={event} eventStatus={eventStatus} screeningStatus={screeningStatus}
-    currentEvents={currentEvents} references={eventLibrary?.references || []}
+    currentEvents={currentEvents} references={eventLibrary?.references || []} sensitivityPcByEvent={sensitivityPcByEvent}
     screeningAttempt={attemptStatus} screeningHorizonHours={screeningHorizonHours}
     setScreeningHorizonHours={setScreeningHorizonHours}
     screeningJobId={eventScreeningJobId} selectEvent={selectEvent}
