@@ -20,13 +20,15 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {}, physi
   const decisions = data?.decisions || [];
   const evaluation = data?.evaluation || {};
   const isKept = tab === "retain";
+  const keptDecisions = decisions.filter((row) => row.decision !== "filter");
   const rows = decisions.filter((r) => (r.decision !== "filter") === isKept);
   const events = (platform.conjunctions || []).filter((e) => e.result_kind === "physics_assessment");
   const objects = new Map(events.flatMap((event) => [[event.primary?.id, event.primary], [event.secondary?.id, event.secondary]]).filter(([id, object]) => id && object));
-  const selectedIds = new Set(rows.flatMap((row) => row.object_ids || []));
+  const selectedIds = new Set(keptDecisions.flatMap((row) => row.object_ids || []));
   const afterObjects = Array.from(selectedIds).map((id) => objects.get(id)).filter(Boolean);
   const allIds = new Set(decisions.flatMap((row) => row.object_ids || []));
   const beforeObjects = Array.from(allIds).map((id) => objects.get(id)).filter(Boolean);
+  const filteredPercent = decisions.length ? ((decisions.length - keptDecisions.length) / decisions.length) * 100 : 0;
   const cloudName = (row) => {
     const ids = row.object_ids || [], names = row.object_names || [];
     const index = ids.findIndex((id, i) => objects.get(id)?.category === "debris" || /\bDEB(?:RIS)?\b/i.test(names[i] || ""));
@@ -70,13 +72,13 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {}, physi
     {!data && !error && <p role="status" className="og-card loading-skeleton" aria-label="Loading filter decisions"><span /><span /><span /></p>}
     {data && <>
       <section className="smart-filter-globes" aria-label="Before and after object coverage">
-        <article className="og-card"><h2>Before · {beforeObjects.length} objects</h2><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="All objects in screened close approaches" objects={beforeObjects} /></React.Suspense></article>
-        <article className="og-card"><h2>After · {afterObjects.length} objects</h2><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="Objects in pairs kept by Smart Filter" objects={afterObjects} /></React.Suspense></article>
-      </section>
-      <section className="smart-filter-funnel" aria-label="Physics and AI decisions">
+        <article className="og-card smart-filter-globe-panel"><h2>Before <span>all screened objects</span></h2><strong className="smart-filter-object-count">{beforeObjects.length.toLocaleString()}</strong><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="All objects in screened close approaches" objects={beforeObjects} /></React.Suspense></article>
+        <div className="smart-filter-reduction" aria-label="Pairs filtered"><strong>{filteredPercent.toFixed(1)}%</strong><span>pairs filtered</span></div>
+        <article className="og-card smart-filter-globe-panel"><h2>After <span>objects in kept pairs</span></h2><strong className="smart-filter-object-count">{afterObjects.length.toLocaleString()}</strong><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="Objects in pairs kept by Smart Filter" objects={afterObjects} /></React.Suspense></article>
+      </section>      <section className="smart-filter-funnel" aria-label="Physics and AI decisions">
         {[["Physics in", decisions.length], ["Physics kept", physicsFunnelKept], ["Physics filtered", physicsFunnelFiltered], ["AI in", decisions.length], ["AI kept", aiKept], ["AI filtered", aiFiltered]].map(([label, count]) => <article className="og-card" key={label}><span>{label}</span><b>{count.toLocaleString()}</b></article>)}
       </section>
-      <p className="og-sub">Physics and AI differ on {differs} pair{differs === 1 ? "" : "s"}. Both keep {decisions.filter((row) => physicsDecision(row) === "retain" && !(row.model_status === "available" && row.model_prediction === "insignificant")).length}; both filter {decisions.filter((row) => physicsDecision(row) === "filter" && row.model_status === "available" && row.model_prediction === "insignificant").length}.</p>
+      <p className="og-sub smart-filter-comparison">Both keep {decisions.filter((row) => physicsDecision(row) === "retain" && !(row.model_status === "available" && row.model_prediction === "insignificant")).length} pairs · both filter {decisions.filter((row) => physicsDecision(row) === "filter" && row.model_status === "available" && row.model_prediction === "insignificant").length} pairs · differ on {differs} pairs</p>
       {data.decisions?.some((row) => row.model_status !== "available") && <p className="og-sub">Some event features were incomplete. Those pairs were kept for review by the safety rules.</p>}
       <section className="og-card"><div className="og-section-head"><div><h2>{isKept ? "Kept" : "Filtered"} event pairs</h2><p>Model decision is shown for each event.</p></div><button className="og-btn" disabled={!jobId || !decisions.length} onClick={() => jobId && download(physicalSmartFilterCsvPath(jobId), `${jobId}-smart-filter.csv`)}>Download CSV</button></div>
         <div role="tablist" aria-label="Filter decision"><button role="tab" aria-selected={isKept} className="og-btn" onClick={() => setTab("retain")}>Kept ({evaluation.kept_count || 0})</button> <button role="tab" aria-selected={!isKept} className="og-btn" onClick={() => setTab("filter")}>Filtered ({evaluation.filtered_count || 0})</button></div>
