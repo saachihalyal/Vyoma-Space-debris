@@ -36,14 +36,15 @@ test("Collision Analysis exposes separate CCSDS and TraCSS CDM assessment with e
   assert.match(source, /The independence assumption changed after this assessment/);
 });
 
-test("bundled reference action is visible in both empty and selected-event views", () => {
+test("bundled reference action is available from Reports as a calculation check", () => {
   const source = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /CdmReferenceAssessment/);
   assert.match(source, /Upload Conjunction Data \/ Foster assessment/);
   const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   const reference = readFileSync(new URL("../src/components/UI/CdmReferenceAssessment.jsx", import.meta.url), "utf8");
-  assert.match(app, /<CdmReferenceAssessment compact \/>/);
-  assert.match(reference, /Calculation check/);
+  assert.match(app, /function ReportsPage\([\s\S]*Calculation check/);
+  assert.match(app, /calculateNasaCaraReferenceCase\(\)/);
+  assert.doesNotMatch(app.slice(app.indexOf("function ReportsPage("), app.indexOf("function SceneComparison(")), /CdmReferenceAssessment compact/);
   assert.match(app, /selectEvent=\{selectEvent\}/);
 });
 
@@ -129,18 +130,18 @@ test("sample conjunction download is bundled in the public directory", () => {
   assert.match(sample, /CCSDS_CDM_VERS/);
 });
 
-test("reports page separates collision and maneuver documents without a demo snapshot shortcut", () => {
+test("reports page provides concise report downloads and a NASA calculation check without preview or archive panels", () => {
   const source = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
   assert.match(source, /Collision report/);
   assert.match(source, /Maneuver report/);
-  assert.doesNotMatch(source, /Load saved demo snapshot/);
-  assert.match(source, /Restore Archived Screening Job/);
-  assert.match(source, /Source-reported Pc/);
-  assert.match(source, /Event-specific Foster Pc/);
-  assert.match(source, /Research Pc/);
-  assert.match(source, /AI model status/);
-  assert.match(source, /Assumptions/);
-  assert.match(source, /Sensitivity/);
-  assert.match(source, /Limitations/);
+  const reports = source.slice(source.indexOf("function ReportsPage("), source.indexOf("function ReportDocumentTiles("));
+  assert.match(reports, /Screening events/);
+  assert.match(reports, /Download \{format\.toUpperCase\(\)\}/);
+  assert.match(reports, /Mission Report/);
+  assert.match(reports, /Trajectory CSV/);
+  assert.match(reports, /Mission JSON/);
+  assert.match(reports, /Calculation check/);
+  assert.match(reports, /calculateNasaCaraReferenceCase\(\)/);
+  assert.doesNotMatch(reports, /Selected Report Preview|Restore Archived Screening Job|<Panel title="Summary"|ReportDocumentTiles/);
 });
 

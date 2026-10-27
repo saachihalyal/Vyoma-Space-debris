@@ -5,10 +5,8 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
-  BookOpen,
   CheckCircle2,
   ChevronRight,
-  ClipboardList,
   Cpu,
   DatabaseZap,
   Download,
@@ -54,6 +52,7 @@ import {
   restoreArchivedScreeningJob,
   selectedEventReportPath,
   selectedManeuverReportPath,
+  calculateNasaCaraReferenceCase,
   getScreeningProxies,
   getSmartFilter,
   getSystemHealth,
@@ -929,18 +928,14 @@ export default function App() {
           {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics || buildLocalAnalytics(snapshot, platform.screeningProxies || [])} events={platform.screeningProxies} snapshot={snapshot} /> : null}
           {activePage === "reports" ? <ReportsPage
             event={topEvent}
+            events={eventLibrary?.events || platform.conjunctions}
+            eventLibrary={eventLibrary}
             maneuverEvent={maneuverEvent}
             maneuver={maneuver}
             screeningJobId={platform.conjunctionStatus?.job_id}
             csvScreeningJobId={screeningJobSelection.jobId}
-            csvJobArchived={screeningJobSelection.isArchived}
-            archivedJob={screeningJobSelection.archivedJob}
-            restoreBusy={archiveRestoreBusy}
-            onRestoreArchive={handleRestoreArchivedJob}
-            onClearArchivedJob={() => setArchivedJobSelection(null)}
             download={handleDownload}
             downloadTrajectoryCsv={handleTrajectoryCsvDownload}
-            smart={platform.smart}
           /> : null}
           {activePage === "upload" ? <CdmReferenceAssessment standalone /> : null}
         </PageErrorBoundary></Suspense></main>
@@ -1187,118 +1182,50 @@ function AnalyticsPage({ analytics, events, snapshot }) {
   );
 }
 
-function ReportsPage({ event, maneuverEvent, maneuver, screeningJobId, csvScreeningJobId, csvJobArchived, archivedJob, restoreBusy, onRestoreArchive, onClearArchivedJob, download, downloadTrajectoryCsv, smart }) {
-  const [archiveIdInput, setArchiveIdInput] = useState("");
-  const archivedResult = archivedJob?.result;
-  const archivedEvents = archivedResult?.data || [];
-  const archivedInvalidCount = archivedEvents.filter((item) => item.physics_result?.status === "invalid").length;
-  const eventReportPath = event?.result_kind === "physics_assessment"
-    ? screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null
-    : event ? `/api/reports/${encodeURIComponent(event.id)}.pdf` : null;
-  const eventReportCsvPath = event?.result_kind === "physics_assessment" && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null;
-  const eventReportJsonPath = event?.result_kind === "physics_assessment" && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null;
-  const eventReportUnavailable = event?.result_kind === "physics_assessment" && !screeningJobId;
-  return (
-    <div className="page-stack">
-      <PageHeader eyebrow="Reports" title="Export Center" text="Download provenance-tagged research outputs from the backend report engine." />
-      <CdmReferenceAssessment compact />
-      <section className="og-card report-document" aria-label="Collision report"><div className="og-section-head"><div><span className="og-prov read">Selected physical event</span><h2>Collision report</h2></div>{event?.id ? <span className="og-chip">{event.id}</span> : null}</div>
-        {event ? <><ReportDocumentTiles event={event} />{screeningJobId && event.result_kind === "physics_assessment" ? <div className="report-action-group">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className="og-btn" onClick={() => download(selectedEventReportPath(screeningJobId, event.id, format), `${event.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div> : <p className="muted">Select a physical event from a completed screening to download its collision report.</p>}</> : <p className="muted">No collision event is selected.</p>}
-      </section>
-      <section className="og-card report-document" aria-label="Maneuver report"><div className="og-section-head"><div><span className="og-prov derived">Selected event maneuver assessment</span><h2>Maneuver report</h2></div><span className="og-chip">{maneuver?.result?.status || "not run"}</span></div>
-        {maneuverEvent ? <><div className="og-kpis">{[["Objects", `${maneuverEvent.primary?.name || "Name unavailable"} (${maneuverEvent.primary?.id || "ID unavailable"}, ${maneuverEvent.primary?.object_type || "type unavailable"}) / ${maneuverEvent.secondary?.name || "Name unavailable"} (${maneuverEvent.secondary?.id || "ID unavailable"}, ${maneuverEvent.secondary?.object_type || "type unavailable"})`], ["TCA", maneuverEvent.physics_result?.tca?.value || "Not calculated: TCA unavailable"], ["Miss distance", maneuverEvent.physics_result?.miss_distance?.value == null ? "Not calculated: miss distance unavailable" : `${maneuverEvent.physics_result.miss_distance.value} km`], ["Relative speed", maneuverEvent.physics_result?.relative_speed_at_tca?.value == null ? "Not calculated: relative speed unavailable" : `${maneuverEvent.physics_result.relative_speed_at_tca.value} km/s`], ["Baseline research Pc", maneuver?.result?.probability_before?.pc == null ? "Not calculated: maneuver search required" : `${maneuver.result.probability_before.pc} (${formatProbabilityPercentage(maneuver.result.probability_before.pc)})`], ["Candidate research Pc", maneuver?.result?.probability_after?.pc == null ? "Not calculated: maneuver search required" : `${maneuver.result.probability_after.pc} (${formatProbabilityPercentage(maneuver.result.probability_after.pc)})`], ["AI ranker status", maneuver?.result?.ml_result?.status || "Not returned"], ["Method", maneuver?.result?.method || "Bounded two-body maneuver simulation"]].map(([label, value]) => <div className="og-card og-tile" key={label}><span>{label}</span><b>{value}</b></div>)}</div><p className="og-sub">Assumptions: maneuver covariance and HBR are held at baseline values where available. Sensitivity: see candidate comparison for the configured search. Limitations: bounded research simulation; not operational guidance.</p>{screeningJobId ? <div className="report-action-group">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className="og-btn" onClick={() => download(selectedManeuverReportPath(screeningJobId, maneuverEvent.id, format), `${maneuverEvent.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div> : null}</> : <p className="muted">No maneuver event is selected.</p>}
-      </section>
-      <Panel title="Restore Archived Screening Job" icon={DatabaseZap}>
-        <p className="muted">Restoration reads a validated archive by job ID. It does not rerun screening or replace the latest live result.</p>
-        <form className="archive-restore-form" onSubmit={(e) => { e.preventDefault(); onRestoreArchive(archiveIdInput.trim()); }}>
-          <label>
-            <span>Archived screening job ID</span>
-            <input
-              value={archiveIdInput}
-              onChange={(e) => setArchiveIdInput(e.target.value)}
-              maxLength={32}
-              pattern="[A-Fa-f0-9]{32}"
-              placeholder="32-character hexadecimal ID"
-              aria-label="Archived screening job ID"
-            />
-          </label>
-          <button className="secondary-action" type="submit" disabled={restoreBusy || !archiveIdInput.trim()}>
-            {restoreBusy ? "Restoring archive…" : "Restore and select archive"}
-          </button>
-        </form>
-        {archivedJob ? <section className="archived-result" aria-label="Selected archived screening result">
-          <h3>ARCHIVED RESULT · {archivedJob.job_id}</h3>
-          <div className="readout-list">
-            <span>Historical status <strong>{archivedJob.status}</strong></span>
-            <span>Created UTC <strong>{archivedJob.created_at}</strong></span>
-            <span>Assessment records <strong>{archivedEvents.length}</strong></span>
-            <span>Invalid assessments <strong>{archivedInvalidCount}</strong></span>
-            <span>Candidate pairs / minima / refinements <strong>{archivedResult?.screening?.candidate_pair_count ?? "Unavailable"} / {archivedResult?.screening?.candidate_local_minimum_count ?? "Unavailable"} / {archivedResult?.screening?.refinement_count ?? "Unavailable"}</strong></span>
-            <span>Catalog count in archive metadata <strong>{archivedResult?.source_summary?.object_count ?? "Unavailable"}</strong></span>
-          </div>
-          <p className="muted">Archived event records and their stored provenance are restored. The archive does not contain a complete 120-object catalog snapshot or all original TLEs.</p>
-          <details>
-            <summary>Show {archivedEvents.length} archived assessment records</summary>
-            <ol className="archived-assessment-list">
-              {archivedEvents.map((item) => <li key={item.id}>
-                <strong>{item.id}</strong> · {item.primary?.id || item.physics_result?.object_primary_id} / {item.secondary?.id || item.physics_result?.object_secondary_id} · {item.physics_result?.status}
-                {item.physics_result?.tca?.value ? ` · TCA ${item.physics_result.tca.value}` : ""}
-                {item.physics_result?.miss_distance?.value != null ? ` · ${item.physics_result.miss_distance.value} km` : ""}
-                {item.physics_result?.reason_codes?.length ? ` · ${item.physics_result.reason_codes.join("; ")}` : ""}
-              </li>)}
-            </ol>
-          </details>
-          <button className="secondary-action" type="button" onClick={onClearArchivedJob}>Use latest live screening for CSV exports</button>
-        </section> : null}
-      </Panel>
-      <section className="report-grid">
-        <ReportCard title="Mission Report" text="Catalog provenance, heuristic summaries, trajectory assessments, and Pc availability/provenance." onClick={() => download("/api/reports/mission.pdf", "orbital-mission-report.pdf")} icon={FileText} />
-        <ReportCard title="Trajectory Assessment CSV" text={csvScreeningJobId ? `Export the complete assessment dataset for ${csvJobArchived ? "the selected archived job" : "the current screening job"}, including invalid records and their diagnostic reasons.` : "No screening job is selected. Restore an archive above or start an explicit live screening."} onClick={() => downloadTrajectoryCsv(csvScreeningJobId)} icon={Download} />
-        <ReportCard title="Heuristic Proxy CSV" text="Catalog-level heuristic pairs kept separate from trajectory assessments." onClick={() => download("/api/reports/screening-proxies.csv", "screening-proxies.csv")} icon={ClipboardList} />
-        <ReportCard title="Mission JSON" text="Catalog provenance, separate heuristic proxies, trajectory assessments, and Pc statuses." onClick={() => download("/api/reports/mission.json", "orbital-mission-report.json")} icon={DatabaseZap} />
-        <ReportCard title="Selected Event PDF" text={eventReportUnavailable ? "The completed screening job for this event is no longer available; select a current event or restore its archive." : event ? `${event.result_kind === "physics_assessment" ? "Trajectory assessment" : "Heuristic proxy"} · ${event.id}: ${event.primary.name} vs ${event.secondary.name}` : "Select an event first."} onClick={() => eventReportPath && download(eventReportPath, `${event.id}-report.pdf`)} icon={FileText} disabled={!eventReportPath} />
-        <ReportCard title="Selected Event CSV" text={eventReportCsvPath ? "Collision channels, provenance, uncertainty, and maneuver candidate rows for the selected event." : "Select a trajectory-derived event with an available screening job."} onClick={() => eventReportCsvPath && download(eventReportCsvPath, `${event.id}-report.csv`)} icon={Download} disabled={!eventReportCsvPath} />
-        <ReportCard title="Selected Event JSON" text={eventReportJsonPath ? "Full selected-event report object including distinct Pc channels, AI status, uncertainty, provenance, and maneuver details." : "Select a trajectory-derived event with an available screening job."} onClick={() => eventReportJsonPath && download(eventReportJsonPath, `${event.id}-report.json`)} icon={DatabaseZap} disabled={!eventReportJsonPath} />
-      </section>
-      <Panel title="Selected Report Preview" icon={BookOpen}>
-        {event ? <div className="readout-list">
-          <span>Event and objects<strong>{event.id} · {event.primary?.name || event.primary?.id} ({event.primary?.id}, {event.primary?.object_type || "Type not recorded"}) / {event.secondary?.name || event.secondary?.id} ({event.secondary?.id}, {event.secondary?.object_type || "Type not recorded"})</strong></span>
-          <span>Trajectory<strong>{event.physics_result?.tca?.value || "No TCA in event data"} · {event.physics_result?.miss_distance?.value ?? "No miss distance in event data"} km · relative speed {event.physics_result?.relative_speed_at_tca?.value ?? "No speed in event data"} km/s</strong></span>
-          <span>Pc channels<strong>Source {event.collision_probability?.source_reported_pc ?? "No source value"} · Foster {event.collision_probability?.pc ?? "No Foster Pc value"} · research {event.automatic_research_pc_assessment?.estimated_pc_scientific || "No research Pc value"}</strong></span>
-          <span>Risk and model status<strong>{event.automatic_research_pc_assessment?.risk_assessment?.risk_score ?? "No score returned"} / 100 · {event.automatic_research_pc_assessment?.risk_assessment?.final_risk_class || "Class not assigned"} · AI {event.collision_ai_assessment?.status || "No model result"}</strong></span>
-          <span>Covariance / HBR<strong>{event.collision_probability?.covariance_status || (event.automatic_research_pc_assessment?.covariance_method ? "Assumed research model" : "No covariance supplied")} · {event.automatic_research_pc_assessment?.covariance_policy_name || event.automatic_research_pc_assessment?.covariance_policy_id || "Policy not recorded"} · σ {event.automatic_research_pc_assessment?.encounter_plane_sigma_min_km ?? "No sigma value"}/{event.automatic_research_pc_assessment?.encounter_plane_sigma_max_km ?? "No sigma value"} km · {event.collision_probability?.covariance_frame || event.automatic_research_pc_assessment?.covariance_frame || "Frame not recorded"} at {event.collision_probability?.covariance_epoch || event.automatic_research_pc_assessment?.covariance_epoch_utc || "Epoch not recorded"} · HBR {event.collision_probability?.hbr_km ?? event.automatic_research_pc_assessment?.hbr_km ?? "No value"} km ({event.collision_probability?.hbr_source || event.automatic_research_pc_assessment?.hbr_source || "Source not recorded"})</strong></span>
-        </div> : <p className="muted">Select an event in Collision Analysis to preview its event-level report. The mission report preview remains available above.</p>}
-      </Panel>
-      <Panel title="Summary" icon={BookOpen}>
-        <p className="briefing-text">{smart?.briefing}</p>
-      </Panel>
-    </div>
-  );
+function ReportsPage({ events = [], eventLibrary, maneuverEvent, maneuver, screeningJobId, csvScreeningJobId, download, downloadTrajectoryCsv }) {
+  const [calculationCheck, setCalculationCheck] = useState({ status: "idle", message: "" });
+  const runCalculationCheck = async () => {
+    setCalculationCheck({ status: "loading", message: "Running NASA CARA reference assessment..." });
+    try {
+      const response = await calculateNasaCaraReferenceCase();
+      const result = response?.data || {};
+      const pc = result.collision_probability || {};
+      setCalculationCheck({ status: "complete", message: pc.status === "available"
+        ? `NASA CARA reference Pc ${Number(pc.pc).toExponential(3)}; comparison ${result.reference_case?.within_tolerance ? "within" : "outside"} published rounding tolerance.`
+        : `NASA CARA calculation returned ${pc.status || "no Pc result"}.` });
+    } catch (error) {
+      setCalculationCheck({ status: "error", message: error?.message || "NASA CARA reference assessment failed." });
+    }
+  };
+  const eventRows = events.filter((item) => item?.result_kind === "physics_assessment");
+  const currentJobId = screeningJobId || eventLibrary?.current_job_id || null;
+  const csvJobId = csvScreeningJobId || currentJobId;
+  const missionEvent = maneuverEvent || eventRows[0] || null;
+  const eventDisplayName = (item) => `${item?.primary?.name || item?.primary?.id || "Object"} vs ${item?.secondary?.name || item?.secondary?.id || "Object"}`;
+  return <div className="page-stack reports-page">
+    <PageHeader eyebrow="Reports" title="Export Center" text="Download reports and data for events from saved screenings." />
+    <section className="og-card report-download-list" aria-label="Event reports">
+      <h2>Screening events</h2>
+      {eventRows.length ? eventRows.map((item) => {
+        const jobId = item.screening_job_id || currentJobId;
+        const maneuverAvailable = Boolean(jobId && maneuverEvent?.id === item.id && maneuver?.result);
+        return <article className="report-download-row" key={`${jobId || "saved"}:${item.id}`}>
+          <strong>{eventDisplayName(item)}</strong>
+          <div className="report-download-actions"><span>Collision report</span>{["pdf", "csv", "json"].map((format) => <button key={`collision-${format}`} className="og-btn" type="button" disabled={!jobId} onClick={() => jobId && download(selectedEventReportPath(jobId, item.id, format), `${item.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div>
+          <div className="report-download-actions"><span>Maneuver report</span>{["pdf", "csv", "json"].map((format) => <button key={`maneuver-${format}`} className="og-btn" type="button" disabled={!jobId || !maneuverAvailable} onClick={() => jobId && maneuverAvailable && download(selectedManeuverReportPath(jobId, item.id, format), `${item.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div>
+        </article>;
+      }) : <p>No saved screening events are available.</p>}
+    </section>
+    <section className="og-card report-download-list" aria-label="Mission downloads">
+      <h2>Mission downloads</h2>
+      <article className="report-download-row mission-download-row">
+        <strong>{missionEvent ? eventDisplayName(missionEvent) : "Mission screening data"}</strong>
+        <div className="report-download-actions"><button className="og-btn" type="button" onClick={() => download("/api/reports/mission.pdf", "orbital-mission-report.pdf")}>Mission Report</button><button className="og-btn" type="button" disabled={!csvJobId} onClick={() => csvJobId && downloadTrajectoryCsv(csvJobId)}>Trajectory CSV</button><button className="og-btn" type="button" onClick={() => download("/api/reports/mission.json", "orbital-mission-report.json")}>Mission JSON</button></div>
+      </article>
+      <section className="report-calculation-check" aria-label="NASA CARA calculation check"><button className="og-btn" type="button" disabled={calculationCheck.status === "loading"} onClick={runCalculationCheck}>{calculationCheck.status === "loading" ? "Checking..." : "Calculation check"}</button>{calculationCheck.message ? <p role="status">{calculationCheck.message}</p> : null}</section>
+    </section>
+  </div>;
 }
-
-
-function ReportDocumentTiles({ event }) {
-  const physics = event.physics_result || {};
-  const foster = event.collision_probability || {};
-  const research = event.automatic_research_pc_assessment || {};
-  const ai = event.collision_ai_assessment || {};
-  const tile = (label, value) => <div className="og-card og-tile" key={label}><span>{label}</span><b>{value}</b></div>;
-  const probability = (value) => Number.isFinite(value) ? `${value} (${formatProbabilityPercentage(value)})` : "No probability value in event data";
-  return <><div className="og-kpis">
-    {tile("Objects", `${event.primary?.name || "Name unavailable"} (${event.primary?.id || "ID unavailable"}, ${event.primary?.object_type || "type unavailable"}) / ${event.secondary?.name || "Name unavailable"} (${event.secondary?.id || "ID unavailable"}, ${event.secondary?.object_type || "type unavailable"})`)}
-    {tile("TCA", physics.tca?.value || "No TCA in event data")}
-    {tile("Miss distance", physics.miss_distance?.value == null ? "No miss distance in event data" : `${physics.miss_distance.value} km`)}
-    {tile("Relative speed", physics.relative_speed_at_tca?.value == null ? "No relative speed in event data" : `${physics.relative_speed_at_tca.value} km/s`)}
-    {tile("Source-reported Pc", probability(foster.source_reported_pc))}{tile("Event-specific Foster Pc", foster.status === "available" ? probability(foster.pc) : `Inputs not supplied: ${(foster.reason_codes || []).join(", ") || "covariance and hard-body radius are required"}`)}
-    {tile("Research Pc", probability(research.estimated_pc))}{tile("AI Pc prediction", `${probability(ai.pc_surrogate?.predicted_pc)} · model ${ai.pc_surrogate?.status || "not available"}`)}
-    {tile("Risk score and Pc class", `${research.risk_assessment?.risk_score ?? "No score returned"} · ${research.risk_assessment?.final_risk_class || "Not classified"}`)}
-    {tile("Covariance", `${foster.covariance_status || research.covariance_status || "No covariance supplied"} · ${foster.covariance_frame || research.covariance_frame || "Frame not recorded"} · epoch ${foster.covariance_epoch || research.covariance_epoch_utc || "Epoch not recorded"} · ${JSON.stringify(foster.covariance_sources || research.covariance_sources || research.covariance_policy_name || "No source recorded")}`)}
-    {tile("HBR", `${foster.hbr_km ?? research.hbr_km ?? "No value in event data"} km · ${foster.hbr_provenance?.source || research.hbr_source || "Source not recorded"}`)}
-    {tile("AI model status", `${ai.status || "not available"} · risk model ${ai.risk_classifier?.status || "not available"}`)}
-    {tile("Method", foster.method || research.method_name || physics.provenance?.method || "method unavailable")}
-  </div><div className="og-report-notes"><h3>Assumptions</h3><p>{(research.assumptions || foster.assumptions || []).join(" ") || "See calculation provenance for declared assumptions."}</p><h3>Sensitivity</h3><p>{(research.sensitivity || []).map((item) => item.label || item.description || JSON.stringify(item)).join("; ") || "No sensitivity result recorded for this event."}</p><h3>Limitations</h3><p>{(research.limitations || foster.limitations || []).join(" ") || "Research estimates depend on the stated inputs and method; they are not operational collision predictions."}</p></div></>;
-}
-
 function SceneComparison({ title, label, count, snapshot, accent, lightweight = false }) {
   return (
     <div className={`scene-comparison ${accent ? "accent" : ""}`}>
@@ -1892,17 +1819,6 @@ function Row({ label, value }) {
   );
 }
 
-
-function ReportCard({ title, text, icon: Icon, onClick, disabled }) {
-  return (
-    <button className="report-card" type="button" onClick={onClick} disabled={disabled}>
-      <Icon size={22} />
-      <strong>{title}</strong>
-      <span>{text}</span>
-      <em>Download</em>
-    </button>
-  );
-}
 
 function SliderSetting({ label, value, onChange }) {
   return (
