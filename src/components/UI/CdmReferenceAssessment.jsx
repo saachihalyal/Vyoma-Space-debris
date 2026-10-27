@@ -17,7 +17,7 @@ function downloadAssessment(format, assessment) {
   const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${assessment.event_id || "conjunction-report"}.${format}`; link.click(); URL.revokeObjectURL(url);
 }
 
-export function CdmReferenceAssessment({ onUseReferenceEvent = () => {}, standalone = false }) {
+export function CdmReferenceAssessment({ onUseReferenceEvent = () => {}, standalone = false, compact = false }) {
   const [cdmText, setCdmText] = useState("");
   const [sourceLabel, setSourceLabel] = useState("");
   const [assumeIndependent, setAssumeIndependent] = useState(false);
@@ -67,10 +67,14 @@ export function CdmReferenceAssessment({ onUseReferenceEvent = () => {}, standal
 
   const pc = assessment?.collision_probability;
   const assessmentMatchesCurrentAssumption = referenceAssessmentMatchesIndependence(assessment, assumeIndependent);
+  if (compact) return <section className="report-calculation-check" aria-label="NASA CARA calculation check">
+    <button className="og-btn" type="button" disabled={busy} onClick={runBundledReference}>{busy ? "Checking..." : "Calculation check"}</button>
+    {message ? <p role="status">{message}</p> : null}
+  </section>;
   return <section className={`panel cdm-reference-assessment ${standalone ? "upload-page" : ""}`} aria-label="Collision probability calculator">
     {standalone ? <><header className="og-maneuver-header"><div><span className="og-prov read">Conjunction assessment</span><h1>Upload Conjunction Data</h1><p className="og-sub">Validate a conjunction message and calculate its event-specific collision probability.</p></div></header><ol className="upload-steps" aria-label="Upload steps"><li className={!assessment ? "active" : "complete"}>1 · Upload</li><li className={busy ? "active" : assessment ? "complete" : ""}>2 · Validate</li><li className={assessment ? "active" : ""}>3 · Results</li></ol></> : <div className="cdm-reference-heading"><div><span className="reference-eyebrow">Separate reference assessment</span><h2>Collision Probability Calculator</h2>
       <p className="muted">Run the bundled CDM directly. Its results stay separate from live TLE screening events and never replace the selected live event.</p></div>
-      {!standalone ? <button className="primary-action" type="button" disabled={busy} onClick={runBundledReference}>{busy ? "Assessing reference…" : "Run bundled reference assessment"}</button> : null}
+      {!standalone ? <button className="primary-action" type="button" disabled={busy} onClick={runBundledReference}>{busy ? "Assessing reference..." : "Run bundled reference assessment"}</button> : null}
     </div>}
     {message ? <p className="reference-assessment-status" role="status">{message}</p> : null}
     {!standalone && assessment?.reference_case ? <p className="reference-comparison-caveat">The bundled CDM's rounded Pc is a source value for comparison; agreement here is not independent validation against NASA CARA software.</p> : null}
@@ -100,7 +104,7 @@ export function CdmReferenceAssessment({ onUseReferenceEvent = () => {}, standal
         setAssumeIndependent(event.target.checked);
         if (assessment) setMessage("The independence assumption changed after this assessment. Submit again to calculate with the checked assumption.");
       }} /> Explicitly assume independent object covariances</label>
-      <button className="secondary-action" type="submit" disabled={busy || !cdmText || (!standalone && !sourceLabel.trim())}>{busy ? "Validating…" : standalone ? "Calculate Collision Probability" : "Evaluate standalone CDM Pc"}</button>
+      <button className="secondary-action" type="submit" disabled={busy || !cdmText || (!standalone && !sourceLabel.trim())}>{busy ? "Validating..." : standalone ? "Calculate Collision Probability" : "Evaluate standalone CDM Pc"}</button>
     </form></details>
     {assessment && assessmentMatchesCurrentAssumption ? <details className="reference-advanced-details"><summary>Advanced provenance, covariance and calculation diagnostics</summary><div className="readout-list" aria-live="polite">
       <span>CDM event identity<strong>{assessment.event_id}</strong></span>

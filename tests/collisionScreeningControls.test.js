@@ -18,11 +18,11 @@ test("Collision Analysis Start Screening is wired to the existing explicit scree
   assert.match(apiSource, /\/api\/conjunction-jobs/);
 });
 
-test("Collision Analysis exposes backend states and keeps detailed screening diagnostics collapsed", () => {
-  assert.match(appSource, /Screening: \{stateLabel\}/);
-  assert.match(appSource, /Retry Screening/);
-  assert.match(appSource, /Backend-reported screening progress/);
-  assert.match(appSource, /<details className="og-acc"><summary>Screening diagnostics<\/summary>/);
+test("Collision Analysis begins with title and events without diagnostic charts or tiles", () => {
+  assert.match(collisionWorkbenchSource, /<h1>Collision Analysis<\/h1>/);
+  assert.match(collisionWorkbenchSource, /Prioritized Events/);
+  assert.doesNotMatch(collisionWorkbenchSource, /Screening diagnostics|What-if uncertainty|Scenario class counts|CollisionAnalysisSummary/);
+  assert.match(collisionWorkbenchSource, /Excluded pairs/);
   assert.match(collisionWorkbenchSource, /Run full screening/);
 });
 
@@ -32,15 +32,21 @@ test("Collision restores prioritized events and separate physics and AI assessme
   assert.match(collisionWorkbenchSource, /Physics Assessment/);
   assert.match(collisionWorkbenchSource, /AI Assessment/);
   assert.match(collisionWorkbenchSource, /collision-kpis/);
-  assert.match(collisionWorkbenchSource, /What-if uncertainty/);
-  assert.match(collisionWorkbenchSource, /Class thresholds follow the configured research Pc cutoffs/);
   assert.match(collisionWorkbenchSource, /Research Pc/);
   assert.match(collisionWorkbenchSource, /const classAgreement =/);
-  assert.match(collisionWorkbenchSource, /Physics class: \{getResearch\(item\)\?\.risk_assessment\?\.final_risk_class \|\| ""\}.*AI class:/);
-  assert.match(collisionWorkbenchSource, /physicsClass === aiClass \? "agrees" : "differs"/);
+  assert.match(collisionWorkbenchSource, /function getAiClass/);
+  assert.match(collisionWorkbenchSource, /Math\.log10\(high\)/);
+  assert.match(collisionWorkbenchSource, /Near threshold/);
+  assert.match(collisionWorkbenchSource, /encounter_plane_sigma_min_km/);
+  assert.match(collisionWorkbenchSource, /encounter_plane_sigma_max_km/);
+  assert.match(collisionWorkbenchSource, /collision-plane-hbr/);
+  assert.match(collisionWorkbenchSource, /collision-plane-miss/);
+  assert.match(collisionWorkbenchSource, /if \(\!\[sigmaMin, sigmaMax, hbr, miss\]\.every\(Number\.isFinite\)/);
+  assert.match(collisionWorkbenchSource, /identical_propagation_parameters\|duplicate_tle_state/);
+  assert.doesNotMatch(collisionWorkbenchSource, /Top drivers/);
   assert.match(collisionWorkbenchSource, /Ranking details/);
   assert.match(collisionWorkbenchSource, /onAssessManeuver\(chosen\)/);
-  assert.match(appSource, /CollisionAnalysisSummary/);
+  assert.doesNotMatch(appSource, /CollisionAnalysisSummary/);
 });
 
 test("Collision Analysis defaults to the shared selected physical event and never substitutes a hidden stale detail", () => {
@@ -50,7 +56,7 @@ test("Collision Analysis defaults to the shared selected physical event and neve
   assert.match(collisionBranch, /selectionNotice=\{eventSelection\.notice\}/);
   assert.match(collisionBranch, /selectEvent=\{selectEvent\}/);
   assert.match(appSource, /selectEvent\(selectManeuverEvent\(savedEvents, eventId\), "maneuver"\)/);
-  assert.match(collisionWorkbenchSource, /Invalid events/);
+  assert.match(collisionWorkbenchSource, /Excluded pairs/);
   assert.match(collisionWorkbenchSource, /Run screening to populate physical encounter groups/);
 });
 

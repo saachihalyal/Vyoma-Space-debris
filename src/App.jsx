@@ -76,7 +76,6 @@ import { eligibleManeuverEvents, isCurrentManeuverRequest, maneuverAssessmentFor
 const ManeuverBaselineComparison = lazy(() => import("./components/UI/ManeuverBaselineComparison.js").then((module) => ({ default: module.ManeuverBaselineComparison })));
 const ManeuverEventContext = lazy(() => import("./components/UI/ManeuverEventContext.js").then((module) => ({ default: module.ManeuverEventContext })));
 const CollisionPriorityTable = lazy(() => import("./components/UI/CollisionPriorityTable.js").then((module) => ({ default: module.CollisionPriorityTable })));
-const CollisionAnalysisSummary = lazy(() => import("./components/UI/CollisionAnalysisSummary.js").then((module) => ({ default: module.CollisionAnalysisSummary })));
 const CollisionWorkbench = lazy(() => import("./components/UI/CollisionWorkbench.jsx").then((module) => ({ default: module.CollisionWorkbench })));
 import { operationalFosterStatus, physicsPcRiskPresentation, researchPcPresentation } from "./utils/collisionPcPresentation.js";
 const ManeuverAiSummary = lazy(() => import("./components/UI/ManeuverAiSummary.js").then((module) => ({ default: module.ManeuverAiSummary })));
@@ -1137,20 +1136,16 @@ export function CollisionPage({ event, events, eventLibrary, eventStatus, attemp
   const chosenPhysical = event?.result_kind === "physics_assessment";
   const eventScreeningJobId = event?.screening_job_id || screeningJobId;
   const reportBase = chosenPhysical && eventScreeningJobId ? selectedEventReportPath(eventScreeningJobId, event.id) : null;
-  const libraryCounts = eventLibrary?.counts || { Low: 0, Medium: 0, High: 0 };
-  return <><p className="og-sub saved-library-label">{eventLibrary?.label || "Current screening"} · {eventLibrary?.total ?? events?.length ?? 0} unique object pairs · Low {libraryCounts.Low || 0} · Medium {libraryCounts.Medium || 0} · High {libraryCounts.High || 0}</p><CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} /><CollisionWorkbench
+  return <CollisionWorkbench
     events={events || []} event={event} eventStatus={eventStatus} screeningStatus={screeningStatus}
     screeningJobId={eventScreeningJobId} selectEvent={selectEvent}
     onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")}
     download={download} eventReportPath={reportBase}
     eventReportCsvPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null}
     eventReportJsonPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null}
-    onImportCdm={onImportCdm} onScenarioPc={onScenarioPc} onUseReferenceEvent={onUseReferenceEvent}
-    uncertaintyScale={uncertaintyScale} setUncertaintyScale={setUncertaintyScale} uncertaintyWhatIf={uncertaintyWhatIf} uncertaintyWhatIfStatus={uncertaintyWhatIfStatus} scenarioClassCounts={scenarioClassCounts}
+    onImportCdm={onImportCdm}
     onStartScreening={onStartScreening}
-    screeningControls={<CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />}
-    diagnostics={<details className="og-acc"><summary>Screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>}
-  /></>;
+  />;
 }
 
 export function ManeuverPage(props) {
@@ -1199,6 +1194,7 @@ function ReportsPage({ event, maneuverEvent, maneuver, screeningJobId, csvScreen
   return (
     <div className="page-stack">
       <PageHeader eyebrow="Reports" title="Export Center" text="Download provenance-tagged research outputs from the backend report engine." />
+      <CdmReferenceAssessment compact />
       <section className="og-card report-document" aria-label="Collision report"><div className="og-section-head"><div><span className="og-prov read">Selected physical event</span><h2>Collision report</h2></div>{event?.id ? <span className="og-chip">{event.id}</span> : null}</div>
         {event ? <><ReportDocumentTiles event={event} />{screeningJobId && event.result_kind === "physics_assessment" ? <div className="report-action-group">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className="og-btn" onClick={() => download(selectedEventReportPath(screeningJobId, event.id, format), `${event.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div> : <p className="muted">Select a physical event from a completed screening to download its collision report.</p>}</> : <p className="muted">No collision event is selected.</p>}
       </section>

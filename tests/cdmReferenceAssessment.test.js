@@ -38,9 +38,13 @@ test("Collision Analysis exposes separate CCSDS and TraCSS CDM assessment with e
 
 test("bundled reference action is visible in both empty and selected-event views", () => {
   const source = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8");
-  assert.match(source, /<CdmReferenceAssessment onUseReferenceEvent=\{onUseReferenceEvent\} \/>/);
+  assert.doesNotMatch(source, /CdmReferenceAssessment/);
   assert.match(source, /Upload Conjunction Data \/ Foster assessment/);
-  assert.match(readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8"), /selectEvent=\{selectEvent\}/);
+  const app = readFileSync(new URL("../src/App.jsx", import.meta.url), "utf8");
+  const reference = readFileSync(new URL("../src/components/UI/CdmReferenceAssessment.jsx", import.meta.url), "utf8");
+  assert.match(app, /<CdmReferenceAssessment compact \/>/);
+  assert.match(reference, /Calculation check/);
+  assert.match(app, /selectEvent=\{selectEvent\}/);
 });
 
 test("bundled NASA CARA workflow calls its dedicated standalone reference endpoint", async () => {
