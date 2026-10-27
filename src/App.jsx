@@ -71,7 +71,7 @@ import { formatNumber } from "./utils/orbitalMath";
 import { createRequestSequence, ignoreAbort } from "./utils/requestSequence";
 import { getScreeningJobSelection } from "./utils/screeningJobSelection";
 import { datasetLabel, retainCatalogSnapshot, sourceLabel } from "./utils/catalogStatus";
-import { isCurrentManeuverRequest, maneuverAssessmentForSelection, maneuverPageState, resolveManeuverEvent, selectManeuverEvent } from "./utils/maneuverSelection";
+import { eligibleManeuverEvents, isCurrentManeuverRequest, maneuverAssessmentForSelection, maneuverPageState, resolveManeuverEvent, selectManeuverEvent } from "./utils/maneuverSelection";
 const ManeuverBaselineComparison = lazy(() => import("./components/UI/ManeuverBaselineComparison.js").then((module) => ({ default: module.ManeuverBaselineComparison })));
 const ManeuverEventContext = lazy(() => import("./components/UI/ManeuverEventContext.js").then((module) => ({ default: module.ManeuverEventContext })));
 const CollisionPriorityTable = lazy(() => import("./components/UI/CollisionPriorityTable.js").then((module) => ({ default: module.CollisionPriorityTable })));
@@ -538,6 +538,12 @@ export default function App() {
 
   const maneuverAssessmentEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, platform.conjunctions);
   const maneuverScreeningJobId = platform.conjunctionStatus?.job_id || null;
+  const validManeuverEvents = useMemo(() => eligibleManeuverEvents(platform.conjunctions), [platform.conjunctions]);
+  const everyManeuverEventBelowFloor = validManeuverEvents.length > 0 && validManeuverEvents.every((item) => (
+    Number.isFinite(item.automatic_research_pc_assessment?.log10_pc)
+    && item.automatic_research_pc_assessment.log10_pc < -30
+  ));
+  const maneuverSampleAutoRequestedRef = useRef(false);
 
   async function loadManeuverDemo() {
     setManeuverDemoBusy(true);
@@ -546,7 +552,7 @@ export default function App() {
       if (!response.ok) throw new Error(`Sample CDM could not be loaded (HTTP ${response.status}).`);
       const cdmText = await response.text();
       const assessment = await calculateReferenceCdmPc({ cdmText, sourceLabel: "public/sample_conjunction_data.cdm", assumeIndependentCovariances: true });
-      const parameters = { eventId: assessment.data.event_id, maneuveringObjectId: assessment.data.object_1.id, burnLeadSeconds: 5400, direction: "along_track+", deltaVMs: 0.05 };
+      const parameters = { eventId: assessment.data.event_id, maneuveringObjectId: assessment.data.object_1.id, burnLeadSeconds: 1800, direction: "along_track+", deltaVMs: 0.05 };
       const maneuverAssessment = await calculateReferenceManeuver(parameters);
       setManeuverRequest(null);
       setManeuver(null);
@@ -559,6 +565,13 @@ export default function App() {
       setManeuverDemoBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (activePage !== "maneuver" || !everyManeuverEventBelowFloor || referenceManeuverEvent
+      || maneuverDemoBusy || maneuverDemoAssessment?.error || maneuverSampleAutoRequestedRef.current) return;
+    maneuverSampleAutoRequestedRef.current = true;
+    loadManeuverDemo();
+  }, [activePage, everyManeuverEventBelowFloor, referenceManeuverEvent, maneuverDemoBusy, maneuverDemoAssessment]);
 
   useEffect(() => {
     const requestGeneration = ++maneuverRequestGenerationRef.current;

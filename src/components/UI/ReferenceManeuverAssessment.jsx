@@ -6,7 +6,7 @@ const formatPc = (value) => Number.isFinite(Number(value)) ? Number(value).toExp
 
 export function ReferenceManeuverAssessment({ referenceEvent, download, onClear = () => {}, precomputedAssessment = null }) {
   const [objectId, setObjectId] = useState("");
-  const [leadSeconds, setLeadSeconds] = useState("5400");
+  const [leadSeconds, setLeadSeconds] = useState("1800");
   const [direction, setDirection] = useState("along_track+");
   const [deltaVMs, setDeltaVMs] = useState("0.05");
   const [assessment, setAssessment] = useState(null);
@@ -49,7 +49,7 @@ export function ReferenceManeuverAssessment({ referenceEvent, download, onClear 
   const pcAfter = data?.probability_after;
   return <section className="panel reference-maneuver-assessment">
     <h3>DEMO · public sample conjunction</h3>
-    <p className="muted">The bundled CDM is assessed with a one-orbit (5400-second) lead time, 0.05 m/s along-track burn, and the bounded two-body research model.</p>
+    <p className="muted">The bundled NASA CARA CDM is assessed with a 1,800-second lead time, 0.05 m/s along-track burn, and the bounded two-body research model.</p>
     <p className="muted">AI ranking not used: this standalone CDM comparison evaluates one specified burn, not a candidate-ranking search.</p>
     <button className="secondary-action" type="button" onClick={onClear}>Clear selected reference event</button>
     <form className="readout-list" onSubmit={submit}>

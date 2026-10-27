@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { defaultManeuverEvent, eligibleManeuverEvents, isCurrentManeuverRequest, maneuverAssessmentForSelection, maneuverPageState, resolveManeuverEvent, selectManeuverEvent } from "../src/utils/maneuverSelection.js";
 
-const physical = { id: "EV-1", result_kind: "physics_assessment", physics_result: { status: "valid" } };
+const physical = { id: "EV-1", result_kind: "physics_assessment", physics_result: { status: "valid" }, automatic_research_pc_assessment: { log10_pc: -6 } };
 const invalidPhysical = { id: "EV-invalid", result_kind: "physics_assessment", physics_result: { status: "invalid" } };
 const proxy = { id: "SP-1", result_kind: "screening_proxy" };
 
@@ -21,6 +21,17 @@ test("unselected maneuver event defaults to the highest exact research Pc", () =
   ];
   assert.equal(defaultManeuverEvent(events).id, "higher");
   assert.equal(resolveManeuverEvent(null, events).id, "higher");
+});
+
+test("maneuver selection never defaults below 1e-30 and permits the exact floor", () => {
+  const belowFloor = [
+    { id: "lower", result_kind: "physics_assessment", physics_result: { status: "valid" }, automatic_research_pc_assessment: { log10_pc: -31 } },
+    { id: "lower-still", result_kind: "physics_assessment", physics_result: { status: "valid" }, automatic_research_pc_assessment: { log10_pc: -42 } },
+  ];
+  assert.equal(defaultManeuverEvent(belowFloor), null);
+  assert.equal(resolveManeuverEvent(null, belowFloor), null);
+  const atFloor = { ...belowFloor[0], automatic_research_pc_assessment: { log10_pc: -30 } };
+  assert.equal(defaultManeuverEvent([belowFloor[1], atFloor]), atFloor);
 });
 
 test("missing, malformed, and duplicate physical IDs are unavailable for maneuver selection", () => {

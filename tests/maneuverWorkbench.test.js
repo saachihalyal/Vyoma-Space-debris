@@ -18,6 +18,10 @@ test("Maneuver Workbench uses the one-button flow with advanced fields collapsed
   assert.match(source, /Find safest maneuver/);
   assert.match(source, /Try sample conjunction/);
   assert.match(theme, /\.og-card/);
+  assert.match(app, /everyManeuverEventBelowFloor/);
+  assert.match(app, /loadManeuverDemo\(\)/);
+  assert.match(app, /burnLeadSeconds: 1800/);
+  assert.match(reference, /Sample conjunction \(NASA CARA\)/);
 });
 
 test("Maneuver keeps before/after, action metrics, burn window, options, reports, and ranking status", () => {

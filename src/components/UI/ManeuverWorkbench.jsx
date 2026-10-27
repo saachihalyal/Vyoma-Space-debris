@@ -49,6 +49,10 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
   const after = result.probability_after || best?.research_pc_after;
   const before = result.probability_before;
   const baselinePc = before || selected?.automatic_research_pc_assessment;
+  const allValidEventsBelowFloor = pageState.eligible_events.length > 0 && pageState.eligible_events.every((item) => (
+    Number.isFinite(item.automatic_research_pc_assessment?.log10_pc)
+    && item.automatic_research_pc_assessment.log10_pc < -30
+  ));
   const candidates = useMemo(() => (result.physics_candidates?.candidates || result.candidates || []).filter((candidate) => candidate.delta_v_m_s !== 0).slice().sort((a, b) => (a.physics_research_pc_rank ?? 9999) - (b.physics_research_pc_rank ?? 9999)), [result]);
   const defaultLeadSeconds = 1800;
   const baselineBelowFloor = Number.isFinite(baselinePc?.log10_pc) && baselinePc.log10_pc < -30;
@@ -96,6 +100,7 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
         </div></details>}
       </aside>
       <section className="og-results">
+        {allValidEventsBelowFloor ? <p className="og-card og-negligible" role="status">No maneuver needed for screening events below Pc 1e-30. Loading the Sample conjunction (NASA CARA).</p> : null}
         {referenceEvent && <ReferenceManeuverAssessment referenceEvent={referenceEvent} download={download} onClear={onClearReferenceEvent} precomputedAssessment={demoAssessment} />}
         {selected && <><section className="og-card"><h2>Selected event</h2><p>{objects.map((object) => `${object.name || object.id}`).join(" vs ")}</p></section>
           {baselineBelowFloor ? <section className="og-card og-negligible" role="status">No maneuver needed - collision probability is negligible (&lt; 1e-30)</section> : result.status === "not_run" ? <section className="og-card" aria-live="polite"><p className="og-sub">Choose “Find safest maneuver” to compare the baseline with candidate trajectories.</p></section> : result.status === "running" ? <section className="og-card" role="status">Calculating the baseline and candidate trajectories…</section> : <>

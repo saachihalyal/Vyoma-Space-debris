@@ -25,12 +25,20 @@ export function selectManeuverEvent(events, eventId) {
 
 export function resolveManeuverEvent(selectedEvent, events) {
   const selectable = selectableManeuverEvents(events);
-  if (selectedEvent) return selectable.find((item) => item.id === selectedEvent.id) || null;
+  if (selectedEvent) {
+    const matched = selectable.find((item) => item.id === selectedEvent.id) || null;
+    if (matched?.physics_result?.status === "invalid") return matched;
+    if (matched && Number.isFinite(matched.automatic_research_pc_assessment?.log10_pc)
+      && matched.automatic_research_pc_assessment.log10_pc >= -30) return matched;
+  }
   return defaultManeuverEvent(selectable);
 }
 
 export function defaultManeuverEvent(events) {
-  const eligible = eligibleManeuverEvents(events);
+  const eligible = eligibleManeuverEvents(events).filter((event) => (
+    Number.isFinite(event.automatic_research_pc_assessment?.log10_pc)
+    && event.automatic_research_pc_assessment.log10_pc >= -30
+  ));
   return eligible.slice().sort((left, right) => {
     const leftLog = left.automatic_research_pc_assessment?.log10_pc;
     const rightLog = right.automatic_research_pc_assessment?.log10_pc;
@@ -58,7 +66,13 @@ export function isCurrentManeuverRequest(requestGeneration, currentGeneration, s
 export function maneuverPageState(event, events, screeningStatus = {}) {
   const eligible = eligibleManeuverEvents(events);
   const selectable = selectableManeuverEvents(events);
-  const selected = event?.result_kind === "physics_assessment" && selectable.some((item) => item.id === event.id) ? selectable.find((item) => item.id === event.id) : null;
+  const selected = event?.result_kind === "physics_assessment"
+    && selectable.some((item) => item.id === event.id)
+    && (event.physics_result?.status === "invalid" || (
+      Number.isFinite(event.automatic_research_pc_assessment?.log10_pc)
+      && event.automatic_research_pc_assessment.log10_pc >= -30
+    ))
+    ? selectable.find((item) => item.id === event.id) : null;
   const invalid = selected?.physics_result?.status === "invalid";
   return {
     status: selected ? (invalid ? "selected_invalid_event" : "selected_event_unavailable_dynamics") : "no_eligible_event",

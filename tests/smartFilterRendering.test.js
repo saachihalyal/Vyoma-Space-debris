@@ -78,6 +78,7 @@ const physicalEvent = {
   id: "EV-physical-1",
   result_kind: "physics_assessment",
   physics_result: { status: "valid" },
+  automatic_research_pc_assessment: { log10_pc: -6 },
   primary: proxy.primary,
   secondary: proxy.secondary,
   pair_type: proxy.pair_type,
