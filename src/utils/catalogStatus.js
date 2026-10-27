@@ -1,11 +1,16 @@
-export function sourceLabel(status) {
+export function sourceLabel(status, cacheAgeSeconds = null) {
+  if (status === "live") return "Live";
+  if (status === "stale_live" || status === "stale") {
+    const age = Number(cacheAgeSeconds);
+    if (!Number.isFinite(age) || age < 0) return "Catalog cached";
+    const minutes = Math.floor(age / 60);
+    const value = minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    return `Catalog cached · updated ${value} ago`;
+  }
   return ({
-    live: "LIVE CelesTrak",
-    stale_live: "STALE LIVE CelesTrak",
-    stale: "STALE CATALOG SNAPSHOT",
     fallback: "BUNDLED FALLBACK DATA",
     unavailable: "SOURCE UNAVAILABLE",
-    all_live: "LIVE CelesTrak",
+    all_live: "Live",
     mixed_live_fallback: "Live + Fallback",
     mixed_live_synthetic: "Live + Synthetic Demo",
     synthetic_demo: "Synthetic Demo",

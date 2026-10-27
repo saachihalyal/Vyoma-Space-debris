@@ -1160,6 +1160,9 @@ input[type="range"]::-moz-range-thumb {
 
 .topbar-meta {
   gap: 10px;
+  width: 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .mono {

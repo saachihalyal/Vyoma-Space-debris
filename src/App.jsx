@@ -888,7 +888,7 @@ function TopBar({ refresh, loading, notificationsOpen, setNotificationsOpen, not
           className={`system-chip source-chip source-chip-${snapshot?.source_state?.status || "unavailable"}`}
           title={sourceDetail(snapshot?.source_state)}
         >
-          <DatabaseZap size={14} /> Source: {sourceLabel(snapshot?.source_state?.status)}
+          <DatabaseZap size={14} /> {sourceLabel(snapshot?.source_state?.status, snapshot?.source_state?.cache_age_seconds)}
         </span>
         <span className="system-chip"><CheckCircle2 size={14} /> {datasetLabel(loading, snapshot?.source_state?.status)}</span>
         <BuildVersionBadge />

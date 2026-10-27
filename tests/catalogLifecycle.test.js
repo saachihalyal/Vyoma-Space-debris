@@ -864,8 +864,8 @@ test("an unmatched proxy remains an explicit empty selection, never an unrelated
 });
 
 test("source labels distinguish live, stale live, fallback, unavailable, and loading", () => {
-  assert.equal(sourceLabel("live"), "LIVE CelesTrak");
-  assert.equal(sourceLabel("stale_live"), "STALE LIVE CelesTrak");
+  assert.equal(sourceLabel("live"), "Live");
+  assert.equal(sourceLabel("stale_live", 3660), "Catalog cached · updated 1h 1m ago");
   assert.equal(sourceLabel("fallback"), "BUNDLED FALLBACK DATA");
   assert.equal(sourceLabel("unavailable"), "SOURCE UNAVAILABLE");
   assert.equal(datasetLabel(true, "unavailable"), "Loading dataset");
@@ -880,7 +880,7 @@ test("unavailable catalog refresh preserves prior plotted objects and marks them
   assert.equal(accepted.generated_at, previous.generated_at);
   assert.equal(accepted.source_state.status, "stale");
   assert.equal(accepted.source_state.last_error_code, "network_error");
-  assert.equal(sourceLabel(accepted.source_state.status), "STALE CATALOG SNAPSHOT");
+  assert.equal(sourceLabel(accepted.source_state.status), "Catalog cached");
   assert.equal(datasetLabel(false, accepted.source_state.status), "Dataset loaded");
   assert.deepEqual(retainCatalogSnapshot(null, failed), failed);
   const fallback = { objects: [{ id: "fallback-1" }], source_state: { status: "fallback", source: "Bundled fallback TLE sample" } };
