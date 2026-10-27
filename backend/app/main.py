@@ -26,6 +26,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
+from sgp4.api import jday
 
 from app.ai.inference import model_status
 from app.ai.anomaly import model_status as orbital_anomaly_model_status
@@ -55,7 +56,7 @@ from app.services.review_priority import policy_status
 from app.services.reports import conjunctions_csv, event_report_csv, event_report_payload, event_report_pdf, mission_report_pdf, reference_cdm_report_pdf, reference_maneuver_report_pdf
 from app.services.reference_maneuver import assess_reference_maneuver
 from app.services.risk import build_forecast, build_risk_cells, derived_provenance
-from app.services.tle_provider import CELESTRAK_CACHE_PATH, TleProvider, TleRecord
+from app.services.tle_provider import CELESTRAK_CACHE_PATH, TleProvider, TleRecord, satellite_from_record
 from app.services.trajectory_screening import (
     DEFAULT_HORIZON_HOURS,
     DEFAULT_SAMPLE_STEP_SECONDS,
@@ -1068,6 +1069,16 @@ async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
             with _smart_filter_results_lock:
                 _smart_filter_results[job_id] = cached
     if cached is not None:
+        if not isinstance(cached.get("globe_positions"), dict):
+            cached["globe_positions"] = await run_in_threadpool(_smart_filter_globe_positions, job, cached)
+            try:
+                sidecar = _smart_filter_sidecar_path(job_id, job)
+                sidecar.parent.mkdir(parents=True, exist_ok=True)
+                sidecar.write_text(json.dumps(cached, separators=(",", ":")), encoding="utf-8")
+            except OSError:
+                logger.exception("Could not persist Smart Filter globe positions for screening job %s", job_id)
+            with _smart_filter_results_lock:
+                _smart_filter_results[job_id] = copy.deepcopy(cached)
         return copy.deepcopy(cached)
     _ensure_smart_filter_task(job_id)
     return {
@@ -1179,9 +1190,76 @@ async def _compute_screening_job_smart_filter(job_id: str, policy: dict, cache_k
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "evaluation_duration_seconds": time.perf_counter() - started,
     }
+    payload["globe_positions"] = await run_in_threadpool(_smart_filter_globe_positions, job, payload)
     with _smart_filter_results_lock:
         _smart_filter_results[cache_key] = copy.deepcopy(payload)
     return payload
+
+
+def _smart_filter_globe_positions(job: dict, smart_filter: dict) -> dict:
+    """Repropagate screened-pair objects at the saved job's single start epoch."""
+    records = job.get("result", {}).get("data") or []
+    physical = [row for row in records if isinstance(row, dict) and row.get("result_kind") == "physics_assessment"]
+    epoch_text = (job.get("configuration") or {}).get("start_utc") or job.get("started_at") or job.get("created_at")
+    epoch = datetime.fromisoformat(str(epoch_text).replace("Z", "+00:00")) if epoch_text else None
+    if epoch is None:
+        return {"propagation_epoch": None, "frame": "TEME", "before_objects": [], "after_objects": [], "failed_object_ids": []}
+    if epoch.tzinfo is None or epoch.utcoffset() is None:
+        epoch = epoch.replace(tzinfo=timezone.utc)
+    epoch = epoch.astimezone(timezone.utc)
+    jd, fr = jday(epoch.year, epoch.month, epoch.day, epoch.hour, epoch.minute, epoch.second + epoch.microsecond / 1_000_000)
+    epoch_iso = epoch.isoformat()
+    catalog: dict[str, dict] = {}
+    all_ids: set[str] = set()
+    for event in physical:
+        for side in ("primary", "secondary"):
+            obj = event.get(side) or {}
+            object_id = str(obj.get("id") or "")
+            if not object_id:
+                continue
+            all_ids.add(object_id)
+            catalog.setdefault(object_id, obj)
+    kept_ids = {
+        str(object_id)
+        for decision in smart_filter.get("decisions", [])
+        if decision.get("decision") != "filter"
+        for object_id in decision.get("object_ids", [])
+        if str(object_id) in all_ids
+    }
+    positions: dict[str, dict] = {}
+    failed: list[str] = []
+    for object_id, obj in catalog.items():
+        source = ((obj.get("provenance") or {}).get("source_record") or {})
+        line1, line2 = source.get("normalized_line1"), source.get("normalized_line2")
+        omm = source.get("omm_fields")
+        if not omm and (not line1 or not line2):
+            failed.append(object_id)
+            continue
+        try:
+            record = TleRecord(
+                name=str(obj.get("name") or object_id), line1=line1 or "", line2=line2 or "",
+                source_group=str(source.get("source_group") or "saved_screening"),
+                source_format=str(source.get("source_format") or ("OMM" if omm else "TLE")),
+                omm_fields=omm,
+            )
+            satellite = satellite_from_record(record)
+            error, position, _ = satellite.sgp4(jd, fr)
+            if error:
+                raise ValueError(f"sgp4_error_{error}")
+            positions[object_id] = {
+                **{key: value for key, value in obj.items() if key not in {"position", "velocity", "orbit"}},
+                "position": [float(value) for value in position],
+                "provenance": {"reference_frame": "TEME", "propagation_epoch": epoch_iso},
+            }
+        except (ValueError, TypeError, KeyError, OverflowError):
+            failed.append(object_id)
+    return {
+        "propagation_epoch": epoch_iso,
+        "frame": "TEME",
+        "before_objects": [positions[item] for item in sorted(all_ids) if item in positions],
+        "after_objects": [positions[item] for item in sorted(kept_ids) if item in positions],
+        "failed_object_ids": sorted(failed),
+    }
 
 
 @app.get("/api/conjunction-jobs/{job_id}/smart-filter.csv")
