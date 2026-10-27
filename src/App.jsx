@@ -27,7 +27,6 @@ import {
   RefreshCw,
   Rocket,
   Satellite,
-  Search,
   Settings,
   ShieldAlert,
   ShieldCheck,
@@ -43,6 +42,8 @@ import {
   getAnalytics,
   getCatalog,
   getConjunctions,
+  getLatestConjunctionJob,
+  getActiveConjunctionJob,
   resumeConjunctionJob,
   importEventCdm,
   calculateScenarioPc,
@@ -412,7 +413,35 @@ export default function App() {
     explicitScreeningRefreshRef.current = explicitRefresh;
     console.info("[ORION screening diagnostic] explicit refresh callback installed");
     const savedJobId = readActiveScreeningJobId();
-    if (savedJobId) {
+    const restoreAcceptedJob = async () => {
+      try {
+        const latestJob = await getLatestConjunctionJob();
+        if (cancelled) return;
+        if (latestJob) {
+          const records = latestJob.result.data;
+          const validated = validateAndFilterEvents(records);
+          const physicalEvents = validated.filter((event) => event.result_kind === "physics_assessment");
+          const result = { ...latestJob.result, api_status: "available", job_id: latestJob.job_id, completion_status: latestJob.status };
+          saveActiveScreeningJobId(latestJob.job_id);
+          saveAcceptedScreeningCache(result, physicalEvents);
+          setPlatform((previous) => finishScreeningAttempt({ ...previous, screeningAttempt: null }, "startup-recovery", result, physicalEvents));
+          setEventSelection((previous) => reconcilePhysicalEventSelection(previous, physicalEvents));
+          return;
+        }
+        const activeJob = await getActiveConjunctionJob();
+        if (activeJob?.job_id) {
+          resumeSavedJob(activeJob.job_id);
+          return;
+        }
+        if (!savedJobId) await load({ explicitScreeningRefresh: true, invocationId: "startup-first-screening" });
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("[Vyoma startup] accepted screening recovery failed; checking the saved job or starting one bounded run.", error);
+        if (savedJobId) resumeSavedJob(savedJobId);
+        else await load({ explicitScreeningRefresh: true, invocationId: "startup-first-screening" });
+      }
+    };
+    function resumeSavedJob(savedJobId) {
       const startedAt = Date.now();
       const runId = `resume-${startedAt}-${++screeningRunSequenceRef.current}`;
       screeningRunRef.current = { startedAt, runId, jobId: savedJobId, timer: null };
@@ -465,6 +494,7 @@ export default function App() {
         }, []));
       });
     }
+    void restoreAcceptedJob();
     load({ explicitScreeningRefresh: false });
     const refresh = window.setInterval(() => load({ explicitScreeningRefresh: false }), 90_000);
     return () => {
@@ -724,8 +754,6 @@ export default function App() {
       <Sidebar activePage={activePage} navigate={navigate} health={platform.health} />
       <div className="platform-main">
         <TopBar
-          search={globalSearch}
-          setSearch={setGlobalSearch}
           refresh={startScreening}
           loading={loading}
           backendBusy={backendBusy}
@@ -842,7 +870,7 @@ function Sidebar({ activePage, navigate, health }) {
   );
 }
 
-function TopBar({ search, setSearch, refresh, loading, notificationsOpen, setNotificationsOpen, notices, health, snapshot, suggestions }) {
+function TopBar({ refresh, loading, notificationsOpen, setNotificationsOpen, notices, health, snapshot }) {
   const [utc, setUtc] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setUtc(new Date()), 1000);
@@ -850,20 +878,6 @@ function TopBar({ search, setSearch, refresh, loading, notificationsOpen, setNot
   }, []);
   return (
     <header className="topbar">
-      <div className="global-search">
-        <Search size={15} />
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search satellite, debris, orbit shell, event..."
-          list="global-search-suggestions"
-        />
-        <datalist id="global-search-suggestions">
-          {(suggestions || []).map((item) => (
-            <option key={item} value={item} />
-          ))}
-        </datalist>
-      </div>
       <div className="topbar-meta">
         <span className="mono">{utc.toISOString().replace("T", " ").slice(0, 19)}Z</span>
         <span

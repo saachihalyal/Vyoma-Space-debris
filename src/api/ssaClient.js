@@ -12,7 +12,7 @@ function responseErrorMessage(payload, fallback) {
 const catalogRequests = new Map();
 const conjunctionRequests = new Map();
 const maneuverRequests = new Map();
-const SCREENING_POLL_TIMEOUT_MS = 55 * 60 * 1000;
+const SCREENING_POLL_TIMEOUT_MS = 9 * 60 * 1000;
 const SCREENING_POLL_INTERVAL_MS = 1000;
 const SCREENING_STATUS_REQUEST_TIMEOUT_MS = 30 * 1000;
 const API_REQUEST_TIMEOUT_MS = 12 * 1000;
@@ -189,6 +189,24 @@ export function getConjunctions({ limit = 100, horizonHours = 24, sampleStepSeco
 export function resumeConjunctionJob(jobId, { onStatus, pollTimeoutMs = SCREENING_POLL_TIMEOUT_MS, pollIntervalMs = SCREENING_POLL_INTERVAL_MS, requestTimeoutMs = SCREENING_STATUS_REQUEST_TIMEOUT_MS } = {}) {
   if (!jobId) return Promise.resolve({ api_status: "error", result_status: "unavailable", completion_status: "failed", reason: "The saved screening job ID is unavailable.", data: [] });
   return pollExistingConjunctionJob(jobId, onStatus, { pollTimeoutMs, pollIntervalMs, requestTimeoutMs });
+}
+
+export async function getLatestConjunctionJob() {
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/latest`, {}, { timeoutMs: 5_000, retries: 2 });
+  if (!response.ok) throw new Error(`SSA API returned ${response.status} reading the accepted screening job.`);
+  const payload = await response.json();
+  const job = payload?.job;
+  if (job && (!job.job_id || !["complete", "partial"].includes(job.status) || !Array.isArray(job.result?.data))) {
+    throw new Error("The backend returned an invalid accepted screening job.");
+  }
+  return job || null;
+}
+
+export async function getActiveConjunctionJob() {
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/active`, {}, { timeoutMs: 5_000, retries: 2 });
+  if (!response.ok) throw new Error(`SSA API returned ${response.status} reading the active screening job.`);
+  const payload = await response.json();
+  return payload?.job || null;
 }
 
 async function fetchConjunctions(params, onStatus, { pollTimeoutMs, pollIntervalMs, requestTimeoutMs, diagnosticInvocationId }) {

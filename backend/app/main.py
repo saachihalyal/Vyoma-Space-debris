@@ -131,6 +131,32 @@ NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/m
 tle_provider = TleProvider(retry_state_path=CELESTRAK_CACHE_PATH)
 
 
+def _latest_accepted_archive() -> dict | None:
+    paths = list(SCREENING_EXPORT_ARCHIVE_DIR.glob("screening-job-*.json"))
+    paths += list((SCREENING_EXPORT_ARCHIVE_DIR / "demo").glob("screening-job-*.json")) if (SCREENING_EXPORT_ARCHIVE_DIR / "demo").is_dir() else []
+    accepted = []
+    for path in paths:
+        try:
+            job_id = path.stem.removeprefix("screening-job-")
+            archived = _validate_archived_screening_job(job_id, json.loads(path.read_text(encoding="utf-8")))
+            accepted.append(archived)
+        except (HTTPException, OSError, ValueError, json.JSONDecodeError):
+            continue
+    return max(accepted, key=lambda job: job.get("finished_at") or job.get("created_at") or "", default=None)
+
+
+@app.on_event("startup")
+async def recover_latest_screening_job() -> None:
+    latest = _latest_accepted_archive()
+    if latest:
+        with _screening_registry_lock:
+            restored = copy.deepcopy(latest)
+            _backfill_archived_research_pc(restored["result"])
+            restored["restored_from_archive"] = True
+            restored["archived"] = True
+            _screening_jobs[restored["job_id"]] = restored
+
+
 async def build_snapshot(
     limit: int = 850,
     forecast_hours: int = 0,
@@ -707,21 +733,19 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
     job = _screening_jobs[job_id]
     job["status"] = "running"
     job["started_at"] = datetime.now(timezone.utc).isoformat()
+    loop = asyncio.get_running_loop()
+    hard_deadline = loop.time() + 9 * 60
     job["progress"] = {
         "stage": "trajectory_screening",
         "percent": None,
         "message": "Screening is running. The propagator does not expose a truthful percentage until it completes.",
     }
     try:
-        result = await conjunctions(
-            limit=limit,
-            min_pc=None,
-            risk=None,
-            horizon_hours=horizon_hours,
-            sample_step_seconds=sample_step_seconds,
-            screening_threshold_km=screening_threshold_km,
+        result = await asyncio.wait_for(conjunctions(
+            limit=min(limit, 400), min_pc=None, risk=None, horizon_hours=min(horizon_hours, 24),
+            sample_step_seconds=sample_step_seconds, screening_threshold_km=screening_threshold_km,
             start_utc=start_utc,
-        )
+        ), timeout=max(1, hard_deadline - loop.time()))
         if isinstance(result, JSONResponse):
             result = json.loads(result.body)
         if isinstance(result, dict) and isinstance(result.get("data"), list):
@@ -770,8 +794,23 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
             "message": "Screening execution failed before a complete or partial result was produced.",
         }
         job["error_code"] = "SCREENING_EXECUTION_FAILED"
+    except asyncio.TimeoutError:
+        job["status"] = "failed"
+        job["progress"] = {"stage": "timed_out", "percent": None, "message": "The bounded screening reached its nine-minute execution limit."}
+        job["result"] = {"success": False, "result_kind": "physics_assessment", "result_status": "error", "completion_status": "failed", "data": [], "reason_code": "SCREENING_TIME_LIMIT"}
+        job["error_code"] = "SCREENING_TIME_LIMIT"
     finally:
         job["finished_at"] = datetime.now(timezone.utc).isoformat()
+        if job.get("status") in {"complete", "partial"} and isinstance(job.get("result"), dict):
+            try:
+                SCREENING_EXPORT_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+                archive_path = SCREENING_EXPORT_ARCHIVE_DIR / f"screening-job-{job_id}.json"
+                archive_job = {key: value for key, value in job.items() if key not in {"task", "created_monotonic"}}
+                temporary_path = archive_path.with_suffix(".json.tmp")
+                temporary_path.write_text(json.dumps(archive_job, separators=(",", ":")), encoding="utf-8")
+                temporary_path.replace(archive_path)
+            except OSError:
+                logger.exception("Could not persist accepted screening job %s", job_id)
 
 
 @app.post("/api/conjunction-jobs", status_code=202)
@@ -1094,6 +1133,46 @@ async def get_conjunction_job(job_id: str) -> dict:
         }
         payload["result"] = result
     return payload
+
+
+@app.get("/api/conjunction-jobs/latest")
+async def get_latest_conjunction_job() -> dict:
+    accepted = max(
+        (job for job in _screening_jobs.values() if job.get("status") in {"complete", "partial"} and isinstance(job.get("result"), dict)),
+        key=lambda job: job.get("finished_at") or job.get("created_at") or "",
+        default=None,
+    )
+    if accepted is None:
+        archived = _latest_accepted_archive()
+        if archived:
+            restored = copy.deepcopy(archived)
+            _backfill_archived_research_pc(restored["result"])
+            restored["restored_from_archive"] = True
+            restored["archived"] = True
+            _screening_jobs[restored["job_id"]] = restored
+            accepted = restored
+    if accepted is None:
+        return {"job": None}
+    job_id = accepted["job_id"]
+    payload = copy.deepcopy({key: value for key, value in accepted.items() if key not in {"task", "created_monotonic"}})
+    if isinstance(payload.get("result"), dict):
+        records = payload["result"].get("data") or []
+        payload["result"]["assessment_pagination"] = {
+            "page": 1, "page_size": len(records), "total_records": len(records),
+            "returned_records": len(records), "has_more": False, "next_page": None, "loaded_all": True,
+        }
+    return {"job": payload}
+
+
+@app.get("/api/conjunction-jobs/active")
+async def get_active_conjunction_job() -> dict:
+    active = max(
+        (job for job in _screening_jobs.values() if job.get("status") in {"queued", "running"}),
+        key=lambda job: job.get("created_at") or "", default=None,
+    )
+    if active is None:
+        return {"job": None}
+    return {"job": {key: value for key, value in active.items() if key not in {"task", "result", "created_monotonic"}}}
 
 
 @app.get("/api/conjunction-jobs/{job_id}/assessments")

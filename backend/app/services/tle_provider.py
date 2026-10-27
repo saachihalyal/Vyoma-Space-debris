@@ -209,6 +209,10 @@ class TleProvider:
 
     async def get_catalog_with_state(self, limit: int = 900) -> tuple[list[TleRecord], dict[str, str | None]]:
         now = time.time()
+        if self._cached_live:
+            if not self._is_fresh(now):
+                asyncio.create_task(self._refresh_live_background())
+            return self._selected(limit), self.source_state
         failure_cooldown = self._failure_cooldown_seconds()
         if self._is_fresh(now):
             return self._selected(limit), self.source_state
@@ -238,6 +242,25 @@ class TleProvider:
                 self._ensure_fallback()
             self._persist_state()
             return self._selected(limit), self.source_state
+
+    async def _refresh_live_background(self) -> None:
+        if self._refresh_lock.locked():
+            return
+        async with self._refresh_lock:
+            now = time.time()
+            if self._is_fresh(now) or (self._last_attempt_at and now - self._last_attempt_at < self._failure_cooldown_seconds()):
+                return
+            self._last_attempt_at = now
+            self._last_attempt_at_utc = datetime.now(timezone.utc).isoformat()
+            fetched = await self._fetch_live()
+            if fetched:
+                self._cached_live = fetched
+                self._cached_at = time.time()
+                self._last_success_at = datetime.now(timezone.utc).isoformat()
+                self._status = "live"
+            elif self._cached_live:
+                self._status = "stale_live"
+            self._persist_state()
 
     def _is_fresh(self, now: float) -> bool:
         if self._cached_live:
