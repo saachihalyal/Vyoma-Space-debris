@@ -19,7 +19,7 @@ test("physical Smart Filter workbench is wired to API decisions and key science 
   const source = readFileSync(new URL("../src/components/UI/SmartFilterWorkbench.jsx", import.meta.url), "utf8");
   assert.match(source, /getPhysicalSmartFilter\(jobId/);
   assert.match(source, /physicalSmartFilterCsvPath\(jobId\)/);
-  assert.match(source, /before_count/);
+  assert.match(source, /const allIds = new Set\(decisions\.flatMap/);
   assert.match(source, /kept_count/);
   assert.match(source, /filtered_count/);
   assert.match(source, /plainReason/);

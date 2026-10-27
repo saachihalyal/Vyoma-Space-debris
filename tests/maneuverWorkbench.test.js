@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
@@ -21,7 +21,7 @@ test("Maneuver Workbench uses the one-button flow with advanced fields collapsed
 });
 
 test("Maneuver keeps before/after, action metrics, burn window, options, reports, and ranking status", () => {
-  for (const phrase of ["Before", "After", "Fuel cost", "Maneuver options", "Show all", "ranking_used === false", "Burn window", "Physics rank", "AI rank"]) {
+  for (const phrase of ["Before", "After", "Fuel cost", "Maneuver options", "Show all", "ranking.ranking_used === false", "Burn window", "Physics rank", "AI rank"]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }
   assert.match(source, /selectedManeuverReportPath/);
