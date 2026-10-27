@@ -151,6 +151,9 @@ const NAV = [
 
 export default function App() {
   const [activePage, setActivePage] = useState("home");
+  const [uncertaintyScale, setUncertaintyScale] = useState(1);
+  const [uncertaintyWhatIf, setUncertaintyWhatIf] = useState(null);
+  const [uncertaintyWhatIfStatus, setUncertaintyWhatIfStatus] = useState("idle");
   const [snapshot, setSnapshot] = useState(null);
   const lastCatalogSnapshotRef = useRef(null);
   const [forecast, setForecast] = useState(null);
@@ -764,7 +767,7 @@ export default function App() {
           snapshot={snapshot}
           suggestions={searchSuggestions}
         />
-        <main className="content-main"><Suspense fallback={<div className="og-card loading-skeleton" role="status" aria-label="Loading page"><span /><span /><span /></div>}>
+        <main className="content-main"><Suspense fallback={<div className="og-card loading-skeleton" role="status" aria-label="Loading page"><span /><span /><span /></div>}><PageErrorBoundary key={activePage}>
           {activePage === "home" ? (
             <HomePage snapshot={snapshot} platform={platform} maneuver={maneuver} navigate={navigate} loading={loading} />
           ) : null}
@@ -844,10 +847,25 @@ export default function App() {
             smart={platform.smart}
           /> : null}
           {activePage === "upload" ? <CdmReferenceAssessment standalone /> : null}
-        </Suspense></main>
+        </PageErrorBoundary></Suspense></main>
       </div>
     </div>
   );
+}
+
+class PageErrorBoundary extends React.Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <section className="og-card" role="alert"><h1>This page hit an error</h1><button type="button" className="og-btn primary" onClick={() => window.location.reload()}>Reload</button></section>;
+    }
+    return this.props.children;
+  }
 }
 
 function Sidebar({ activePage, navigate, health }) {
@@ -1003,9 +1021,6 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const [scenarioAssumeIndependent, setScenarioAssumeIndependent] = useState(false);
   const [pcInputBusy, setPcInputBusy] = useState(false);
   const [pcInputMessage, setPcInputMessage] = useState("");
-  const [uncertaintyScale, setUncertaintyScale] = useState("1");
-  const [uncertaintyWhatIf, setUncertaintyWhatIf] = useState(null);
-  const [uncertaintyWhatIfStatus, setUncertaintyWhatIfStatus] = useState("idle");
   useEffect(() => {
     setCdmXml("");
     setCdmSourceLabel("");
