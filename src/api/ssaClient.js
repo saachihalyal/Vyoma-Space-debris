@@ -396,6 +396,7 @@ export async function getPhysicalSmartFilter(screeningJobId, { signal } = {}) {
   const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter`, { signal }, { timeoutMs: 60_000, retries: 1 });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(responseErrorMessage(payload, `Smart Filter evaluation returned HTTP ${response.status}`));
+  if (payload?.status === "computing") return payload;
   if (payload?.result_type !== "physics_smart_filter" || !Array.isArray(payload?.decisions) || !payload?.evaluation) {
     throw new Error("Smart Filter returned an incompatible physical-event result.");
   }

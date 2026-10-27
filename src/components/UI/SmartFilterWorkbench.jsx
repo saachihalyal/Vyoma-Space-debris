@@ -8,22 +8,44 @@ const pairName = (row) => (row.object_names || row.object_ids || []).join(" vs "
 export function SmartFilterWorkbench({ platform = {}, download = () => {} }) {
   const [acceptedJob, setAcceptedJob] = React.useState(null);
   const [data, setData] = React.useState(null);
-  const [error, setError] = React.useState("");
+  const [progress, setProgress] = React.useState({ stage: "loading", percent: null, message: "Loading the accepted screening and Smart Filter status." });
   const [tab, setTab] = React.useState("retain");
   React.useEffect(() => {
     const controller = new AbortController();
-    setAcceptedJob(null); setData(null); setError("");
-    getLatestConjunctionJob({ signal: controller.signal })
-      .then((job) => {
-        if (controller.signal.aborted) return;
-        setAcceptedJob(job);
-        if (!job?.job_id) { setError("No accepted screening job is available."); return; }
-        return getPhysicalSmartFilter(job.job_id, { signal: controller.signal }).then((result) => {
-          if (!controller.signal.aborted) setData(result);
-        });
-      })
-      .catch((e) => { if (e.name !== "AbortError" && !controller.signal.aborted) setError(e.message); });
-    return () => controller.abort();
+    let currentJob = acceptedJob;
+    let timer;
+    setAcceptedJob(null); setData(null);
+    const poll = async () => {
+      if (controller.signal.aborted) return;
+      try {
+        let job = currentJob;
+        if (!job?.job_id) {
+          job = await getLatestConjunctionJob({ signal: controller.signal });
+          if (controller.signal.aborted) return;
+          currentJob = job;
+          setAcceptedJob(job);
+        }
+        if (!job?.job_id) {
+          setProgress({ stage: "waiting", percent: null, message: "Waiting for an accepted screening job." });
+        } else {
+          const result = await getPhysicalSmartFilter(job.job_id, { signal: controller.signal });
+          if (controller.signal.aborted) return;
+          if (result.status === "computing") {
+            setProgress(result.progress || { stage: "evaluating_events", percent: null, message: "Smart Filter evaluation is running." });
+          } else {
+            setData(result);
+            setProgress({ stage: "complete", percent: 100, message: "Smart Filter evaluation complete." });
+            return;
+          }
+        }
+      } catch (e) {
+        if (e.name === "AbortError" || controller.signal.aborted) return;
+        setProgress({ stage: "retrying", percent: null, message: "Checking Smart Filter progress; the next check will retry automatically." });
+      }
+      timer = setTimeout(poll, 3000);
+    };
+    poll();
+    return () => { controller.abort(); clearTimeout(timer); };
   }, []);
   const jobId = acceptedJob?.job_id || null;
   const decisions = data?.decisions || [];
@@ -77,8 +99,7 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {} }) {
   };
   return <main className="og-page og-smart-filter" aria-label="Smart Filter">
     <header className="og-maneuver-header"><div><h1>Smart Filter</h1><p>Compare all screened encounter objects with the objects in pairs kept by the research filter.</p></div></header>
-    {error && <p role="alert" className="og-card">Filter evaluation failed: {error}</p>}
-    {!data && !error && <p role="status" className="og-card loading-skeleton" aria-label="Loading filter decisions"><span /><span /><span /></p>}
+    {!data && <div role="status" className="og-card smart-filter-progress" aria-label="Loading filter decisions"><div className="smart-filter-progress-track"><progress aria-label="Smart Filter progress" max="100" {...(Number.isFinite(progress.percent) ? { value: progress.percent } : {})} /></div><span>{progress.message}</span></div>}
     {data && <>
       <section className="smart-filter-globes" aria-label="Before and after object coverage">
         <article className="og-card smart-filter-globe-panel"><h2>Before <span>all screened objects</span></h2><strong className="smart-filter-object-count">{beforeObjects.length.toLocaleString()}</strong><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="All objects in screened close approaches" objects={beforeObjects} /></React.Suspense></article>

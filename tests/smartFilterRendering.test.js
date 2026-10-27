@@ -39,6 +39,10 @@ test("physical Smart Filter workbench is wired to API decisions and key science 
   assert.match(source, /smart-filter-reduction/);
   assert.match(source, /keptDecisions\.flatMap/);
   assert.match(source, /Both keep/);
+  assert.match(source, /setTimeout\(poll, 3000\)/);
+  assert.match(source, /Smart Filter progress/);
+  assert.match(source, /result\.status === "computing"/);
+  assert.match(client, /payload\?\.status === "computing"/);
   assert.doesNotMatch(source, /Model confidence|Safety guard<|event_id\}<small>/);
   assert.doesNotMatch(source, /Review band/);
   assert.doesNotMatch(source, /filteredRate/);

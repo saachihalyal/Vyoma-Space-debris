@@ -124,7 +124,8 @@ _assessment_results: dict[str, dict] = {}
 _assessment_results_lock = threading.Lock()
 _smart_filter_results: dict[str, dict] = {}
 _smart_filter_results_lock = threading.Lock()
-_smart_filter_eval_locks: dict[str, asyncio.Lock] = {}
+_smart_filter_tasks: dict[str, asyncio.Task] = {}
+_smart_filter_progress: dict[str, dict] = {}
 SCREENING_EXPORT_ARCHIVE_DIR = Path(__file__).resolve().parent.parent / "exports"
 NASA_CARA_PC_REFERENCE_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "nasa_cara_pc_reference.cdm"
 NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/master/DataFiles/PcTestCaseCDMs/000020580_conj_000002017_20230613_001923_20230608_063715.cdm"
@@ -165,6 +166,7 @@ async def recover_latest_screening_job() -> None:
             restored["restored_from_archive"] = True
             restored["archived"] = True
             _screening_jobs[restored["job_id"]] = restored
+        _ensure_smart_filter_task(restored["job_id"])
 
 
 async def build_snapshot(
@@ -821,6 +823,7 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
                 temporary_path.replace(archive_path)
             except OSError:
                 logger.exception("Could not persist accepted screening job %s", job_id)
+            _ensure_smart_filter_task(job_id)
 
 
 @app.post("/api/conjunction-jobs", status_code=202)
@@ -1029,6 +1032,7 @@ async def restore_archived_screening_job(job_id: str) -> dict:
         restored["restored_from_archive"] = True
         restored["archived"] = True
         _screening_jobs[job_id] = restored
+    _ensure_smart_filter_task(job_id)
     return copy.deepcopy(restored)
 
 
@@ -1051,19 +1055,95 @@ def _screening_job_for_smart_filter(job_id: str) -> dict:
 
 @app.get("/api/conjunction-jobs/{job_id}/smart-filter")
 async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
-    policy = filter_policy()
-    cache_key = job_id
+    job = _screening_job_for_smart_filter(job_id)
     with _smart_filter_results_lock:
-        evaluation_lock = _smart_filter_eval_locks.setdefault(cache_key, asyncio.Lock())
-    async with evaluation_lock:
+        cached = _smart_filter_results.get(job_id)
+    if cached is None:
+        sidecar = _smart_filter_sidecar_path(job_id, job)
+        try:
+            cached = json.loads(sidecar.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            cached = None
+        if isinstance(cached, dict) and cached.get("result_type") == "physics_smart_filter":
+            with _smart_filter_results_lock:
+                _smart_filter_results[job_id] = cached
+    if cached is not None:
+        return copy.deepcopy(cached)
+    _ensure_smart_filter_task(job_id)
+    return {
+        "status": "computing",
+        "result_type": "physics_smart_filter",
+        "screening_job_id": job_id,
+        "progress": copy.deepcopy(_smart_filter_progress.get(job_id, {
+            "stage": "queued", "percent": None, "message": "Smart Filter evaluation is queued."
+        })),
+    }
+
+
+def _smart_filter_sidecar_path(job_id: str, job: dict | None = None) -> Path:
+    archive_path = SCREENING_EXPORT_ARCHIVE_DIR / f"screening-job-{job_id}.json"
+    if not archive_path.is_file() and (SCREENING_EXPORT_ARCHIVE_DIR / "demo" / archive_path.name).is_file():
+        archive_path = SCREENING_EXPORT_ARCHIVE_DIR / "demo" / archive_path.name
+    # Persist beside the saved job. For an in-memory job that is not archived yet,
+    # use the standard exports directory so the completed result is still durable.
+    return archive_path.with_name(f"smart-filter-{job_id}.json")
+
+
+def _ensure_smart_filter_task(job_id: str) -> None:
+    job = _screening_jobs.get(job_id)
+    sidecar = _smart_filter_sidecar_path(job_id, job)
+    try:
+        saved = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        saved = None
+    if isinstance(saved, dict) and saved.get("result_type") == "physics_smart_filter":
         with _smart_filter_results_lock:
-            cached = _smart_filter_results.get(cache_key)
-        if cached is not None:
-            return copy.deepcopy(cached)
-        return await _compute_screening_job_smart_filter(job_id, policy, cache_key)
+            _smart_filter_results[job_id] = saved
+        _smart_filter_progress[job_id] = {
+            "stage": "complete", "percent": 100, "message": "Smart Filter result restored from disk.",
+            "duration_seconds": saved.get("evaluation_duration_seconds"),
+        }
+        return
+    task = _smart_filter_tasks.get(job_id)
+    if task is not None and not task.done():
+        return
+    _smart_filter_progress[job_id] = {
+        "stage": "queued", "percent": None, "message": "Smart Filter evaluation is queued."
+    }
+    _smart_filter_tasks[job_id] = asyncio.create_task(_run_smart_filter_background(job_id))
+
+
+async def _run_smart_filter_background(job_id: str) -> None:
+    _smart_filter_progress[job_id] = {
+        "stage": "evaluating_events", "percent": None,
+        "message": "Evaluating all valid events; the evaluator does not expose a truthful percentage.",
+    }
+    try:
+        job = _screening_job_for_smart_filter(job_id)
+        payload = await _compute_screening_job_smart_filter(job_id, filter_policy(), job_id)
+        sidecar = _smart_filter_sidecar_path(job_id, job)
+        try:
+            sidecar.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path = sidecar.with_suffix(".json.tmp")
+            temporary_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+            temporary_path.replace(sidecar)
+        except OSError:
+            logger.exception("Could not persist Smart Filter result for screening job %s", job_id)
+        _smart_filter_progress[job_id] = {
+            "stage": "complete", "percent": 100, "message": "Smart Filter evaluation complete.",
+            "duration_seconds": payload.get("evaluation_duration_seconds"),
+        }
+    except Exception:
+        logger.exception("Smart Filter evaluation failed for screening job %s", job_id)
+        _smart_filter_progress[job_id] = {
+            "stage": "retrying", "percent": None,
+            "message": "Smart Filter evaluation is retrying after an internal interruption.",
+        }
+        _smart_filter_tasks.pop(job_id, None)
 
 
 async def _compute_screening_job_smart_filter(job_id: str, policy: dict, cache_key: str) -> dict:
+    started = time.perf_counter()
     job = _screening_job_for_smart_filter(job_id)
     records = job["result"].get("data") or []
     events: list[ConjunctionAssessmentEvent] = []
@@ -1097,6 +1177,7 @@ async def _compute_screening_job_smart_filter(job_id: str, policy: dict, cache_k
         "screening_job_id": job_id,
         "screening_job_archived": bool(job.get("archived") or job.get("restored_from_archive")),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "evaluation_duration_seconds": time.perf_counter() - started,
     }
     with _smart_filter_results_lock:
         _smart_filter_results[cache_key] = copy.deepcopy(payload)
@@ -1106,6 +1187,12 @@ async def _compute_screening_job_smart_filter(job_id: str, policy: dict, cache_k
 @app.get("/api/conjunction-jobs/{job_id}/smart-filter.csv")
 async def export_screening_job_smart_filter_csv(job_id: str) -> Response:
     result = await evaluate_screening_job_smart_filter(job_id)
+    while result.get("status") == "computing":
+        task = _smart_filter_tasks.get(job_id)
+        if task is None:
+            raise HTTPException(status_code=503, detail="Smart Filter evaluation is retrying; request the export again shortly.")
+        await asyncio.shield(task)
+        result = await evaluate_screening_job_smart_filter(job_id)
     stream = io.StringIO(newline="")
     columns = [
         "event_id", "object_ids", "object_names", "tca_utc", "miss_distance_km",
