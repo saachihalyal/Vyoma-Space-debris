@@ -605,7 +605,7 @@ async def conjunctions(
     limit: int = Query(100, ge=1, le=400),
     min_pc: float | None = None,
     risk: str | None = None,
-    horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=72),
+    horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=168),
     sample_step_seconds: int = Query(DEFAULT_SAMPLE_STEP_SECONDS, ge=10, le=300),
     screening_threshold_km: float = Query(DEFAULT_SCREENING_THRESHOLD_KM, gt=0, le=1_000),
     start_utc: datetime | None = None,
@@ -754,7 +754,7 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
     }
     try:
         result = await asyncio.wait_for(conjunctions(
-            limit=min(limit, 400), min_pc=None, risk=None, horizon_hours=min(horizon_hours, 24),
+            limit=min(limit, 400), min_pc=None, risk=None, horizon_hours=horizon_hours,
             sample_step_seconds=sample_step_seconds, screening_threshold_km=screening_threshold_km,
             start_utc=start_utc,
         ), timeout=max(1, hard_deadline - loop.time()))
@@ -829,7 +829,7 @@ async def _execute_screening_job(job_id: str, *, limit: int, horizon_hours: floa
 @app.post("/api/conjunction-jobs", status_code=202)
 async def create_conjunction_job(
     limit: int = Query(100, ge=1, le=400),
-    horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=72),
+    horizon_hours: float = Query(DEFAULT_HORIZON_HOURS, ge=0.01, le=168),
     sample_step_seconds: int = Query(DEFAULT_SAMPLE_STEP_SECONDS, ge=10, le=300),
     screening_threshold_km: float = Query(DEFAULT_SCREENING_THRESHOLD_KM, gt=0, le=1_000),
     start_utc: datetime | None = None,
@@ -906,7 +906,7 @@ def _validate_archived_screening_job(job_id: str, archived: object) -> dict:
         threshold = configuration["screening_threshold_km"]
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 400:
             raise ValueError
-        if isinstance(horizon, bool) or not isinstance(horizon, (int, float)) or not 0.01 <= horizon <= 72:
+        if isinstance(horizon, bool) or not isinstance(horizon, (int, float)) or not 0.01 <= horizon <= 168:
             raise ValueError
         if isinstance(sample_step, bool) or not isinstance(sample_step, int) or not 10 <= sample_step <= 300:
             raise ValueError
@@ -1256,7 +1256,7 @@ async def get_latest_conjunction_job() -> dict:
 
 
 @app.get("/api/event-library")
-def get_saved_event_library(current_job_id: str | None = None) -> dict:
+async def get_saved_event_library(current_job_id: str | None = None) -> dict:
     archives = list(SCREENING_EXPORT_ARCHIVE_DIR.glob("screening-job-*.json"))
     archives += list((SCREENING_EXPORT_ARCHIVE_DIR / "demo").glob("screening-job-*.json")) if (SCREENING_EXPORT_ARCHIVE_DIR / "demo").is_dir() else []
     jobs_by_id: dict[str, dict] = {}
@@ -1332,7 +1332,25 @@ def get_saved_event_library(current_job_id: str | None = None) -> dict:
         name = ((event.get("automatic_research_pc_assessment") or {}).get("risk_assessment") or {}).get("final_risk_class")
         if name in counts:
             counts[name] += 1
-    return {"events": events, "counts": counts, "total": len(events), "current_job_id": current_id,
+    references: list[dict] = []
+    try:
+        reference_response = await calculate_nasa_cara_reference_case()
+        reference_data = reference_response.get("data") or {}
+        if reference_response.get("success") is True and reference_data.get("collision_probability", {}).get("status") == "available":
+            references.append({
+                "id": "reference-nasa-cara-foster-2d",
+                "result_kind": "reference_assessment",
+                "reference_label": "Reference",
+                "reference_case": reference_data.get("reference_case"),
+                "primary": reference_data.get("object_1"),
+                "secondary": reference_data.get("object_2"),
+                "collision_probability": reference_data.get("collision_probability"),
+                "tca_utc": reference_data.get("tca_utc"),
+                "source": reference_response.get("input_provenance", {}),
+            })
+    except HTTPException:
+        logger.warning("Bundled NASA CARA reference was not available to add to the saved event library.")
+    return {"events": events, "references": references, "counts": counts, "total": len(events), "current_job_id": current_id,
             "label": "from saved screenings"}
 
 

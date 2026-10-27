@@ -24,6 +24,12 @@ test("Collision Analysis begins with title and events without diagnostic charts 
   assert.doesNotMatch(collisionWorkbenchSource, /Screening diagnostics|What-if uncertainty|Scenario class counts|CollisionAnalysisSummary/);
   assert.match(collisionWorkbenchSource, /Excluded pairs/);
   assert.match(collisionWorkbenchSource, /Run full screening/);
+  assert.match(collisionWorkbenchSource, /Horizon/);
+  assert.match(collisionWorkbenchSource, /value=\{24\}>24 h/);
+  assert.match(collisionWorkbenchSource, /value=\{72\}>72 h/);
+  assert.match(collisionWorkbenchSource, /value=\{168\}>7 days/);
+  assert.match(collisionWorkbenchSource, /No High-probability events found \(highest Pc/);
+  assert.match(collisionWorkbenchSource, /screening-progress-strip/);
 });
 
 test("Collision restores prioritized events and separate physics and AI assessment panels", () => {

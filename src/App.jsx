@@ -151,6 +151,7 @@ const NAV = [
 
 export default function App() {
   const [activePage, setActivePage] = useState("home");
+  const [screeningHorizonHours, setScreeningHorizonHours] = useState(72);
   const [uncertaintyScale, setUncertaintyScale] = useState(1);
   const [scenarioClassCounts, setScenarioClassCounts] = useState(null);
   const scenarioClassCacheRef = useRef(new Map());
@@ -202,7 +203,7 @@ export default function App() {
     let activeInvocationId = null;
     const requests = createRequestSequence();
 
-    async function load({ explicitScreeningRefresh = true, invocationId = null } = {}) {
+    async function load({ explicitScreeningRefresh = true, invocationId = null, horizonHours = 72 } = {}) {
       const currentRequestId = requests.next();
       console.info("[ORION screening diagnostic] load entered", {
         invocationId,
@@ -304,10 +305,10 @@ export default function App() {
           api_status: "available", result_status: "queued", completion_status: null,
           progress: { stage: "queued", percent: 0, message: "Screening job accepted." },
           source_summary: catalog.source_summary || null,
-          screening: { horizon_hours: 24, sample_step_seconds: 60, screening_threshold_km: 25, start_utc: startUtc },
+          screening: { horizon_hours: horizonHours, sample_step_seconds: 60, screening_threshold_km: 25, start_utc: startUtc },
         };
         setPlatform((previous) => beginScreeningAttempt(previous, queuedStatus));
-        getConjunctions({ limit: 400, horizonHours: 24, sampleStepSeconds: 60, screeningThresholdKm: 25, startUtc, catalogIdentity, diagnosticInvocationId: invocationId,
+        getConjunctions({ limit: 400, horizonHours, sampleStepSeconds: 60, screeningThresholdKm: 25, startUtc, catalogIdentity, diagnosticInvocationId: invocationId,
           onStatus: (job) => {
             if (screeningRunRef.current.runId !== runId) {
               console.warn("[ORION screening diagnostic] job status ignored: run identity changed", { invocationId, requestId: currentRequestId, expectedRunId: runId, receivedJobId: job?.job_id || null });
@@ -410,9 +411,9 @@ export default function App() {
         });
     }
 
-    const explicitRefresh = (invocationId) => {
+    const explicitRefresh = (invocationId, options = {}) => {
       console.info("[ORION screening diagnostic] explicit callback invoked", { invocationId });
-      return load({ explicitScreeningRefresh: true, invocationId });
+      return load({ explicitScreeningRefresh: true, invocationId, ...options });
     };
     explicitScreeningRefreshRef.current = explicitRefresh;
     console.info("[ORION screening diagnostic] explicit refresh callback installed");
@@ -674,7 +675,7 @@ export default function App() {
       pushNotice(setNotices, "Screening is still initializing. Try again in a moment.", "warning");
       return;
     }
-    return explicitRefresh(invocationId);
+    return explicitRefresh(invocationId, { horizonHours: screeningHorizonHours });
   });
 
   function navigate(page) {
@@ -906,6 +907,9 @@ export default function App() {
               onScenarioPc={handleScenarioPc}
               onUseReferenceEvent={handleUseReferenceEvent}
               onStartScreening={startScreening}
+              screeningHorizonHours={screeningHorizonHours}
+              setScreeningHorizonHours={setScreeningHorizonHours}
+              currentEvents={platform.conjunctions}
               uncertaintyScale={uncertaintyScale}
               setUncertaintyScale={setUncertaintyScale}
               uncertaintyWhatIf={scenarioClassCounts?.assessments?.[selectedEvent?.id] || null}
@@ -1096,7 +1100,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   </section>;
 }
 
-export function CollisionPage({ event, events, eventLibrary, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null }) {
+export function CollisionPage({ event, events, eventLibrary, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null, currentEvents = [], screeningHorizonHours = 72, setScreeningHorizonHours = () => {} }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [eventSort, setEventSort] = useState("research_pc");
@@ -1138,6 +1142,9 @@ export function CollisionPage({ event, events, eventLibrary, eventStatus, attemp
   const reportBase = chosenPhysical && eventScreeningJobId ? selectedEventReportPath(eventScreeningJobId, event.id) : null;
   return <CollisionWorkbench
     events={events || []} event={event} eventStatus={eventStatus} screeningStatus={screeningStatus}
+    currentEvents={currentEvents} references={eventLibrary?.references || []}
+    screeningAttempt={attemptStatus} screeningHorizonHours={screeningHorizonHours}
+    setScreeningHorizonHours={setScreeningHorizonHours}
     screeningJobId={eventScreeningJobId} selectEvent={selectEvent}
     onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")}
     download={download} eventReportPath={reportBase}

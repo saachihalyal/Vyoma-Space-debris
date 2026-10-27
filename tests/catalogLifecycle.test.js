@@ -510,7 +510,7 @@ test("explicit TopBar refresh enters the job flow once while startup and periodi
     assert.match(appSource, /onStartScreening=\{startScreening\}/);
     assert.match(appSource, /const explicitRefresh = explicitScreeningRefreshRef\.current;/);
     assert.match(appSource, /onClick=\{refresh\}/);
-    assert.match(appSource, /const explicitRefresh = \(invocationId\) => \{[\s\S]*load\(\{ explicitScreeningRefresh: true, invocationId \}\);/);
+    assert.match(appSource, /const explicitRefresh = \(invocationId, options = \{\}\) => \{[\s\S]*load\(\{ explicitScreeningRefresh: true, invocationId, \.\.\.options \}\);/);
     assert.match(appSource, /load\(\{ explicitScreeningRefresh: false \}\);/);
     assert.match(appSource, /setInterval\(\(\) => load\(\{ explicitScreeningRefresh: false \}\)/);
     assert.match(appSource, /result_status: "not_started"/);

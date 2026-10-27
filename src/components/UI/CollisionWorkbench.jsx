@@ -90,7 +90,7 @@ function EncounterPlanePlot({ event }) {
   </figure>;
 }
 
-export function CollisionWorkbench({ events = [], event, screeningStatus = {}, selectEvent = () => {}, onShowInGlobe = () => {}, onAssessManeuver = () => {}, download = () => {}, screeningJobId, eventReportPath, eventReportCsvPath, eventReportJsonPath, onImportCdm = async () => {}, onStartScreening = () => {} }) {
+export function CollisionWorkbench({ events = [], event, screeningStatus = {}, eventStatus = {}, screeningAttempt = null, currentEvents = [], references = [], screeningHorizonHours = 72, setScreeningHorizonHours = () => {}, selectEvent = () => {}, onShowInGlobe = () => {}, onAssessManeuver = () => {}, download = () => {}, screeningJobId, eventReportPath, eventReportCsvPath, eventReportJsonPath, onImportCdm = async () => {}, onStartScreening = () => {} }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("research_pc");
   const [classFilter, setClassFilter] = useState("All");
@@ -134,8 +134,28 @@ export function CollisionWorkbench({ events = [], event, screeningStatus = {}, s
   const fosterAvailable = isUsablePc(foster) && foster?.event_id === chosen?.id;
   const sourcePc = foster?.source_reported_event_id === chosen?.id ? foster?.source_reported_pc : null;
   const excludedList = [...excludedPairs.values()];
+  const validCurrentEvents = currentEvents.filter((item) => item?.result_kind === "physics_assessment" && getPhysics(item).status === "valid");
+  const currentClassCounts = { Low: 0, Medium: 0, High: 0 };
+  for (const item of validCurrentEvents) {
+    const riskClass = getResearch(item)?.risk_assessment?.final_risk_class;
+    if (Object.hasOwn(currentClassCounts, riskClass)) currentClassCounts[riskClass] += 1;
+  }
+  const highestCurrentEvent = validCurrentEvents.filter((item) => Number.isFinite(getLogPc(item)))
+    .sort((left, right) => getLogPc(right) - getLogPc(left))[0];
+  const highestCurrentPc = highestCurrentEvent
+    ? getResearch(highestCurrentEvent)?.estimated_pc_scientific || `10^${getLogPc(highestCurrentEvent).toFixed(3)}`
+    : "not available";
+  const acceptedHorizon = eventStatus?.screening?.horizon_hours;
+  const acceptedRunComplete = ["complete", "partial"].includes(eventStatus?.completion_status) && Number.isFinite(acceptedHorizon);
+  const progressActive = ["pending", "queued", "starting", "running"].includes(screeningAttempt?.result_status);
   return <main className="og-page og-collision" aria-label="Collision Analysis workbench">
-    <header className="og-workbench-head"><h1>Collision Analysis</h1><button className="og-btn primary" onClick={onStartScreening} type="button">Run full screening</button></header>
+    <header className="og-workbench-head"><h1>Collision Analysis</h1><div className="screening-launch-controls"><label className="og-field">Horizon<select aria-label="Screening horizon" value={screeningHorizonHours} onChange={(change) => setScreeningHorizonHours(Number(change.target.value))}><option value={24}>24 h</option><option value={72}>72 h</option><option value={168}>7 days</option></select></label><button className="og-btn primary" onClick={onStartScreening} type="button" disabled={progressActive}>Run full screening</button></div></header>
+    {progressActive ? <section className="screening-progress-strip" role="status"><span>{screeningAttempt?.progress?.message || "Screening job is running."}</span><progress aria-label="Screening progress" {...(Number.isFinite(screeningAttempt?.progress?.percent) ? { value: screeningAttempt.progress.percent, max: 100 } : {})} /></section> : null}
+    {acceptedRunComplete ? <section className="screening-result-summary" aria-label={`${acceptedHorizon} hour screening results`}>
+      <strong>{acceptedHorizon === 168 ? "7 days" : `${acceptedHorizon} h`} run results</strong>
+      <span>Low {currentClassCounts.Low}</span><span>Medium {currentClassCounts.Medium}</span><span>High {currentClassCounts.High}</span>
+      {currentClassCounts.High === 0 ? <p>No High-probability events found (highest Pc {highestCurrentPc})</p> : null}
+    </section> : null}
     <section className="og-work collision-full-width">
       <aside className="og-card og-list collision-event-list" aria-label="Prioritized Events"><h2>Prioritized Events</h2>
         <label className="og-field">Search encounters<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, object ID, or event ID" /></label>
@@ -152,6 +172,11 @@ export function CollisionWorkbench({ events = [], event, screeningStatus = {}, s
           </button>;
         })}
         {!matchingGroups.length ? <p>No encounter groups match these filters.</p> : null}
+        {references.map((reference) => {
+          const probability = reference.collision_probability?.pc;
+          const pair = [reference.primary?.name || reference.primary?.id, reference.secondary?.name || reference.secondary?.id].filter(Boolean).join(" / ");
+          return <div className="og-event reference-library-entry" key={reference.id} aria-label="NASA CARA reference event"><b>{pair || reference.reference_case?.name || "NASA CARA reference event"}</b><span className="og-chip">Reference</span><small>{reference.reference_case?.name}</small>{Number.isFinite(probability) ? <small>Pc {probability.toExponential(3)}</small> : null}</div>;
+        })}
       </aside>
       <div className="og-detail collision-event-detail">
         {chosen ? <>
