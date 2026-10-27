@@ -1105,36 +1105,6 @@ async def export_screening_job_smart_filter_csv(job_id: str) -> Response:
                     headers={"Content-Disposition": f'attachment; filename="{job_id}-smart-filter.csv"'})
 
 
-@app.get("/api/conjunction-jobs/{job_id}")
-async def get_conjunction_job(job_id: str) -> dict:
-    job = _screening_jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Screening job not found in this backend process.")
-    payload = {key: value for key, value in job.items() if key not in {"task", "result", "created_monotonic"}}
-    payload["completion_status"] = job["status"] if job["status"] in {"complete", "partial", "failed"} else None
-    if job["result"] is not None:
-        result = copy.deepcopy(job["result"])
-        records = result.get("data") or []
-        page_size = ASSESSMENT_PAGE_SIZE_DEFAULT
-        result["data"] = records[:page_size]
-        total = len(records)
-        result_summary = result.setdefault("screening", {})
-        result_summary["total_records_available"] = total
-        result_summary["records_returned"] = len(result["data"])
-        result_summary["has_more_records"] = total > page_size
-        result_summary["response_page_partial"] = total > page_size
-        result_summary["returned_assessment_record_count"] = len(result["data"])
-        result_summary["assessment_records_truncated"] = total > page_size
-        result["assessment_pagination"] = {
-            "page": 1, "page_size": page_size, "total_records": total,
-            "returned_records": len(result["data"]), "has_more": total > page_size,
-            "next_page": 2 if total > page_size else None,
-            "retrieval_url": f"/api/conjunction-jobs/{job_id}/assessments?page={{page}}&page_size={{page_size}}",
-        }
-        payload["result"] = result
-    return payload
-
-
 @app.get("/api/conjunction-jobs/latest")
 async def get_latest_conjunction_job() -> dict:
     accepted = max(
@@ -1173,6 +1143,36 @@ async def get_active_conjunction_job() -> dict:
     if active is None:
         return {"job": None}
     return {"job": {key: value for key, value in active.items() if key not in {"task", "result", "created_monotonic"}}}
+
+
+@app.get("/api/conjunction-jobs/{job_id}")
+async def get_conjunction_job(job_id: str) -> dict:
+    job = _screening_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Screening job not found in this backend process.")
+    payload = {key: value for key, value in job.items() if key not in {"task", "result", "created_monotonic"}}
+    payload["completion_status"] = job["status"] if job["status"] in {"complete", "partial", "failed"} else None
+    if job["result"] is not None:
+        result = copy.deepcopy(job["result"])
+        records = result.get("data") or []
+        page_size = ASSESSMENT_PAGE_SIZE_DEFAULT
+        result["data"] = records[:page_size]
+        total = len(records)
+        result_summary = result.setdefault("screening", {})
+        result_summary["total_records_available"] = total
+        result_summary["records_returned"] = len(result["data"])
+        result_summary["has_more_records"] = total > page_size
+        result_summary["response_page_partial"] = total > page_size
+        result_summary["returned_assessment_record_count"] = len(result["data"])
+        result_summary["assessment_records_truncated"] = total > page_size
+        result["assessment_pagination"] = {
+            "page": 1, "page_size": page_size, "total_records": total,
+            "returned_records": len(result["data"]), "has_more": total > page_size,
+            "next_page": 2 if total > page_size else None,
+            "retrieval_url": f"/api/conjunction-jobs/{job_id}/assessments?page={{page}}&page_size={{page_size}}",
+        }
+        payload["result"] = result
+    return payload
 
 
 @app.get("/api/conjunction-jobs/{job_id}/assessments")

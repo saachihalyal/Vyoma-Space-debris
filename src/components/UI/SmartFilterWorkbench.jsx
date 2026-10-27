@@ -2,7 +2,7 @@ import React from "react";
 import { getPhysicalSmartFilter, physicalSmartFilterCsvPath } from "../../api/ssaClient.js";
 
 const BrowserGlobe = React.lazy(() => import("../Scene/SmartFilterGlobe.jsx").then((m) => ({ default: m.SmartFilterGlobe })));
-const number = (value, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : "No numeric miss distance in this event";
+const number = (value, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : "";
 const pairName = (row) => (row.object_names || row.object_ids || []).join(" vs ");
 
 export function SmartFilterWorkbench({ platform = {}, download = () => {}, physicalFilterResult = null }) {
@@ -39,6 +39,22 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {}, physi
     groupMap.get(key).rows.push(row);
   });
   const grouped = [...groupMap.values()];
+  const physicsKept = decisions.filter((row) => row.decision === "retain").length;
+  const physicsFiltered = decisions.length - physicsKept;
+  const aiKept = decisions.filter((row) => row.model_status !== "available" || row.model_prediction === "significant").length;
+  const aiFiltered = decisions.length - aiKept;
+  const policy = data?.policy || {};
+  const physicsDecision = (row) => {
+    const miss = row.miss_distance_km;
+    const pcLog = row.maximum_scenario_log10_pc;
+    const threshold = Number(policy.significant_pc_threshold);
+    const guarded = row.safety_guard_retained || !Number.isFinite(miss) || miss <= Number(policy.safety_miss_distance_threshold_km || 1);
+    const keep = guarded || !Number.isFinite(pcLog) || !(threshold > 0) || pcLog >= Math.log10(threshold);
+    return keep ? "retain" : "filter";
+  };
+  const physicsFunnelKept = decisions.filter((row) => physicsDecision(row) === "retain").length;
+  const physicsFunnelFiltered = decisions.length - physicsFunnelKept;
+  const differs = decisions.filter((row) => physicsDecision(row) !== (row.model_status === "available" && row.model_prediction === "insignificant" ? "filter" : "retain")).length;
   const plainReason = (row) => {
     const reason = `${row.reason_code || ""} ${row.reason || ""}`.toUpperCase();
     if (reason.includes("UNCERTAIN_SCENARIOS")) return "Some uncertainty cases could not be calculated, so this pair stays for review.";
@@ -51,19 +67,20 @@ export function SmartFilterWorkbench({ platform = {}, download = () => {}, physi
   return <main className="og-page og-smart-filter" aria-label="Smart Filter">
     <header className="og-maneuver-header"><div><h1>Smart Filter</h1><p>Compare all screened encounter objects with the objects in pairs kept by the research filter.</p></div></header>
     {error && <p role="alert" className="og-card">Filter evaluation failed: {error}</p>}
-    {!data && !error && <p role="status" className="og-card">{jobId ? "Calculating research probability scenarios…" : "Run screening to calculate filter decisions."}</p>}
+    {!data && !error && <p role="status" className="og-card loading-skeleton" aria-label="Loading filter decisions"><span /><span /><span /></p>}
     {data && <>
       <section className="smart-filter-globes" aria-label="Before and after object coverage">
         <article className="og-card"><h2>Before · {beforeObjects.length} objects</h2><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="All objects in screened close approaches" objects={beforeObjects} /></React.Suspense></article>
         <article className="og-card"><h2>After · {afterObjects.length} objects</h2><React.Suspense fallback={<div className="loading-skeleton" aria-label="Loading globe"/>}><BrowserGlobe title="Objects in pairs kept by Smart Filter" objects={afterObjects} /></React.Suspense></article>
       </section>
-      <section className="smart-filter-funnel" aria-label="Smart Filter event counts">
-        {["Events in", "Kept", "Filtered"].map((label, index) => <React.Fragment key={label}>{index > 0 && <span className="smart-filter-funnel-arrow" aria-hidden="true">→</span>}<article className="og-card"><span>{label}</span><b>{Number(evaluation[["before_count", "kept_count", "filtered_count"][index]] || 0).toLocaleString()}</b></article></React.Fragment>)}
+      <section className="smart-filter-funnel" aria-label="Physics and AI decisions">
+        {[["Physics in", decisions.length], ["Physics kept", physicsFunnelKept], ["Physics filtered", physicsFunnelFiltered], ["AI in", decisions.length], ["AI kept", aiKept], ["AI filtered", aiFiltered]].map(([label, count]) => <article className="og-card" key={label}><span>{label}</span><b>{count.toLocaleString()}</b></article>)}
       </section>
+      <p className="og-sub">Physics and AI differ on {differs} pair{differs === 1 ? "" : "s"}. Both keep {decisions.filter((row) => physicsDecision(row) === "retain" && !(row.model_status === "available" && row.model_prediction === "insignificant")).length}; both filter {decisions.filter((row) => physicsDecision(row) === "filter" && row.model_status === "available" && row.model_prediction === "insignificant").length}.</p>
       {data.decisions?.some((row) => row.model_status !== "available") && <p className="og-sub">Some event features were incomplete. Those pairs were kept for review by the safety rules.</p>}
       <section className="og-card"><div className="og-section-head"><div><h2>{isKept ? "Kept" : "Filtered"} event pairs</h2><p>Model decision is shown for each event.</p></div><button className="og-btn" disabled={!jobId || !decisions.length} onClick={() => jobId && download(physicalSmartFilterCsvPath(jobId), `${jobId}-smart-filter.csv`)}>Download CSV</button></div>
         <div role="tablist" aria-label="Filter decision"><button role="tab" aria-selected={isKept} className="og-btn" onClick={() => setTab("retain")}>Kept ({evaluation.kept_count || 0})</button> <button role="tab" aria-selected={!isKept} className="og-btn" onClick={() => setTab("filter")}>Filtered ({evaluation.filtered_count || 0})</button></div>
-        <div className="og-table-wrap"><table className="og-table"><thead><tr><th>Object pair</th><th>Miss distance</th><th>Pc</th><th>Reason</th></tr></thead><tbody>{grouped.map((group) => <React.Fragment key={group.key}><tr className="smart-filter-cloud-heading"><th colSpan={4}>{group.key} · {group.rows.length} pairs</th></tr>{group.rows.map((row) => <tr key={row.event_id}><td>{pairName(row)}<small>Model: {row.model_status === "available" ? (row.model_prediction === "significant" ? "kept" : "filtered") : "safety review"}</small></td><td>{Number.isFinite(row.miss_distance_km) ? `${number(row.miss_distance_km, 3)} km` : "No miss distance in event record"}</td><td>{row.maximum_scenario_pc_scientific || "No probability returned for this event"}</td><td>{plainReason(row)}</td></tr>)}</React.Fragment>)}</tbody></table></div>
+        <div className="og-table-wrap"><table className="og-table"><thead><tr><th>Object pair</th><th>Miss distance</th><th>Pc</th><th>Physics decision</th><th>AI decision</th><th>Reason</th></tr></thead><tbody>{grouped.map((group) => <React.Fragment key={group.key}><tr className="smart-filter-cloud-heading"><th colSpan={6}>{group.key} · {group.rows.length} pairs</th></tr>{group.rows.map((row) => { const physics = physicsDecision(row); const ai = row.model_status === "available" && row.model_prediction === "insignificant" ? "filter" : "retain"; return <tr key={row.event_id}><td>{pairName(row)}</td><td>{Number.isFinite(row.miss_distance_km) ? `${number(row.miss_distance_km, 3)} km` : ""}</td><td>{row.maximum_scenario_pc_scientific || ""}</td><td>{physics === "filter" ? "Filtered" : "Kept"}</td><td>{ai === "filter" ? "Filtered" : row.model_status === "available" ? "Kept" : "Kept by safety guard"}</td><td>{plainReason(row)}</td></tr>; })}</React.Fragment>)}</tbody></table></div>
         {!rows.length && <p>No event pairs in this group.</p>}
       </section>
     </>}

@@ -11,7 +11,7 @@ const getClass = (event) => getResearch(event)?.risk_assessment?.final_risk_clas
 const classAgreement = (event) => {
   const physicsClass = getClass(event);
   const aiClass = event?.collision_ai_assessment?.risk_classifier?.ai_risk_class;
-  if (!aiClass) return "AI class not returned";
+  if (!aiClass) return "AI classifier did not return a class";
   return `AI class ${aiClass} (${physicsClass === aiClass ? "agrees" : "differs"})`;
 };
 const getLogPc = (event) => getResearch(event)?.log10_pc;
@@ -60,6 +60,7 @@ export function CollisionWorkbench({ events = [], event, eventStatus = {}, scree
   const matchingGroups = searched.map((item) => groupByRep.get(item.id)).filter(Boolean)
     .filter((group) => classFilter === "All" || getClass(group.representative) === classFilter);
   const chosen = event || matchingGroups[0]?.representative || groups[0]?.representative || null;
+  const scenarioClass = uncertaintyWhatIf?.risk_assessment?.final_risk_class || null;
   const chosenGroup = chosen ? groups.find((group) => group.members.some((item) => item.id === chosen.id)) : null;
   const pcAssessment = chosen ? getResearch(chosen) : null;
   const pcView = researchPcPresentation(pcAssessment);
@@ -90,8 +91,8 @@ export function CollisionWorkbench({ events = [], event, eventStatus = {}, scree
     <section className="og-kpis" aria-label="Encounter group counts">
       {[["Encounter groups", groups.length], ["Valid groups", validCount], ["Groups with research Pc", researchPcCount], ["Medium+High groups", mediumHigh]].map(([label, value]) => <article className="og-card og-kpi" key={label}><b>{value}</b><span>{label}</span></article>)}
     </section>
-    <section className="og-work">
-      <aside className="og-card og-list" aria-label="Encounter group list">
+    <section className="og-work collision-full-width">
+      <aside className="og-card og-list collision-event-list" aria-label="Encounter group list">
         <label className="og-field">Search encounters<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, object ID, or event ID" /></label>
         <label className="og-field">Sort<select value={sort} onChange={(e) => setSort(e.target.value)}><option value="research_pc">Exact log10 Pc, descending</option><option value="tca_soonest">TCA, soonest</option><option value="miss_nearest">Miss distance, nearest</option></select></label>
         <div className="og-filter-chips" aria-label="Filter by Pc class">{["All", "High", "Medium", "Low", "Unclassified"].map((value) => <button key={value} type="button" className={`og-btn ${classFilter === value ? "primary" : ""}`} onClick={() => setClassFilter(value)}>{value}</button>)}</div>
@@ -100,21 +101,22 @@ export function CollisionWorkbench({ events = [], event, eventStatus = {}, scree
           const p = objectInfo(item.primary); const s = objectInfo(item.secondary); const shownPc = researchPcPresentation(getResearch(item));
           return <button type="button" key={item.id} className={`og-event ${chosen?.id === item.id ? "on" : ""}`} data-c={getClass(item)} onClick={() => selectEvent(item, "collision")}>
             <b>{p.name} / {s.name}</b><span className={`og-chip ${getClass(item)}`}>{getClass(item)}</span>
-            <small>Pc {compactPcText(shownPc.value)} · TCA {tcaText(item)}</small><small>Physics class: {getClass(item)} · {classAgreement(item)}</small>
+            <small>Pc {compactPcText(shownPc.value)} · TCA {tcaText(item)}</small><small>Physics class: {getResearch(item)?.risk_assessment?.final_risk_class || ""} · AI class: {item.collision_ai_assessment?.risk_classifier?.ai_risk_class || ""} ({classAgreement(item)})</small>
+            <small>Priority (heuristic): {reviewBand(item.review_priority?.category)}</small>
             {group.extraObjects > 0 ? <small>+{group.extraObjects} co-located objects</small> : null}
           </button>;
         })}
         {!matchingGroups.length ? <p>No encounter groups match these filters.</p> : null}
       </aside>
-      <div className="og-detail">
+      <div className="og-detail collision-event-detail">
         {chosen ? <>
-          <section className="og-card og-hero"><div><span className="og-sub">{primary.displayType} · {primary.id} vs {secondary.displayType} · {secondary.id}</span><h2>{primary.name} <span>×</span> {secondary.name}</h2><div className="og-pc">{pcView.value}</div><div className="og-pcsub">Research Pc · {pcView.percentage}{Number.isFinite(getLogPc(chosen)) && getLogPc(chosen) >= -12 ? ` · about ${formatProbabilityOdds(Number(pcAssessment?.estimated_pc))}` : ""}</div><span className="og-chip">Research Pc · Assumed Inputs</span> <span className={`og-chip ${getClass(chosen)}`}>{getClass(chosen)}</span></div><div className="og-ring" style={{ "--p": pcAssessment?.risk_assessment?.risk_score || 0, "--c": "var(--og-cyan)" }}><span>{shortNumber(pcAssessment?.risk_assessment?.risk_score, 1)}<small>/100</small></span></div></section>
+          <section className="og-card og-hero"><div><span className="og-sub">{primary.displayType} · {primary.id} vs {secondary.displayType} · {secondary.id}</span><h2>{primary.name} <span>×</span> {secondary.name}</h2><div className="og-pc">{pcView.value}</div><div className="og-pcsub">Research Pc · {pcView.percentage}</div><span className="og-chip">Physics class: {getResearch(chosen)?.risk_assessment?.final_risk_class || ""}</span> <span className="og-chip">AI class: {chosen.collision_ai_assessment?.risk_classifier?.ai_risk_class || ""} · {classAgreement(chosen)}</span><span className="og-chip">Priority (heuristic): {reviewBand(chosen.review_priority?.category)}</span></div><div className="og-ring" style={{ "--p": pcAssessment?.risk_assessment?.risk_score || 0, "--c": "var(--og-cyan)" }}><span>{shortNumber(pcAssessment?.risk_assessment?.risk_score, 1)}<small>/100</small></span></div></section>
           <section className="og-tiles">{numericCells.map(([label, value]) => <article className="og-tile" key={label}><small>{label}</small><b>{value}</b></article>)}</section>
           <div className="og-action-row"><button className="og-btn" onClick={() => onShowInGlobe(primary.id, chosen, screeningJobId)} type="button">Show in Globe</button><button className="og-btn primary" onClick={() => onAssessManeuver(chosen)} type="button">Assess Maneuver</button></div>
           <nav className="og-tabs" aria-label="Encounter details">{["Overview", "Uncertainty", "AI", "Report"].map((name) => <button className={`og-tab ${tab === name ? "on" : ""}`} type="button" key={name} onClick={() => setTab(name)}>{name}</button>)}</nav>
           <section className="og-card og-tab-content">
             {tab === "Overview" ? <><h3>Overview</h3><p>Research Pc ranks this group using the encounter geometry and the selected assumed covariance and HBR inputs. The score scales exact log10 Pc across the configured project window.</p><p>Review priority (rule-based): <b>{reviewBand(chosen.review_priority?.category)}</b>. This geometry band is separate from the Pc-based class.</p><details className="og-acc"><summary>Ranking details</summary><p>{collisionEventPriority(chosen).basis}</p></details></> : null}
-            {tab === "Uncertainty" ? <><h3>Uncertainty</h3><dl className="og-kv"><dt>Covariance policy</dt><dd>{pcAssessment?.covariance_policy_name || pcAssessment?.covariance_policy_id || "Policy not recorded"}</dd><dt>Encounter-plane sigmas</dt><dd>{pcAssessment?.encounter_plane_sigma_min_km ?? "No sigma value"} / {pcAssessment?.encounter_plane_sigma_max_km ?? "No sigma value"} km</dd><dt>Miss / sigma</dt><dd>{pcAssessment?.miss_sigma_ratio ?? "No ratio value"}</dd><dt>HBR and source</dt><dd>{pcAssessment?.hbr_km ?? "No HBR value in event data"} km · {pcAssessment?.hbr_source || "Source not recorded"}</dd><dt>Sensitivity range</dt><dd>{pcView.sensitivity}</dd><dt>What-if result</dt><dd>{uncertaintyWhatIfStatus === "available" ? uncertaintyWhatIf?.log10_pc ?? "No result returned" : uncertaintyWhatIfStatus === "loading" ? "Calculating" : "Select a scale to calculate"}</dd></dl><label className="og-field">Covariance scale what-if<select value={uncertaintyScale} onChange={(e) => setUncertaintyScale(e.target.value)}>{["0.5", "1", "2", "3"].map((scale) => <option key={scale} value={scale}>{scale}×</option>)}</select></label><details className="og-acc"><summary>Other Pc channels</summary><p>Foster Pc: {fosterAvailable ? formatProbabilityScientific(foster.pc) : "No compatible covariance and HBR in screening data"}</p><p>Source-reported Pc: {Number.isFinite(sourcePc) ? formatProbabilityScientific(sourcePc) : "No source-reported Pc in event data"}</p></details></> : null}
+            {tab === "Uncertainty" ? <><h3>What-if uncertainty · selected event</h3><label className="og-field">Covariance scale scenario<select value={uncertaintyScale} onChange={(e) => setUncertaintyScale(e.target.value)}>{["1", "2", "5", "10"].map((scale) => <option key={scale} value={scale}>{scale}×</option>)}</select></label><p>Scenario research Pc: {uncertaintyWhatIf?.pc_scientific || uncertaintyWhatIf?.estimated_pc_scientific || uncertaintyWhatIf?.estimated_pc || (uncertaintyWhatIfStatus === "loading" ? "Calculating" : "")}</p><p>Scenario physics class: {scenarioClass || ""}</p><p className="og-sub">Class thresholds use the configured research Pc cutoffs.</p></> : null}
             {tab === "AI" ? <><h3>AI model outputs</h3><dl className="og-kv"><dt>AI predicted log10 Pc</dt><dd>{chosen.collision_ai_assessment?.pc_surrogate?.ai_predicted_log10_pc ?? "Model did not return a Pc estimate"} · physics log10 Pc {getLogPc(chosen) ?? "No Pc log value in event data"}</dd><dt>AI class</dt><dd>{chosen.collision_ai_assessment?.risk_classifier?.ai_risk_class || "Classifier did not return a class"} · physics class {getClass(chosen)}</dd><dt>Model status</dt><dd>{chosen.collision_ai_assessment?.status || "No model status returned"}</dd></dl></> : null}
             {tab === "Report" ? <><h3>Report preview</h3><dl className="og-kv">{reports.map(([label, value]) => <div className="og-report-row" key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl><button className="og-btn" disabled={!eventReportPath} onClick={() => eventReportPath && download(eventReportPath, `${chosen.id}-report.pdf`)} type="button">PDF</button><button className="og-btn" disabled={!eventReportCsvPath} onClick={() => eventReportCsvPath && download(eventReportCsvPath, `${chosen.id}-report.csv`)} type="button">CSV</button><button className="og-btn" disabled={!eventReportJsonPath} onClick={() => eventReportJsonPath && download(eventReportJsonPath, `${chosen.id}-report.json`)} type="button">JSON</button></> : null}
           </section>

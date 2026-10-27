@@ -98,6 +98,22 @@ class ArchivedJobRestoreTests(unittest.TestCase):
         self.registry_patch.stop()
         self.temp_dir.cleanup()
 
+    def test_latest_endpoint_restores_the_newest_accepted_archive_on_first_load(self) -> None:
+        response = self.client.get("/api/conjunction-jobs/latest")
+        self.assertEqual(response.status_code, 200)
+        job = response.json()["job"]
+        self.assertEqual(job["job_id"], JOB_ID)
+        self.assertEqual(job["status"], "partial")
+        self.assertEqual(len(job["result"]["data"]), 2)
+        self.assertTrue(job["result"]["assessment_pagination"]["loaded_all"])
+        self.assertTrue(main._screening_jobs[JOB_ID]["restored_from_archive"])
+
+    def test_active_endpoint_does_not_create_a_replacement_run(self) -> None:
+        response = self.client.get("/api/conjunction-jobs/active")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()["job"])
+        self.assertEqual(main._screening_jobs, {})
+
     def test_restore_preserves_job_metadata_events_and_original_archives(self) -> None:
         response = self.client.post(f"/api/conjunction-jobs/{JOB_ID}/restore")
         self.assertEqual(response.status_code, 200)

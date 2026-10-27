@@ -31,3 +31,14 @@ Thumbs.db
 backend/ml_data/train_data.zip
 backend/exports/spacetrack-cdm-throttle.json
 .stage6_qa_preview/
+
+# Generated QA and performance artifacts
+screenshots/
+output/
+endpoint-timings.md
+performance.json
+STATUS.md
+docs/DEMO_SCRIPT.md
+scripts/final-pass-captures.mjs
+*.tmp
+*.temp

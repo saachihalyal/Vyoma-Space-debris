@@ -610,8 +610,8 @@ export default function App() {
     }, forecast.frames[0]);
   }, [forecast, forecastHours]);
 
-  const searchedSnapshot = useMemo(() => filterSnapshot(snapshot, globalSearch), [snapshot, globalSearch]);
-  const searchSuggestions = useMemo(() => buildSearchSuggestions(snapshot), [snapshot]);
+  const searchedSnapshot = snapshot;
+  const searchSuggestions = [];
   const smartSnapshot = useMemo(() => buildSmartFilterView(snapshot, platform.screeningProxies), [snapshot, platform.screeningProxies]);
   const topEvent = eventSelection.notice ? null : selectedEvent || platform.conjunctions[0] || null;
   const maneuverEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, platform.conjunctions);
@@ -812,6 +812,10 @@ export default function App() {
               onScenarioPc={handleScenarioPc}
               onUseReferenceEvent={handleUseReferenceEvent}
               onStartScreening={startScreening}
+              uncertaintyScale={uncertaintyScale}
+              setUncertaintyScale={setUncertaintyScale}
+              uncertaintyWhatIf={uncertaintyWhatIf}
+              uncertaintyWhatIfStatus={uncertaintyWhatIfStatus}
               onLoadDemo={() => handleRestoreArchivedJob("fcec3945251c45f38f215485ecbb5605")}
               demoBusy={archiveRestoreBusy}
               selectEvent={selectEvent}

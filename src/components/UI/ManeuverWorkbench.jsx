@@ -50,7 +50,7 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
   const before = result.probability_before;
   const baselinePc = before || selected?.automatic_research_pc_assessment;
   const candidates = useMemo(() => (result.physics_candidates?.candidates || result.candidates || []).filter((candidate) => candidate.delta_v_m_s !== 0).slice().sort((a, b) => (a.physics_research_pc_rank ?? 9999) - (b.physics_research_pc_rank ?? 9999)), [result]);
-  const defaultLeadSeconds = 5400;
+  const defaultLeadSeconds = 1800;
   const baselineBelowFloor = Number.isFinite(baselinePc?.log10_pc) && baselinePc.log10_pc < -30;
   const objects = [selected?.primary, selected?.secondary].filter(Boolean);
   const sortedEvents = useMemo(() => pageState.selectable_events.slice().sort((a, b) => {
@@ -63,8 +63,6 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
   const ranking = result.ml_result || result.surrogate_rank || {};
   const modelReason = ranking.reason_code === "HELD_OUT_RANKING_NOT_USEFUL_VS_BASELINE"
     ? "the ranker did not beat the physics baseline on held-out events"
-    : ranking.reason_code === "MANEUVER_CANDIDATE_CONFIGURATION_INVALID"
-      ? "the one-orbit 5,400-second lead is outside the ranker’s trained 1,800-second lead configuration; the physics ranking is used"
       : ranking.reason || ranking.score_semantics || "physics ranking used";
   const modelNote = ranking.ranking_used === false
     ? `AI ranking not used: ${modelReason}.`
@@ -79,9 +77,9 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
     <header className="og-maneuver-header"><div><span className="og-prov derived">Bounded two-body research simulation</span><h1>Maneuver</h1><p className="og-sub">Choose a conjunction and find a physics-ranked maneuver scenario.</p></div>
       {selected && <div className="report-action-group" aria-label="Maneuver report downloads">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className={`og-btn ${format === "pdf" ? "primary" : ""}`} disabled={!screeningJobId || !["available", "available_with_warning"].includes(result.status)} onClick={() => download(selectedManeuverReportPath(screeningJobId, selected.id, format), `${selected.id}-maneuver-assessment.${format}`)}>Download {format.toUpperCase()}</button>)}</div>}
     </header>
-    <div className="og-work og-maneuver-work">
+    <div className="og-maneuver-work">
       <aside className="og-card og-input-card"><span className="og-prov read">Start here</span><h2>Choose an event</h2>
-        {sortedEvents.length ? <label className="og-field"><span>Conjunction · sorted by Pc (highest first)</span><select value={selected?.id || ""} onChange={(e) => onSelectEvent(e.target.value)}>{sortedEvents.map((item) => { const pc = item.automatic_research_pc_assessment; const names = `${item.primary?.name || item.primary?.id} vs ${item.secondary?.name || item.secondary?.id}`; return <option key={item.id} value={item.id} disabled={item.physics_result?.status !== "valid"}>{names} · Pc {pcText(pc)}</option>; })}</select></label> : <p className="og-sub">No valid conjunctions are available yet. Try the demo event.</p>}
+        {sortedEvents.length ? <label className="og-field"><span>Conjunction · sorted by Pc (highest first)</span><select value={selected?.id || ""} onChange={(e) => onSelectEvent(e.target.value)}>{sortedEvents.map((item) => { const pc = item.automatic_research_pc_assessment; const names = `${item.primary?.name || item.primary?.id} vs ${item.secondary?.name || item.secondary?.id}`; return <option key={item.id} value={item.id} disabled={item.physics_result?.status !== "valid"}>{names} · Pc {pcText(pc)}</option>; })}</select></label> : <p className="og-sub">No valid physical events in the accepted screening result.</p>}
         <button type="button" className="og-btn" onClick={onLoadDemo} disabled={demoBusy}>{demoBusy ? "Loading sample conjunction…" : "Try sample conjunction"}</button>
         {selected && <form className="og-inputs" onSubmit={submit}><p className="og-sub">Default: one orbit (90 min), 0.05 m/s maximum, all RTN directions, 500 kg and 220 s Isp.</p>
           {!baselineBelowFloor && <button type="submit" className="og-btn primary" disabled={!screeningJobId || selected.physics_result?.status !== "valid" || result.status === "running"}>{result.status === "running" ? "Finding safest maneuver…" : "Find safest maneuver"}</button>}
