@@ -18,7 +18,14 @@ test("Maneuver Workbench uses the one-button flow with advanced fields collapsed
   assert.match(source, /Find safest maneuver/);
   assert.match(source, /Try NASA example \(Medium risk\)/);
   assert.match(source, /Loads the bundled NASA CARA conjunction case and its reference maneuver assessment/);
+  assert.match(source, /maneuver-search-button/);
+  assert.match(source, /Searching for safest maneuver/);
+  assert.match(source, /maneuver-request-error/);
+  assert.match(source, /Pc reduction/);
+  assert.match(source, /Burn direction/);
+  assert.match(source, /fuelCostKg/);
   assert.match(theme, /\.og-card/);
+  assert.match(theme, /\.og-maneuver\{max-width:1200px;margin-inline:auto;font-size:13px\}/);
   assert.match(app, /everyManeuverEventBelowFloor/);
   assert.match(app, /loadManeuverDemo\(\)/);
   assert.match(app, /burnLeadSeconds: 1800/);

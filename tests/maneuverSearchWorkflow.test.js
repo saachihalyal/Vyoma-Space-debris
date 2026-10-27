@@ -27,6 +27,9 @@ test("Maneuver Assessment keeps its one-button flow and bounded research default
   assert.match(api, /max_delta_v_m_s/);
   assert.match(service, /bounded golden-section maximization of miss distance/);
   assert.match(service, /_maneuver_fuel_estimate/);
+  assert.match(app, /if \(activePage !== "maneuver"\) return undefined/);
+  assert.match(app, /setManeuverRequest\(\{ eventId: maneuverAssessmentEvent\.id, screeningJobId: maneuverScreeningJobId, leadSeconds: 1800/);
+  assert.match(app, /resolveManeuverEvent\(selectedEvent, savedEvents\)/);
 });
 
 test("maneuver event chooser labels each event and Pc, ordered by Pc", () => {

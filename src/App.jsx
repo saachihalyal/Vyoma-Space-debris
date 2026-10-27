@@ -587,13 +587,18 @@ export default function App() {
   }, [activePage, everyManeuverEventBelowFloor, referenceManeuverEvent, maneuverDemoBusy, maneuverDemoAssessment]);
 
   useEffect(() => {
+    if (activePage !== "maneuver") return undefined;
     const requestGeneration = ++maneuverRequestGenerationRef.current;
     if (!maneuverAssessmentEvent?.id) {
       setManeuver(null);
       return undefined;
     }
     if (maneuverRequest?.eventId !== maneuverAssessmentEvent.id || maneuverRequest?.screeningJobId !== maneuverScreeningJobId) {
-      setManeuver({ status: "not_run", event_id: maneuverAssessmentEvent.id, screening_job_id: maneuverScreeningJobId, reason: "Configure a bounded search and select Run Maneuver Search." });
+      if (!maneuverScreeningJobId) {
+        setManeuver({ status: "unavailable", event_id: maneuverAssessmentEvent.id, screening_job_id: null, reason: "No accepted screening job is attached to this event." });
+        return undefined;
+      }
+      setManeuverRequest({ eventId: maneuverAssessmentEvent.id, screeningJobId: maneuverScreeningJobId, leadSeconds: 1800, maxDeltaVMs: 0.05, rtnDirection: "all", initialMassKg: 500, specificImpulseS: 220, covarianceScale: 1 });
       return undefined;
     }
     const controller = new AbortController();
@@ -631,7 +636,7 @@ export default function App() {
     
     fetchManeuver();
     return () => controller.abort();
-  }, [maneuverAssessmentEvent, maneuverScreeningJobId, maneuverRequest]);
+  }, [activePage, maneuverAssessmentEvent, maneuverScreeningJobId, maneuverRequest]);
 
   const activeFrame = useMemo(() => {
     if (!forecast?.frames?.length) return null;
@@ -644,7 +649,7 @@ export default function App() {
   const searchSuggestions = [];
   const smartSnapshot = useMemo(() => buildSmartFilterView(snapshot, platform.screeningProxies), [snapshot, platform.screeningProxies]);
   const topEvent = eventSelection.notice ? null : selectedEvent || platform.conjunctions[0] || null;
-  const maneuverEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, platform.conjunctions);
+  const maneuverEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, savedEvents);
   const highPriority = platform.screeningProxies.filter((event) => ["Critical", "High"].includes(event.risk_level));
   const screeningJobSelection = useMemo(
     () => getScreeningJobSelection(platform, archivedJobSelection),
