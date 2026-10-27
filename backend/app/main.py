@@ -142,7 +142,16 @@ def _latest_accepted_archive() -> dict | None:
             accepted.append(archived)
         except (HTTPException, OSError, ValueError, json.JSONDecodeError):
             continue
-    return max(accepted, key=lambda job: job.get("finished_at") or job.get("created_at") or "", default=None)
+    def rank(job: dict) -> tuple[int, float]:
+        records = job.get("result", {}).get("data", [])
+        count = sum(isinstance(record, dict) and record.get("physics_result", {}).get("status") == "valid" and record.get("physics_result", {}).get("tca_status") == "valid" for record in records)
+        stamp = job.get("finished_at") or job.get("created_at")
+        try:
+            timestamp = datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+        except (AttributeError, TypeError, ValueError, OverflowError):
+            timestamp = float("-inf")
+        return count, timestamp
+    return max(accepted, key=rank, default=None)
 
 
 @app.on_event("startup")
@@ -891,7 +900,7 @@ def _validate_archived_screening_job(job_id: str, archived: object) -> dict:
         horizon = configuration["horizon_hours"]
         sample_step = configuration["sample_step_seconds"]
         threshold = configuration["screening_threshold_km"]
-        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 200:
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 400:
             raise ValueError
         if isinstance(horizon, bool) or not isinstance(horizon, (int, float)) or not 0.01 <= horizon <= 72:
             raise ValueError
@@ -1109,11 +1118,20 @@ async def export_screening_job_smart_filter_csv(job_id: str) -> Response:
 
 @app.get("/api/conjunction-jobs/latest")
 async def get_latest_conjunction_job() -> dict:
-    accepted = max(
-        (job for job in _screening_jobs.values() if job.get("status") in {"complete", "partial"} and isinstance(job.get("result"), dict)),
-        key=lambda job: job.get("finished_at") or job.get("created_at") or "",
-        default=None,
-    )
+    archived = _latest_accepted_archive()
+    candidates = [job for job in _screening_jobs.values() if job.get("status") in {"complete", "partial"} and isinstance(job.get("result"), dict)]
+    if archived and all(job.get("job_id") != archived.get("job_id") for job in candidates):
+        candidates.append(archived)
+    def rank(job: dict) -> tuple[int, float]:
+        records = job.get("result", {}).get("data", [])
+        count = sum(isinstance(record, dict) and record.get("physics_result", {}).get("status") == "valid" and record.get("physics_result", {}).get("tca_status") == "valid" for record in records)
+        stamp = job.get("finished_at") or job.get("created_at")
+        try:
+            timestamp = datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+        except (AttributeError, TypeError, ValueError, OverflowError):
+            timestamp = float("-inf")
+        return count, timestamp
+    accepted = max(candidates, key=rank, default=None)
     if accepted is None:
         archived = _latest_accepted_archive()
         if archived:
@@ -1125,6 +1143,12 @@ async def get_latest_conjunction_job() -> dict:
             accepted = restored
     if accepted is None:
         return {"job": None}
+    if archived and accepted.get("job_id") == archived.get("job_id") and accepted.get("job_id") not in _screening_jobs:
+        accepted = copy.deepcopy(archived)
+        _backfill_archived_research_pc(accepted["result"])
+        accepted["restored_from_archive"] = True
+        accepted["archived"] = True
+        _screening_jobs[accepted["job_id"]] = accepted
     job_id = accepted["job_id"]
     payload = copy.deepcopy({key: value for key, value in accepted.items() if key not in {"task", "created_monotonic"}})
     if isinstance(payload.get("result"), dict):

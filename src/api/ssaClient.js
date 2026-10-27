@@ -338,6 +338,7 @@ async function pollExistingConjunctionJob(jobId, onStatus, { pollTimeoutMs, poll
         result_status: state.result.result_status || (state.result.data.length ? "valid_non_empty" : "valid_empty"),
         completion_status: state.status,
         job_id: state.job_id,
+        run_date: state.finished_at || state.created_at || null,
       };
     }
   } catch (error) {
@@ -543,19 +544,21 @@ export async function calculateScenarioPc({ screeningJobId, eventId, covarianceP
   );
 }
 
-export async function calculateResearchPcWhatIf({ screeningJobId, eventId, covarianceScale }) {
+export async function calculateResearchPcWhatIf({ screeningJobId, eventId, covarianceScale, signal }) {
   return postEventInput(
     `/api/conjunction-jobs/${encodeURIComponent(screeningJobId)}/events/${encodeURIComponent(eventId)}/research-pc-scenario`,
     { covariance_policy: "tle_age_baseline", covariance_scale },
+    signal,
   );
 }
 
-async function postEventInput(path, body) {
+async function postEventInput(path, body, signal) {
   if (!path.includes("/undefined/") && !path.includes("/null/")) {
     const response = await fetch(`${API_BASE}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal,
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok) throw new Error(responseErrorMessage(payload, `Collision probability input returned HTTP ${response.status}`));

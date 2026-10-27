@@ -162,6 +162,14 @@ export function finishScreeningAttempt(previous, runId, payload, physicalEvents)
 
   if (!accepted) return { ...previous, screeningAttempt: attempt };
 
+  const validCount = (events) => (Array.isArray(events) ? events : []).filter((event) =>
+    event?.result_kind === "physics_assessment"
+      && event?.physics_result?.status === "valid"
+      && event?.physics_result?.tca_status === "valid").length;
+  if (validCount(previous.conjunctions) > validCount(physicalEvents)) {
+    return { ...previous, screeningAttempt: attempt };
+  }
+
   return {
     ...previous,
     conjunctions: physicalEvents,
@@ -176,6 +184,7 @@ export function finishScreeningAttempt(previous, runId, payload, physicalEvents)
       ml_model: payload.ml_model || null,
       screening: payload.screening || null,
       source_summary: payload.source_summary || null,
+      run_date: payload.run_date || payload.finished_at || payload.created_at || null,
       performance: payload.performance || null,
       structurally_invalid_excluded_count: payload.structurally_invalid_excluded_count ?? 0,
     },

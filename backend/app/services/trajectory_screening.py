@@ -429,6 +429,16 @@ def screen_tle_records(
             semi_major_axis_km * (1.0 - eccentricity) - 6378.135,
             semi_major_axis_km * (1.0 + eccentricity) - 6378.135,
         )
+    # Give scarce candidate-pair slots first to the requested 700–1000 km
+    # shells and debris/rocket-body groups. The broad-phase and physics are
+    # unchanged; this only makes deterministic track traversal priority-aware.
+    def pair_budget_priority(track: _Track) -> tuple[int, str]:
+        radial_range = track.altitude_range_km or (math.inf, -math.inf)
+        target_shell = radial_range[1] >= 700.0 and radial_range[0] <= 1000.0
+        debris_group = track.obj.category in {"debris", "rocket_body"}
+        tier = 0 if target_shell and debris_group else 1 if target_shell else 2 if debris_group else 3
+        return tier, track.obj.id
+    tracks.sort(key=pair_budget_priority)
     stage_timings["track_preparation_seconds"] = time.perf_counter() - stage_started
     summary = {
         "status": "partial" if sample_epoch_cap_reached else "unavailable" if not tracks else "valid",
@@ -550,7 +560,7 @@ def screen_tle_records(
                             radial_gap = max(first_range[0] - second_range[1], second_range[0] - first_range[1], 0.0)
                             if radial_gap > screening_threshold_km + 100.0:
                                 continue
-                        pair = (j, i)  # tracks are sorted by catalog ID.
+                        pair = (j, i)
                         tracker = candidate_trackers.get(pair)
                         if tracker is None:
                             if len(candidate_trackers) >= max_candidate_pairs:

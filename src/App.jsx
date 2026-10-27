@@ -154,6 +154,7 @@ export default function App() {
   const [uncertaintyScale, setUncertaintyScale] = useState(1);
   const [uncertaintyWhatIf, setUncertaintyWhatIf] = useState(null);
   const [uncertaintyWhatIfStatus, setUncertaintyWhatIfStatus] = useState("idle");
+  const [scenarioClassCounts, setScenarioClassCounts] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
   const lastCatalogSnapshotRef = useRef(null);
   const [forecast, setForecast] = useState(null);
@@ -424,7 +425,7 @@ export default function App() {
           const records = latestJob.result.data;
           const validated = validateAndFilterEvents(records);
           const physicalEvents = validated.filter((event) => event.result_kind === "physics_assessment");
-          const result = { ...latestJob.result, api_status: "available", job_id: latestJob.job_id, completion_status: latestJob.status };
+          const result = { ...latestJob.result, api_status: "available", job_id: latestJob.job_id, completion_status: latestJob.status, run_date: latestJob.finished_at || latestJob.created_at };
           saveActiveScreeningJobId(latestJob.job_id);
           saveAcceptedScreeningCache(result, physicalEvents);
           setPlatform((previous) => finishScreeningAttempt({ ...previous, screeningAttempt: null }, "startup-recovery", result, physicalEvents));
@@ -766,6 +767,38 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    const events = (platform.conjunctions || []).filter((event) => event?.result_kind === "physics_assessment"
+      && event?.physics_result?.status === "valid" && event?.physics_result?.tca_status === "valid" && event?.id);
+    const jobId = platform.conjunctionStatus?.job_id;
+    if (!jobId || events.length === 0) { setScenarioClassCounts({ status: "empty", counts: null, evaluated: 0, total: events.length, highestPcLog10: null }); return undefined; }
+    const controller = new AbortController();
+    setScenarioClassCounts({ status: "loading", counts: null, evaluated: 0, total: events.length, highestPcLog10: null });
+    (async () => {
+      const counts = { High: 0, Medium: 0, Low: 0, Unclassified: 0 };
+      let evaluated = 0;
+      let highestPcLog10 = null;
+      for (let offset = 0; offset < events.length; offset += 4) {
+        const batch = events.slice(offset, offset + 4);
+        const results = await Promise.allSettled(batch.map((event) => calculateResearchPcWhatIf({
+          screeningJobId: jobId, eventId: event.id, covarianceScale: Number(uncertaintyScale), signal: controller.signal,
+        })));
+        results.forEach((result) => {
+          if (result.status !== "fulfilled" || result.value?.success !== true) return;
+          const assessment = result.value?.data;
+          const riskClass = assessment?.risk_assessment?.final_risk_class;
+          counts[Object.hasOwn(counts, riskClass) ? riskClass : "Unclassified"] += 1;
+          const logPc = assessment?.log10_pc;
+          if (Number.isFinite(logPc)) highestPcLog10 = highestPcLog10 == null ? logPc : Math.max(highestPcLog10, logPc);
+          evaluated += 1;
+        });
+        if (!controller.signal.aborted) setScenarioClassCounts({ status: "loading", counts: { ...counts }, evaluated, total: events.length, highestPcLog10 });
+      }
+      if (!controller.signal.aborted) setScenarioClassCounts({ status: "complete", counts, evaluated, total: events.length, highestPcLog10 });
+    })();
+    return () => controller.abort();
+  }, [platform.conjunctionStatus?.job_id, platform.conjunctions, uncertaintyScale]);
+
   return (
     <div className="platform-shell">
       <Sidebar activePage={activePage} navigate={navigate} health={platform.health} />
@@ -783,7 +816,7 @@ export default function App() {
         />
         <main className="content-main"><Suspense fallback={<div className="og-card loading-skeleton" role="status" aria-label="Loading page"><span /><span /><span /></div>}><PageErrorBoundary key={activePage}>
           {activePage === "home" ? (
-            <HomePage snapshot={snapshot} platform={platform} maneuver={maneuver} navigate={navigate} loading={loading} />
+            <HomePage snapshot={snapshot} platform={platform} maneuver={maneuver} navigate={navigate} loading={loading} uncertaintyScale={uncertaintyScale} scenarioClassCounts={scenarioClassCounts} />
           ) : null}
           {activePage === "visualization" ? (
             <VisualizationPage
@@ -833,6 +866,7 @@ export default function App() {
               setUncertaintyScale={setUncertaintyScale}
               uncertaintyWhatIf={uncertaintyWhatIf}
               uncertaintyWhatIfStatus={uncertaintyWhatIfStatus}
+              scenarioClassCounts={scenarioClassCounts}
               onLoadDemo={() => handleRestoreArchivedJob("fcec3945251c45f38f215485ecbb5605")}
               demoBusy={archiveRestoreBusy}
               selectEvent={selectEvent}
@@ -1013,7 +1047,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   </section>;
 }
 
-export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe }) {
+export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [eventSort, setEventSort] = useState("research_pc");
@@ -1070,7 +1104,7 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
     eventReportCsvPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null}
     eventReportJsonPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "json") : null}
     onImportCdm={onImportCdm} onScenarioPc={onScenarioPc} onUseReferenceEvent={onUseReferenceEvent}
-    uncertaintyScale={uncertaintyScale} setUncertaintyScale={setUncertaintyScale} uncertaintyWhatIf={uncertaintyWhatIf} uncertaintyWhatIfStatus={uncertaintyWhatIfStatus}
+    uncertaintyScale={uncertaintyScale} setUncertaintyScale={setUncertaintyScale} uncertaintyWhatIf={uncertaintyWhatIf} uncertaintyWhatIfStatus={uncertaintyWhatIfStatus} scenarioClassCounts={scenarioClassCounts}
     onStartScreening={onStartScreening}
     screeningControls={<CollisionScreeningControls eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} onStartScreening={onStartScreening} />}
     diagnostics={<details className="og-acc"><summary>Screening diagnostics</summary><ScreeningRunSummary eventStatus={eventStatus} attemptStatus={attemptStatus} screeningStatus={screeningStatus} sourceSummary={sourceSummary} sourceState={sourceState} eventCount={(events || []).length} returnedInvalidCount={(events || []).filter((item) => item.physics_result?.status === "invalid").length} assessmentEvents={events || []} /></details>}
