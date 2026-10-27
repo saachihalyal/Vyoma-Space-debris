@@ -54,7 +54,8 @@ test("responsive conjunction cards separate Pc provenance, label rule-based revi
 });
 
 test("selected conjunction details keep Pc channels, AI queue and ranking basis compact while tools stay expandable", () => {
-  const app = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8");
+  const app = readFileSync(new URL("../src/components/UI/CollisionWorkbench.jsx", import.meta.url), "utf8")
+    + readFileSync(new URL("../src/components/UI/CollisionPriorityTable.js", import.meta.url), "utf8");
   assert.match(app, /covariance_policy_name/);
   assert.match(app, /Other Pc channels/);
   assert.match(app, /Ranking details/);

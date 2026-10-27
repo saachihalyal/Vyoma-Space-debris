@@ -17,6 +17,7 @@ const baseSnapshot = {
 
 test("physical Smart Filter workbench is wired to API decisions and key science labels", () => {
   const source = readFileSync(new URL("../src/components/UI/SmartFilterWorkbench.jsx", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../src/api/ssaClient.js", import.meta.url), "utf8");
   assert.match(source, /getLatestConjunctionJob\(\{ signal: controller\.signal \}\)/);
   assert.match(source, /getPhysicalSmartFilter\(job\.job_id/);
   assert.match(source, /const jobId = acceptedJob\?\.job_id/);
@@ -41,6 +42,7 @@ test("physical Smart Filter workbench is wired to API decisions and key science 
   assert.doesNotMatch(source, /Model confidence|Safety guard<|event_id\}<small>/);
   assert.doesNotMatch(source, /Review band/);
   assert.doesNotMatch(source, /filteredRate/);
+  assert.match(client, /\/smart-filter`, \{ signal \}, \{ timeoutMs: 60_000, retries: 1 \}/);
 });
 
 test("visualization uses local hover details, typed colors, full-width matrix, and no Heat Map route", () => {

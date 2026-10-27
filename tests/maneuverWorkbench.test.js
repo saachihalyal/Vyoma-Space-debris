@@ -21,11 +21,11 @@ test("Maneuver Workbench uses the one-button flow with advanced fields collapsed
   assert.match(app, /everyManeuverEventBelowFloor/);
   assert.match(app, /loadManeuverDemo\(\)/);
   assert.match(app, /burnLeadSeconds: 1800/);
-  assert.match(reference, /Sample conjunction \(NASA CARA\)/);
+  assert.match(source, /Sample conjunction \(NASA CARA\)/);
 });
 
 test("Maneuver keeps before/after, action metrics, burn window, options, reports, and ranking status", () => {
-  for (const phrase of ["Before", "After", "Fuel cost", "Maneuver options", "Show all", "ranking.ranking_used === false", "Burn window", "Physics rank", "AI rank"]) {
+  for (const phrase of ["Before", "After", "Fuel estimate", "Maneuver options", "Show all", "ranking.ranking_used === false", "Burn window", "Physics rank", "AI rank"]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }
   assert.match(source, /selectedManeuverReportPath/);
@@ -35,4 +35,8 @@ test("Maneuver keeps before/after, action metrics, burn window, options, reports
   assert.match(source, /No maneuver needed - collision probability is negligible/);
   assert.match(reference, /AI ranking not used: this standalone CDM comparison evaluates one specified burn/);
   assert.doesNotMatch(source, /log10 Pc = -\d{2,}/);
+  assert.match(source, /Pc can fall even if the miss distance shrinks, because uncertainty is larger in one direction\./);
+  assert.match(source, /maneuver-recommended-badge">Recommended<\/span>/);
+  assert.doesNotMatch(source, /isRecommended \? " · Recommended"/);
+  assert.match(source, /\["available", "available_with_warning"\]\.includes\(result\.status\) \? "Assessment complete"/);
 });

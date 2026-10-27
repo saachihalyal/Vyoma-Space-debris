@@ -36,7 +36,7 @@ test("Collision restores prioritized events and separate physics and AI assessme
   assert.match(collisionWorkbenchSource, /Class thresholds follow the configured research Pc cutoffs/);
   assert.match(collisionWorkbenchSource, /Research Pc/);
   assert.match(collisionWorkbenchSource, /const classAgreement =/);
-  assert.match(collisionWorkbenchSource, /Physics class: \{getClass\(item\)\} · \{classAgreement\(item\)\}/);
+  assert.match(collisionWorkbenchSource, /Physics class: \{getResearch\(item\)\?\.risk_assessment\?\.final_risk_class \|\| ""\}.*AI class:/);
   assert.match(collisionWorkbenchSource, /physicsClass === aiClass \? "agrees" : "differs"/);
   assert.match(collisionWorkbenchSource, /Ranking details/);
   assert.match(collisionWorkbenchSource, /onAssessManeuver\(chosen\)/);

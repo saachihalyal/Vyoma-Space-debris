@@ -393,7 +393,7 @@ export async function getPhysicalSmartFilter(screeningJobId, { signal } = {}) {
   if (typeof screeningJobId !== "string" || !/^[a-fA-F0-9]{32}$/.test(screeningJobId.trim())) {
     return { status: "unavailable", reason_code: "COMPLETED_SCREENING_JOB_REQUIRED", decisions: [], evaluation: null };
   }
-  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter`, { signal });
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/${encodeURIComponent(screeningJobId.trim())}/smart-filter`, { signal }, { timeoutMs: 60_000, retries: 1 });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(responseErrorMessage(payload, `Smart Filter evaluation returned HTTP ${response.status}`));
   if (payload?.result_type !== "physics_smart_filter" || !Array.isArray(payload?.decisions) || !payload?.evaluation) {

@@ -46,7 +46,7 @@ test("physics risk presentation states the Pc channel controlling the final clas
   });
   assert.equal(display.value, "35.2 / 100 · Medium · based on research_pc");
   assert.match(display.basis, /orion-physics-pc-risk-v1/);
-  assert.equal(physicsPcRiskPresentation({ status: "unavailable" }).value, "Unavailable · no class is inferred without a valid physics Pc");
+  assert.equal(physicsPcRiskPresentation({ status: "unavailable" }).value, "No class without a valid physics Pc");
 });
 
 test("TLE-only Foster Pc unavailability explains the missing covariance and HBR inputs", () => {
@@ -56,7 +56,7 @@ test("TLE-only Foster Pc unavailability explains the missing covariance and HBR 
     physics_result: { status: "valid" },
     collision_probability: { status: "unavailable", reason_codes: ["NO_COVARIANCE", "HBR_UNAVAILABLE"] },
   });
-  assert.match(status, /Unavailable: missing event-matched covariance for both objects and a sourced hard-body radius/);
+  assert.match(status, /No Foster Pc: missing event-matched covariance for both objects and a sourced hard-body radius\./);
 });
 
 test("unevaluable research Pc shows a human explanation and the machine reason code", () => {

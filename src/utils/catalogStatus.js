@@ -1,6 +1,7 @@
 export function sourceLabel(status, cacheAgeSeconds = null) {
   if (status === "live") return "Live";
   if (status === "stale_live" || status === "stale") {
+    if (cacheAgeSeconds == null) return "Catalog cached";
     const age = Number(cacheAgeSeconds);
     if (!Number.isFinite(age) || age < 0) return "Catalog cached";
     const minutes = Math.floor(age / 60);

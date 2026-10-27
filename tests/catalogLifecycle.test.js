@@ -722,7 +722,8 @@ test("reconciliation keeps the exact encounter when the same object pair has mul
     result_kind: "physics_assessment",
     primary: { id: "A" },
     secondary: { id: "B" },
-    physics_result: { status: "valid", tca: { value: "2030-01-01T00:00:00.000000+00:00" } },
+    physics_result: { status: "valid", tca_status: "valid", tca: { value: "2030-01-01T00:00:00.000000+00:00" } },
+    automatic_research_pc_assessment: { log10_pc: -8 },
   };
   const samePairDifferentTca = {
     ...selected,
@@ -794,7 +795,7 @@ test("accepted job, exact event selection, and maneuver request stay associated"
   const jobBOtherTca = {
     ...jobBExactEvent,
     id: "CA-same-pair-other-tca",
-    physics_result: { status: "valid", tca: { value: "2030-01-01T08:00:00.000000+00:00" } },
+    physics_result: { status: "valid", tca_status: "valid", tca: { value: "2030-01-01T08:00:00.000000+00:00" } },
   };
   const prior = {
     conjunctions: [jobAEvent],

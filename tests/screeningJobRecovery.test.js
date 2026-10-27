@@ -33,18 +33,24 @@ test("reload resumes polling the same running job until its result completes", a
   }
 });
 
-test("latest accepted job API supports abortable Smart Filter lookup", async () => {
+test("latest accepted job lookup propagates caller abort through its timeout controller", async () => {
   const { getLatestConjunctionJob } = await import("../src/api/ssaClient.js");
   const originalFetch = globalThis.fetch;
   const controller = new AbortController();
+  let requestSignal;
   globalThis.fetch = async (url, options = {}) => {
     assert.equal(String(url), `${API_BASE}/api/conjunction-jobs/latest`);
-    assert.equal(options.signal, controller.signal);
-    return new Response(JSON.stringify({ job: { job_id: "backend-latest", status: "complete", result: { data: [] } } }), { status: 200 });
+    requestSignal = options.signal;
+    return new Promise((resolve, reject) => options.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true }));
   };
   try {
-    const job = await getLatestConjunctionJob({ signal: controller.signal });
-    assert.equal(job.job_id, "backend-latest");
+    const pending = getLatestConjunctionJob({ signal: controller.signal });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(requestSignal instanceof AbortSignal);
+    assert.notEqual(requestSignal, controller.signal);
+    controller.abort();
+    await assert.rejects(pending, { name: "AbortError" });
+    assert.equal(requestSignal.aborted, true);
   } finally {
     globalThis.fetch = originalFetch;
   }

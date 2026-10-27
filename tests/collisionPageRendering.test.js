@@ -29,4 +29,14 @@ test("App declares what-if state and places an error boundary around the active 
   assert.match(app, /<PageErrorBoundary key=\{activePage\}>/);
   assert.match(app, /This page hit an error/);
   assert.match(app, /window\.location\.reload\(\)/);
+  assert.match(app, /componentDidCatch\(error, info\)/);
+  assert.match(app, /<details><summary>Details<\/summary>/);
+  assert.match(app, /this\.state\.error\?\.message/);
+  assert.match(app, /this\.state\.componentStack/);
+  const collisionPage = app.slice(app.indexOf("export function CollisionPage"), app.indexOf("export function ManeuverPage"));
+  assert.doesNotMatch(collisionPage, /calculateResearchPcWhatIf/);
+  assert.match(app, /if \(Number\(uncertaintyScale\) === 1\)/);
+  assert.match(app, /scenarioClassCacheRef\.current\.set\(scenarioKey, result\)/);
+  assert.match(app, /await calculateResearchPcWhatIf\(/);
+  assert.match(app, /await calculateResearchPcWhatIf\(\{ screeningJobId: jobId, eventId: event\.id, covarianceScale: Number\(uncertaintyScale\), signal: controller\.signal \}\)/);
 });

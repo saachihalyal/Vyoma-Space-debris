@@ -27,6 +27,7 @@ export function resolveManeuverEvent(selectedEvent, events) {
   const selectable = selectableManeuverEvents(events);
   if (selectedEvent) {
     const matched = selectable.find((item) => item.id === selectedEvent.id) || null;
+    if (!matched) return null;
     if (matched?.physics_result?.status === "invalid") return matched;
     if (matched && Number.isFinite(matched.automatic_research_pc_assessment?.log10_pc)
       && matched.automatic_research_pc_assessment.log10_pc >= -30) return matched;

@@ -124,6 +124,7 @@ _assessment_results: dict[str, dict] = {}
 _assessment_results_lock = threading.Lock()
 _smart_filter_results: dict[str, dict] = {}
 _smart_filter_results_lock = threading.Lock()
+_smart_filter_eval_locks: dict[str, asyncio.Lock] = {}
 SCREENING_EXPORT_ARCHIVE_DIR = Path(__file__).resolve().parent.parent / "exports"
 NASA_CARA_PC_REFERENCE_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "nasa_cara_pc_reference.cdm"
 NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/master/DataFiles/PcTestCaseCDMs/000020580_conj_000002017_20230613_001923_20230608_063715.cdm"
@@ -1051,11 +1052,18 @@ def _screening_job_for_smart_filter(job_id: str) -> dict:
 @app.get("/api/conjunction-jobs/{job_id}/smart-filter")
 async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
     policy = filter_policy()
-    cache_key = f"{job_id}|{policy['significant_pc_threshold']}|{policy['safety_miss_distance_threshold_km']}"
+    cache_key = job_id
     with _smart_filter_results_lock:
-        cached = _smart_filter_results.get(cache_key)
-    if cached is not None:
-        return copy.deepcopy(cached)
+        evaluation_lock = _smart_filter_eval_locks.setdefault(cache_key, asyncio.Lock())
+    async with evaluation_lock:
+        with _smart_filter_results_lock:
+            cached = _smart_filter_results.get(cache_key)
+        if cached is not None:
+            return copy.deepcopy(cached)
+        return await _compute_screening_job_smart_filter(job_id, policy, cache_key)
+
+
+async def _compute_screening_job_smart_filter(job_id: str, policy: dict, cache_key: str) -> dict:
     job = _screening_job_for_smart_filter(job_id)
     records = job["result"].get("data") or []
     events: list[ConjunctionAssessmentEvent] = []

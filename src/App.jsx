@@ -152,9 +152,8 @@ const NAV = [
 export default function App() {
   const [activePage, setActivePage] = useState("home");
   const [uncertaintyScale, setUncertaintyScale] = useState(1);
-  const [uncertaintyWhatIf, setUncertaintyWhatIf] = useState(null);
-  const [uncertaintyWhatIfStatus, setUncertaintyWhatIfStatus] = useState("idle");
   const [scenarioClassCounts, setScenarioClassCounts] = useState(null);
+  const scenarioClassCacheRef = useRef(new Map());
   const [snapshot, setSnapshot] = useState(null);
   const lastCatalogSnapshotRef = useRef(null);
   const [forecast, setForecast] = useState(null);
@@ -771,30 +770,53 @@ export default function App() {
     const events = (platform.conjunctions || []).filter((event) => event?.result_kind === "physics_assessment"
       && event?.physics_result?.status === "valid" && event?.physics_result?.tca_status === "valid" && event?.id);
     const jobId = platform.conjunctionStatus?.job_id;
-    if (!jobId || events.length === 0) { setScenarioClassCounts({ status: "empty", counts: null, evaluated: 0, total: events.length, highestPcLog10: null }); return undefined; }
+    if (!jobId || events.length === 0) { setScenarioClassCounts({ status: "empty", counts: null, evaluated: 0, total: events.length, highestPcLog10: null, assessments: {} }); return undefined; }
     const controller = new AbortController();
-    setScenarioClassCounts({ status: "loading", counts: null, evaluated: 0, total: events.length, highestPcLog10: null });
+    const scenarioKey = `${jobId}|${uncertaintyScale}`;
+    if (Number(uncertaintyScale) === 1) {
+      const counts = { High: 0, Medium: 0, Low: 0, Unclassified: 0 };
+      const assessments = {};
+      let highestPcLog10 = null;
+      for (const event of events) {
+        const assessment = event.automatic_research_pc_assessment;
+        const riskClass = assessment?.risk_assessment?.final_risk_class;
+        counts[Object.hasOwn(counts, riskClass) ? riskClass : "Unclassified"] += 1;
+        assessments[event.id] = { ...assessment, success: Boolean(assessment), data: assessment };
+        if (Number.isFinite(assessment?.log10_pc)) highestPcLog10 = highestPcLog10 == null ? assessment.log10_pc : Math.max(highestPcLog10, assessment.log10_pc);
+      }
+      setScenarioClassCounts({ status: "complete", counts, evaluated: events.length, total: events.length, highestPcLog10, assessments });
+      return () => controller.abort();
+    }
+    const cached = scenarioClassCacheRef.current.get(scenarioKey);
+    if (cached) { setScenarioClassCounts(cached); return () => controller.abort(); }
+    setScenarioClassCounts({ status: "loading", counts: { High: 0, Medium: 0, Low: 0, Unclassified: 0 }, evaluated: 0, total: events.length, highestPcLog10: null, assessments: {} });
     (async () => {
       const counts = { High: 0, Medium: 0, Low: 0, Unclassified: 0 };
+      const assessments = {};
       let evaluated = 0;
       let highestPcLog10 = null;
-      for (let offset = 0; offset < events.length; offset += 4) {
-        const batch = events.slice(offset, offset + 4);
-        const results = await Promise.allSettled(batch.map((event) => calculateResearchPcWhatIf({
-          screeningJobId: jobId, eventId: event.id, covarianceScale: Number(uncertaintyScale), signal: controller.signal,
-        })));
-        results.forEach((result) => {
-          if (result.status !== "fulfilled" || result.value?.success !== true) return;
-          const assessment = result.value?.data;
-          const riskClass = assessment?.risk_assessment?.final_risk_class;
-          counts[Object.hasOwn(counts, riskClass) ? riskClass : "Unclassified"] += 1;
-          const logPc = assessment?.log10_pc;
-          if (Number.isFinite(logPc)) highestPcLog10 = highestPcLog10 == null ? logPc : Math.max(highestPcLog10, logPc);
-          evaluated += 1;
-        });
-        if (!controller.signal.aborted) setScenarioClassCounts({ status: "loading", counts: { ...counts }, evaluated, total: events.length, highestPcLog10 });
+      for (const event of events) {
+        if (controller.signal.aborted) return;
+        try {
+          const result = await calculateResearchPcWhatIf({ screeningJobId: jobId, eventId: event.id, covarianceScale: Number(uncertaintyScale), signal: controller.signal });
+          if (result?.success === true) {
+            const assessment = result.data;
+            assessments[event.id] = { ...assessment, success: true, data: assessment };
+            const riskClass = assessment?.risk_assessment?.final_risk_class;
+            counts[Object.hasOwn(counts, riskClass) ? riskClass : "Unclassified"] += 1;
+            if (Number.isFinite(assessment?.log10_pc)) highestPcLog10 = highestPcLog10 == null ? assessment.log10_pc : Math.max(highestPcLog10, assessment.log10_pc);
+            evaluated += 1;
+          }
+        } catch (error) {
+          if (error?.name === "AbortError" || controller.signal.aborted) return;
+        }
+        setScenarioClassCounts({ status: "loading", counts: { ...counts }, evaluated, total: events.length, highestPcLog10, assessments: { ...assessments } });
       }
-      if (!controller.signal.aborted) setScenarioClassCounts({ status: "complete", counts, evaluated, total: events.length, highestPcLog10 });
+      if (!controller.signal.aborted) {
+        const result = { status: "complete", counts, evaluated, total: events.length, highestPcLog10, assessments };
+        scenarioClassCacheRef.current.set(scenarioKey, result);
+        setScenarioClassCounts(result);
+      }
     })();
     return () => controller.abort();
   }, [platform.conjunctionStatus?.job_id, platform.conjunctions, uncertaintyScale]);
@@ -864,8 +886,8 @@ export default function App() {
               onStartScreening={startScreening}
               uncertaintyScale={uncertaintyScale}
               setUncertaintyScale={setUncertaintyScale}
-              uncertaintyWhatIf={uncertaintyWhatIf}
-              uncertaintyWhatIfStatus={uncertaintyWhatIfStatus}
+              uncertaintyWhatIf={scenarioClassCounts?.assessments?.[selectedEvent?.id] || null}
+              uncertaintyWhatIfStatus={scenarioClassCounts?.status || "idle"}
               scenarioClassCounts={scenarioClassCounts}
               onLoadDemo={() => handleRestoreArchivedJob("fcec3945251c45f38f215485ecbb5605")}
               demoBusy={archiveRestoreBusy}
@@ -902,15 +924,20 @@ export default function App() {
 }
 
 class PageErrorBoundary extends React.Component {
-  state = { hasError: false };
+  state = { hasError: false, error: null, componentStack: "" };
 
   static getDerivedStateFromError() {
     return { hasError: true };
   }
 
+  componentDidCatch(error, info) {
+    this.setState({ error, componentStack: info?.componentStack || "" });
+    console.error("Page render failed", error, info?.componentStack || "");
+  }
+
   render() {
     if (this.state.hasError) {
-      return <section className="og-card" role="alert"><h1>This page hit an error</h1><button type="button" className="og-btn primary" onClick={() => window.location.reload()}>Reload</button></section>;
+      return <section className="og-card" role="alert"><h1>This page hit an error</h1><button type="button" className="og-btn primary" onClick={() => window.location.reload()}>Reload</button><details><summary>Details</summary><p>{this.state.error?.message || String(this.state.error || "Unknown render error")}</p><pre>{this.state.componentStack}</pre></details></section>;
     }
     return this.props.children;
   }
@@ -1078,16 +1105,6 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
     setScenarioAssumptionsText("");
     setPcInputMessage("");
   }, [event?.id]);
-  useEffect(() => {
-    let active = true;
-    setUncertaintyWhatIf(null);
-    if (!event?.id || !screeningJobId) { setUncertaintyWhatIfStatus("unavailable"); return () => { active = false; }; }
-    setUncertaintyWhatIfStatus("loading");
-    calculateResearchPcWhatIf({ screeningJobId, eventId: event.id, covarianceScale: Number(uncertaintyScale) })
-      .then((response) => { if (active) { setUncertaintyWhatIf(response?.data || null); setUncertaintyWhatIfStatus("available"); } })
-      .catch(() => { if (active) { setUncertaintyWhatIf(null); setUncertaintyWhatIfStatus("error"); } });
-    return () => { active = false; };
-  }, [event?.id, screeningJobId, uncertaintyScale]);
   const filteredEvents = filterCollisionEvents(events, {
     physicalOnly, pairFilter, statusFilter, priorityFilter, quantityFilter,
     minimumMiss, maximumMiss, fromTca, toTca,
