@@ -1255,6 +1255,87 @@ async def get_latest_conjunction_job() -> dict:
     return {"job": payload}
 
 
+@app.get("/api/event-library")
+def get_saved_event_library(current_job_id: str | None = None) -> dict:
+    archives = list(SCREENING_EXPORT_ARCHIVE_DIR.glob("screening-job-*.json"))
+    archives += list((SCREENING_EXPORT_ARCHIVE_DIR / "demo").glob("screening-job-*.json")) if (SCREENING_EXPORT_ARCHIVE_DIR / "demo").is_dir() else []
+    jobs_by_id: dict[str, dict] = {}
+    for path in archives:
+        job_id = path.stem.removeprefix("screening-job-")
+        try:
+            archived = _validate_archived_screening_job(job_id, json.loads(path.read_text(encoding="utf-8")))
+        except (HTTPException, OSError, ValueError, json.JSONDecodeError):
+            continue
+        jobs_by_id[job_id] = archived
+    for job_id, job in _screening_jobs.items():
+        if job.get("status") in {"complete", "partial"} and isinstance(job.get("result"), dict):
+            jobs_by_id[job_id] = job
+    current_job = jobs_by_id.get(current_job_id or "")
+    if current_job is None:
+        def archive_rank(job: dict) -> tuple[int, float]:
+            records = job.get("result", {}).get("data", [])
+            valid_count = sum(isinstance(row, dict) and row.get("physics_result", {}).get("status") == "valid"
+                              and row.get("physics_result", {}).get("tca_status") == "valid" for row in records)
+            stamp = job.get("finished_at") or job.get("created_at")
+            try:
+                timestamp = datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+            except (AttributeError, TypeError, ValueError, OverflowError):
+                timestamp = float("-inf")
+            return valid_count, timestamp
+        current_job = max(jobs_by_id.values(), key=archive_rank, default=None)
+    current_id = current_job.get("job_id") if current_job else None
+    current_pairs = set()
+    if current_job:
+        for row in current_job.get("result", {}).get("data", []):
+            if isinstance(row, dict):
+                primary_id = (row.get("primary") or {}).get("id")
+                secondary_id = (row.get("secondary") or {}).get("id")
+                if primary_id and secondary_id:
+                    current_pairs.add(tuple(sorted((str(primary_id), str(secondary_id)))))
+
+    best_by_pair: dict[tuple[str, str], tuple[float, float, dict]] = {}
+    for job_id, job in jobs_by_id.items():
+        run_date = job.get("finished_at") or job.get("created_at")
+        try:
+            run_timestamp = datetime.fromisoformat(run_date.replace("Z", "+00:00")).timestamp()
+        except (AttributeError, TypeError, ValueError, OverflowError):
+            run_timestamp = float("-inf")
+        for original in job.get("result", {}).get("data", []):
+            if not isinstance(original, dict) or original.get("result_kind") != "physics_assessment":
+                continue
+            primary_id = (original.get("primary") or {}).get("id")
+            secondary_id = (original.get("secondary") or {}).get("id")
+            if not primary_id or not secondary_id:
+                continue
+            pair = tuple(sorted((str(primary_id), str(secondary_id))))
+            if pair[0] == pair[1]:
+                continue
+            pc = (original.get("automatic_research_pc_assessment") or {}).get("log10_pc")
+            pc_rank = float(pc) if isinstance(pc, (int, float)) and not isinstance(pc, bool) else float("-inf")
+            previous = best_by_pair.get(pair)
+            if previous is not None and (pc_rank, run_timestamp) <= previous[:2]:
+                continue
+            event = copy.deepcopy(original)
+            event["screening_job_id"] = job_id
+            event["screening_run_date"] = run_date
+            event["screening_library_current"] = pair in current_pairs
+            event["screening_library_source"] = "Current" if pair in current_pairs else "Saved screening"
+            event["screening_library_current_job_id"] = current_id if pair in current_pairs else None
+            best_by_pair[pair] = (pc_rank, run_timestamp, event)
+    events = [entry[2] for entry in best_by_pair.values()]
+    events.sort(key=lambda event: (
+        -(event.get("automatic_research_pc_assessment") or {}).get("log10_pc", float("-inf")),
+        str(event.get("screening_run_date") or ""), str(event.get("id") or ""),
+    ))
+    counts = {"Low": 0, "Medium": 0, "High": 0}
+    for event in events:
+        name = ((event.get("automatic_research_pc_assessment") or {}).get("risk_assessment") or {}).get("final_risk_class")
+        if name in counts:
+            counts[name] += 1
+    return {"events": events, "counts": counts, "total": len(events), "current_job_id": current_id,
+            "label": "from saved screenings"}
+
+
 @app.get("/api/conjunction-jobs/active")
 async def get_active_conjunction_job() -> dict:
     active = max(

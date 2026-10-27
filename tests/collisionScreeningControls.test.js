@@ -45,11 +45,11 @@ test("Collision restores prioritized events and separate physics and AI assessme
 
 test("Collision Analysis defaults to the shared selected physical event and never substitutes a hidden stale detail", () => {
   const collisionBranch = appSource.slice(appSource.indexOf('{activePage === "collision"'), appSource.indexOf('{activePage === "maneuver"'));
-  assert.match(collisionBranch, /platform\.conjunctions\.find\(\(item\) => item\.id === selectedEvent\?\.id\) \|\| null/);
+  assert.match(collisionBranch, /savedEvents\.find\(\(item\) => item\.id === selectedEvent\?\.id\) \|\| null/);
   assert.doesNotMatch(collisionBranch, /platform\.conjunctions\[0\]/);
   assert.match(collisionBranch, /selectionNotice=\{eventSelection\.notice\}/);
   assert.match(collisionBranch, /selectEvent=\{selectEvent\}/);
-  assert.match(appSource, /selectEvent\(selectManeuverEvent\(platform\.conjunctions, eventId\), "maneuver"\)/);
+  assert.match(appSource, /selectEvent\(selectManeuverEvent\(savedEvents, eventId\), "maneuver"\)/);
   assert.match(collisionWorkbenchSource, /Invalid events/);
   assert.match(collisionWorkbenchSource, /Run screening to populate physical encounter groups/);
 });

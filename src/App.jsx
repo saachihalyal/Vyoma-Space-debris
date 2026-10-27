@@ -43,6 +43,7 @@ import {
   getCatalog,
   getConjunctions,
   getLatestConjunctionJob,
+  getSavedEventLibrary,
   getActiveConjunctionJob,
   resumeConjunctionJob,
   importEventCdm,
@@ -155,6 +156,7 @@ export default function App() {
   const [scenarioClassCounts, setScenarioClassCounts] = useState(null);
   const scenarioClassCacheRef = useRef(new Map());
   const [snapshot, setSnapshot] = useState(null);
+  const [eventLibrary, setEventLibrary] = useState(null);
   const lastCatalogSnapshotRef = useRef(null);
   const [forecast, setForecast] = useState(null);
   const [platform, setPlatform] = useState(() => {
@@ -512,6 +514,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const currentJobId = platform.conjunctionStatus?.job_id;
+    if (!currentJobId) return undefined;
+    const controller = new AbortController();
+    getSavedEventLibrary({ currentJobId, signal: controller.signal })
+      .then((library) => { if (!controller.signal.aborted) setEventLibrary(library); })
+      .catch((error) => { if (error?.name !== "AbortError") console.warn("[Vyoma event library] saved screenings could not be loaded.", error); });
+    return () => controller.abort();
+  }, [platform.conjunctionStatus?.job_id]);
+
+  useEffect(() => {
     if (!["smart", "analytics"].includes(activePage) || !snapshot) return undefined;
     const snapshotKey = snapshot.generated_at || `${snapshot.source_state?.source || "unknown"}:${snapshot.objects?.length || 0}`;
     if (proxyFetchKeyRef.current === snapshotKey) return undefined;
@@ -536,9 +548,10 @@ export default function App() {
     return () => window.clearInterval(timer);
   }, [isPlaying]);
 
-  const maneuverAssessmentEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, platform.conjunctions);
-  const maneuverScreeningJobId = platform.conjunctionStatus?.job_id || null;
-  const validManeuverEvents = useMemo(() => eligibleManeuverEvents(platform.conjunctions), [platform.conjunctions]);
+  const savedEvents = eventLibrary ? eventLibrary.events : platform.conjunctions;
+  const maneuverAssessmentEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, savedEvents);
+  const maneuverScreeningJobId = maneuverAssessmentEvent?.screening_job_id || platform.conjunctionStatus?.job_id || null;
+  const validManeuverEvents = useMemo(() => eligibleManeuverEvents(savedEvents), [savedEvents]);
   const everyManeuverEventBelowFloor = validManeuverEvents.length > 0 && validManeuverEvents.every((item) => (
     Number.isFinite(item.automatic_research_pc_assessment?.log10_pc)
     && item.automatic_research_pc_assessment.log10_pc < -30
@@ -666,12 +679,16 @@ export default function App() {
   }
 
   function selectEvent(event, page = "collision") {
-    setEventSelection(resolvePhysicalEventSelection(event, platform.conjunctions));
+    setEventSelection(resolvePhysicalEventSelection(event, savedEvents));
     setActivePage(page);
   }
 
   function acceptUpdatedEvent(updatedEvent, responseJobId) {
     if (!updatedEvent?.id || updatedEvent.result_kind !== "physics_assessment") return;
+    setEventLibrary((previous) => previous ? ({
+      ...previous,
+      events: previous.events.map((item) => item.id === updatedEvent.id && item.screening_job_id === responseJobId ? updatedEvent : item),
+    }) : previous);
     if (acceptedScreeningJobIdRef.current !== responseJobId) return;
     setPlatform((previous) => {
       if (previous.conjunctionStatus?.job_id !== responseJobId) return previous;
@@ -686,14 +703,14 @@ export default function App() {
   }
 
   async function handleImportEventCdm({ eventId, cdmXml, sourceLabel, assumeIndependentCovariances }) {
-    const jobId = platform.conjunctionStatus?.job_id;
+    const jobId = savedEvents.find((item) => item.id === eventId)?.screening_job_id || platform.conjunctionStatus?.job_id;
     const payload = await importEventCdm({ screeningJobId: jobId, eventId, cdmXml, sourceLabel, assumeIndependentCovariances });
     acceptUpdatedEvent(payload.data, payload.job_id);
     return payload;
   }
 
   async function handleScenarioPc(input) {
-    const jobId = platform.conjunctionStatus?.job_id;
+    const jobId = savedEvents.find((item) => item.id === input.eventId)?.screening_job_id || platform.conjunctionStatus?.job_id;
     const payload = await calculateScenarioPc({ screeningJobId: jobId, ...input });
     acceptUpdatedEvent(payload.data, payload.job_id);
     return payload;
@@ -838,7 +855,7 @@ export default function App() {
         />
         <main className="content-main"><Suspense fallback={<div className="og-card loading-skeleton" role="status" aria-label="Loading page"><span /><span /><span /></div>}><PageErrorBoundary key={activePage}>
           {activePage === "home" ? (
-            <HomePage snapshot={snapshot} platform={platform} maneuver={maneuver} navigate={navigate} loading={loading} uncertaintyScale={uncertaintyScale} scenarioClassCounts={scenarioClassCounts} />
+            <HomePage snapshot={snapshot} platform={platform} eventLibrary={eventLibrary} maneuver={maneuver} navigate={navigate} loading={loading} uncertaintyScale={uncertaintyScale} scenarioClassCounts={scenarioClassCounts} />
           ) : null}
           {activePage === "visualization" ? (
             <VisualizationPage
@@ -869,9 +886,10 @@ export default function App() {
           ) : null}
           {activePage === "collision" ? (
             <CollisionPage
-              event={eventSelection.notice ? null : platform.conjunctions.find((item) => item.id === selectedEvent?.id) || null}
+              eventLibrary={eventLibrary}
+              event={eventSelection.notice ? null : savedEvents.find((item) => item.id === selectedEvent?.id) || null}
               selectionNotice={eventSelection.notice}
-              events={platform.conjunctions}
+              events={savedEvents}
               eventStatus={platform.conjunctionStatus}
               attemptStatus={platform.screeningAttempt}
               screeningStatus={platform.conjunctionStatus?.screening}
@@ -899,7 +917,7 @@ export default function App() {
               onShowInGlobe={handleShowInGlobe}
             />
           ) : null}
-          {activePage === "maneuver" ? <ManeuverWorkbench event={maneuverEvent} events={platform.conjunctions} screeningJobId={platform.conjunctionStatus?.job_id} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); selectEvent(selectManeuverEvent(platform.conjunctions, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: platform.conjunctionStatus?.job_id || null })} onLoadDemo={loadManeuverDemo} demoBusy={maneuverDemoBusy} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} demoAssessment={maneuverDemoAssessment} onClearReferenceEvent={() => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); }} /> : null}
+          {activePage === "maneuver" ? <ManeuverWorkbench event={maneuverEvent} events={savedEvents} screeningJobId={maneuverScreeningJobId} screeningStatus={platform.conjunctionStatus} screeningAttempt={platform.screeningAttempt} onSelectEvent={(eventId) => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); selectEvent(selectManeuverEvent(savedEvents, eventId), "maneuver"); }} onRunManeuver={(configuration) => setManeuverRequest({ ...configuration, eventId: maneuverEvent?.id, screeningJobId: maneuverScreeningJobId })} onLoadDemo={loadManeuverDemo} demoBusy={maneuverDemoBusy} maneuver={maneuver} download={handleDownload} referenceEvent={referenceManeuverEvent} demoAssessment={maneuverDemoAssessment} onClearReferenceEvent={() => { setReferenceManeuverEvent(null); setManeuverDemoAssessment(null); }} /> : null}
           {activePage === "analytics" ? <AnalyticsPage analytics={platform.analytics || buildLocalAnalytics(snapshot, platform.screeningProxies || [])} events={platform.screeningProxies} snapshot={snapshot} /> : null}
           {activePage === "reports" ? <ReportsPage
             event={topEvent}
@@ -1074,7 +1092,7 @@ function CollisionScreeningControls({ eventStatus = {}, attemptStatus = null, sc
   </section>;
 }
 
-export function CollisionPage({ event, events, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null }) {
+export function CollisionPage({ event, events, eventLibrary, eventStatus, attemptStatus, screeningStatus, sourceSummary, sourceState, screeningJobId, csvScreeningJobId, csvJobArchived = false, selectionNotice, onStartScreening = () => {}, onLoadDemo = () => {}, demoBusy = false, onImportCdm = async () => {}, onScenarioPc = async () => {}, onUseReferenceEvent = () => {}, selectEvent, toggleWatchlist, watchlist, download, downloadTrajectoryCsv, onShowInGlobe, uncertaintyScale = 1, setUncertaintyScale = () => {}, uncertaintyWhatIf = null, uncertaintyWhatIfStatus = "idle", scenarioClassCounts = null }) {
   const [pairFilter, setPairFilter] = useState("all");
   const [eventSearch, setEventSearch] = useState("");
   const [eventSort, setEventSort] = useState("research_pc");
@@ -1112,10 +1130,12 @@ export function CollisionPage({ event, events, eventStatus, attemptStatus, scree
   const availableEvents = searchAndSortCollisionEvents(filteredEvents, eventSearch, eventSort);
   const anomalyRankById = rankOrbitalAnomalyEvents(events || []);
   const chosenPhysical = event?.result_kind === "physics_assessment";
-  const reportBase = chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id) : null;
-  return <><CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} /><CollisionWorkbench
+  const eventScreeningJobId = event?.screening_job_id || screeningJobId;
+  const reportBase = chosenPhysical && eventScreeningJobId ? selectedEventReportPath(eventScreeningJobId, event.id) : null;
+  const libraryCounts = eventLibrary?.counts || { Low: 0, Medium: 0, High: 0 };
+  return <><p className="og-sub saved-library-label">{eventLibrary?.label || "Current screening"} · {eventLibrary?.total ?? events?.length ?? 0} unique object pairs · Low {libraryCounts.Low || 0} · Medium {libraryCounts.Medium || 0} · High {libraryCounts.High || 0}</p><CollisionAnalysisSummary events={events || []} displayedEvents={availableEvents} screeningStatus={screeningStatus} /><CollisionWorkbench
     events={events || []} event={event} eventStatus={eventStatus} screeningStatus={screeningStatus}
-    screeningJobId={screeningJobId} selectEvent={selectEvent}
+    screeningJobId={eventScreeningJobId} selectEvent={selectEvent}
     onShowInGlobe={onShowInGlobe} onAssessManeuver={(item) => selectEvent(item, "maneuver")}
     download={download} eventReportPath={reportBase}
     eventReportCsvPath={chosenPhysical && screeningJobId ? selectedEventReportPath(screeningJobId, event.id, "csv") : null}

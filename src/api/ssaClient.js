@@ -202,6 +202,16 @@ export async function getLatestConjunctionJob({ signal } = {}) {
   return job || null;
 }
 
+export async function getSavedEventLibrary({ currentJobId, signal } = {}) {
+  const params = new URLSearchParams();
+  if (currentJobId) params.set("current_job_id", currentJobId);
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/event-library?${params}`, { signal }, { timeoutMs: 60_000, retries: 1 });
+  if (!response.ok) throw new Error(`SSA API returned ${response.status} reading saved screening events.`);
+  const payload = await response.json();
+  if (!Array.isArray(payload?.events) || !payload?.counts) throw new Error("The backend returned an invalid saved event library.");
+  return payload;
+}
+
 export async function getActiveConjunctionJob() {
   const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/active`, {}, { timeoutMs: 5_000, retries: 2 });
   if (!response.ok) throw new Error(`SSA API returned ${response.status} reading the active screening job.`);
