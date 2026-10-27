@@ -22,7 +22,11 @@ test("Collision Analysis begins with title and events without diagnostic charts 
   assert.match(collisionWorkbenchSource, /<h1>Collision Analysis<\/h1>/);
   assert.match(collisionWorkbenchSource, /Prioritized Events/);
   assert.doesNotMatch(collisionWorkbenchSource, /Screening diagnostics|What-if uncertainty|Scenario class counts|CollisionAnalysisSummary/);
+  assert.doesNotMatch(collisionWorkbenchSource, /screening-result-summary/);
+  assert.match(collisionWorkbenchSource, /No High-probability events found \(highest Pc/);
   assert.match(collisionWorkbenchSource, /Excluded pairs/);
+  assert.match(collisionWorkbenchSource, /const visiblePhysical = physical\.filter\(\(item\) => !isExcludedEvent\(item\)\)/);
+  assert.match(collisionWorkbenchSource, /const excludedEvents = physical\.filter\(isExcludedEvent\)/);
   assert.match(collisionWorkbenchSource, /Run full screening/);
   assert.match(collisionWorkbenchSource, /Horizon/);
   assert.match(collisionWorkbenchSource, /value=\{24\}>24 h/);
