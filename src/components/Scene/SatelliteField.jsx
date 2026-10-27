@@ -2,13 +2,14 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { BAND_COLORS, degToRad, orbitPhase, orbitPositionTo } from "../../utils/orbitalMath";
+import { getVisualizationCategory } from "../../utils/objectClassification.js";
 import { selectedObjectWorldPosition, setHasSelectedObject } from "./positionSharing";
 
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 const tempVector = new THREE.Vector3();
-const debrisPalette = ["#070a10"];
-const objectTypeColor = (category) => category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : ["active", "payload", "satellite"].includes(category) ? "#ffffff" : "#8bd5ff";
+const visualCategory = (object) => getVisualizationCategory(object);
+const objectTypeColor = (category) => category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : category === "active" ? "#ffffff" : "#8bd5ff";
 
 function safeNum(v) {
   const n = Number(v);
@@ -31,15 +32,6 @@ function riskLabelFromSeverity(severity) {
   if (s.includes("critical")) return "Critical";
   if (s.includes("extreme")) return "Extreme";
   return (severity ?? "Unknown").toString();
-}
-
-function debrisColorFor(object, index = 0) {
-  let hash = index;
-  const id = object?.id ?? "";
-  for (let i = 0; i < id.length; i += 1) {
-    hash = (hash * 31 + id.charCodeAt(i)) % debrisPalette.length;
-  }
-  return debrisPalette[hash];
 }
 
 function regionLabelFromBand(band) {
@@ -151,7 +143,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
 
   const visible = useMemo(() => {
     const base = (objects || []).filter((object) => {
-      const categoryVisible = object.category === "debris" ? filters.debris : filters.active;
+      const categoryVisible = visualCategory(object) === "debris" ? filters.debris : filters.active;
       return categoryVisible && filters[object.band];
     });
     // If selectedObject is not in the filtered list (e.g., hidden by filters),
@@ -162,8 +154,8 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
   }, [objects, filters, selectedObject, highlightedObjectIds]);
   const highlightedIds = useMemo(() => new Set([selectedObject?.id, ...(highlightedObjectIds || [])].filter(Boolean)), [selectedObject?.id, highlightedObjectIds]);
 
-  const activeObjects = useMemo(() => visible.filter((object) => object.category !== "debris"), [visible]);
-  const debrisObjects = useMemo(() => visible.filter((object) => object.category === "debris"), [visible]);
+  const activeObjects = useMemo(() => visible.filter((object) => visualCategory(object) !== "debris"), [visible]);
+  const debrisObjects = useMemo(() => visible.filter((object) => visualCategory(object) === "debris"), [visible]);
 
   // Zoom-aware clutter management (renders fewer instances when camera is far).
   const densityMode = useMemo(() => {
@@ -190,7 +182,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
   }, [debrisObjects, densityMode, highlightedIds]);
 
   const clusterKeyOf = (o) => {
-    const category = o.category ?? "unknown";
+    const category = visualCategory(o);
     const band = o.band ?? "unknown";
     const inc = safeNum(o.orbit?.inclination_deg) ?? 0;
     const raan = safeNum(o.orbit?.raan_deg) ?? 0;
@@ -216,7 +208,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
     const list = [];
     for (const [key, arr] of map.entries()) {
       if (!arr.length) continue;
-      const category = arr[0].category ?? "unknown";
+      const category = visualCategory(arr[0]);
       const band = arr[0].band ?? "unknown";
       const isDebris = category === "debris";
 
@@ -301,7 +293,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       bodyMesh.setMatrixAt(i, tempObject.matrix);
       panelMesh.setMatrixAt(i, tempObject.matrix);
 
-      tempColor.set(objectTypeColor(object.category));
+      tempColor.set(objectTypeColor(visualCategory(object)));
       bodyMesh.setColorAt(i, tempColor);
       panelMesh.setColorAt(i, tempColor);
 
@@ -312,7 +304,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       glowMesh.setMatrixAt(i, tempObject.matrix);
 
       const glowIntensity = isSelected ? 1.5 : (0.6 + Math.min(1, p) * 0.9);
-      const glowCol = new THREE.Color(objectTypeColor(object.category)).multiplyScalar(glowIntensity);
+      const glowCol = new THREE.Color(objectTypeColor(visualCategory(object))).multiplyScalar(glowIntensity);
       glowMesh.setColorAt(i, glowCol);
     }
 
@@ -340,11 +332,11 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
 
       if (isSelected) {
         // Selected debris → magenta
-        const magenta = new THREE.Color(objectTypeColor(object.category));
+        const magenta = new THREE.Color(objectTypeColor(visualCategory(object)));
         coreMesh.setColorAt(i, magenta);
       } else {
         // Unselected debris → green from palette
-        const col = new THREE.Color(objectTypeColor(object.category));
+        const col = new THREE.Color(objectTypeColor(visualCategory(object)));
         const coreCol = col.clone().multiplyScalar(0.95 + d * 0.4);
         coreMesh.setColorAt(i, coreCol);
       }

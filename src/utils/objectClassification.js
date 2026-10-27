@@ -88,6 +88,14 @@ export function getVisualCategory(object) {
   return "unknown";
 }
 
+export function getVisualizationCategory(object) {
+  const type = getObjectTypeLabel(object);
+  if (type === OBJECT_TYPE.ACTIVE_SATELLITE) return "active";
+  if (type === OBJECT_TYPE.SPACE_DEBRIS) return "debris";
+  if (type === OBJECT_TYPE.ROCKET_BODY) return "rocket_body";
+  return "other";
+}
+
 /**
  * Validate a collision/conjunction event for data integrity.
  *
