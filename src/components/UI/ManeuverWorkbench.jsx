@@ -74,10 +74,10 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
   }
 
   return <main className="og-page og-maneuver" aria-label="Maneuver Assessment">
-    <header className="og-maneuver-header"><div><span className="og-prov derived">Bounded two-body research simulation</span><h1>Maneuver</h1><p className="og-sub">Choose a conjunction and find a physics-ranked maneuver scenario.</p></div>
+    <header className="og-maneuver-header"><div><span className="og-prov derived">Bounded two-body research simulation</span><h1>Avoidance Action Plan</h1><p className="og-sub">Compare candidate burns against the accepted conjunction screening.</p></div>
       {selected && <div className="report-action-group" aria-label="Maneuver report downloads">{["pdf", "csv", "json"].map((format) => <button key={format} type="button" className={`og-btn ${format === "pdf" ? "primary" : ""}`} disabled={!screeningJobId || !["available", "available_with_warning"].includes(result.status)} onClick={() => download(selectedManeuverReportPath(screeningJobId, selected.id, format), `${selected.id}-maneuver-assessment.${format}`)}>Download {format.toUpperCase()}</button>)}</div>}
     </header>
-    <div className="og-maneuver-work">
+    <div className="og-maneuver-work maneuver-restored-layout">
       <aside className="og-card og-input-card"><span className="og-prov read">Start here</span><h2>Choose an event</h2>
         {sortedEvents.length ? <label className="og-field"><span>Conjunction · sorted by Pc (highest first)</span><select value={selected?.id || ""} onChange={(e) => onSelectEvent(e.target.value)}>{sortedEvents.map((item) => { const pc = item.automatic_research_pc_assessment; const names = `${item.primary?.name || item.primary?.id} vs ${item.secondary?.name || item.secondary?.id}`; return <option key={item.id} value={item.id} disabled={item.physics_result?.status !== "valid"}>{names} · Pc {pcText(pc)}</option>; })}</select></label> : <p className="og-sub">No valid physical events in the accepted screening result.</p>}
         <button type="button" className="og-btn" onClick={onLoadDemo} disabled={demoBusy}>{demoBusy ? "Loading sample conjunction…" : "Try sample conjunction"}</button>
@@ -97,13 +97,13 @@ export function ManeuverWorkbench({ event, events = [], screeningJobId, screenin
       </aside>
       <section className="og-results">
         {referenceEvent && <ReferenceManeuverAssessment referenceEvent={referenceEvent} download={download} onClear={onClearReferenceEvent} precomputedAssessment={demoAssessment} />}
-        {selected && <><section className="og-card"><h2>Selected event</h2><p>{objects.map((object) => `${object.name || object.id} (${object.id})`).join(" vs ")}</p></section>
+        {selected && <><section className="og-card"><h2>Selected event</h2><p>{objects.map((object) => `${object.name || object.id}`).join(" vs ")}</p></section>
           {baselineBelowFloor ? <section className="og-card og-negligible" role="status">No maneuver needed - collision probability is negligible (&lt; 1e-30)</section> : result.status === "not_run" ? <section className="og-card" aria-live="polite"><p className="og-sub">Choose “Find safest maneuver” to compare the baseline with candidate trajectories.</p></section> : result.status === "running" ? <section className="og-card" role="status">Calculating the baseline and candidate trajectories…</section> : <>
             <section className="og-card" aria-label="Before and after maneuver comparison"><div className="og-section-head"><div><span className="og-prov derived">Physics comparison</span><h2>Before and after</h2></div><span className={`og-chip ${result.status === "running" ? "Medium" : "Low"}`}>{result.status || "not run"}</span></div>
               <div className="og-before-after"><article className="og-card og-hero-card"><span>Before</span><strong className="og-pc">{pcText(before)}</strong><small>Research Pc · zero-burn baseline</small><b>{fixed(baseline.miss_distance_km ?? baseline.candidate?.predicted_miss_distance_km)} km</b></article><span className="og-arrow" aria-hidden="true">→</span><article className="og-card og-hero-card"><span>After</span><strong className="og-pc">{pcText(after)}</strong><small>Research Pc · safest physics candidate</small><b>{fixed(best?.predicted_miss_distance_km)} km</b></article></div>
             </section>
             <section className="og-card"><h2>Fuel estimate</h2><div className="og-kpi"><div className="og-tile"><span>Propellant</span><b>{fuelText(result.fuel || best?.fuel)}</b></div><div className="og-tile"><span>Assumptions</span><b>500 kg spacecraft · 220 s Isp defaults</b></div></div></section>
-            <section className="og-card"><h2>Maneuver options</h2><p>Vyoma tested {candidates.length} small burns and ranks them by how much they lower collision probability.</p><ManeuverOptionsTable candidates={candidates} expanded={showAll} setExpanded={setShowAll} baselinePc={before} recommended={best} /><p className="og-sub">{modelNote}</p></section>
+            <section className="og-card"><h2>Maneuver options</h2><p>Candidate burns ranked by physics, with AI rank shown when returned.</p><ManeuverOptionsTable candidates={candidates} expanded={showAll} setExpanded={setShowAll} baselinePc={before} recommended={best} /><p className="og-sub">{modelNote}</p></section>
           </>}
         </>}
       </section>
