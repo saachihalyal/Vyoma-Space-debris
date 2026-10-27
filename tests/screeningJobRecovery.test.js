@@ -33,6 +33,23 @@ test("reload resumes polling the same running job until its result completes", a
   }
 });
 
+test("latest accepted job API supports abortable Smart Filter lookup", async () => {
+  const { getLatestConjunctionJob } = await import("../src/api/ssaClient.js");
+  const originalFetch = globalThis.fetch;
+  const controller = new AbortController();
+  globalThis.fetch = async (url, options = {}) => {
+    assert.equal(String(url), `${API_BASE}/api/conjunction-jobs/latest`);
+    assert.equal(options.signal, controller.signal);
+    return new Response(JSON.stringify({ job: { job_id: "backend-latest", status: "complete", result: { data: [] } } }), { status: 200 });
+  };
+  try {
+    const job = await getLatestConjunctionJob({ signal: controller.signal });
+    assert.equal(job.job_id, "backend-latest");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("resumed API response preserves the captured numerical research Pc for rendering", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {

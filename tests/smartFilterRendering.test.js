@@ -17,7 +17,10 @@ const baseSnapshot = {
 
 test("physical Smart Filter workbench is wired to API decisions and key science labels", () => {
   const source = readFileSync(new URL("../src/components/UI/SmartFilterWorkbench.jsx", import.meta.url), "utf8");
-  assert.match(source, /getPhysicalSmartFilter\(jobId/);
+  assert.match(source, /getLatestConjunctionJob\(\{ signal: controller\.signal \}\)/);
+  assert.match(source, /getPhysicalSmartFilter\(job\.job_id/);
+  assert.match(source, /const jobId = acceptedJob\?\.job_id/);
+  assert.doesNotMatch(source, /platform\.conjunctionStatus\?\.job_id/);
   assert.match(source, /physicalSmartFilterCsvPath\(jobId\)/);
   assert.match(source, /const allIds = new Set\(decisions\.flatMap/);
   assert.match(source, /kept_count/);

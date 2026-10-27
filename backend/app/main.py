@@ -1030,6 +1030,8 @@ def _screening_job_for_smart_filter(job_id: str) -> dict:
         _backfill_archived_research_pc(job["result"])
         job["restored_from_archive"] = True
         job["archived"] = True
+        with _screening_registry_lock:
+            job = _screening_jobs.setdefault(job_id, job)
     if job.get("status") not in {"complete", "partial"} or not isinstance(job.get("result"), dict):
         raise HTTPException(status_code=409, detail="Smart Filter requires a completed or partial physical screening job.")
     # Runtime asyncio task handles are process-local and cannot be deep-copied.

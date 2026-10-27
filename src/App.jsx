@@ -436,7 +436,8 @@ export default function App() {
           resumeSavedJob(activeJob.job_id);
           return;
         }
-        if (!savedJobId) await load({ explicitScreeningRefresh: true, invocationId: "startup-first-screening" });
+        if (savedJobId) clearActiveScreeningJobId(savedJobId);
+        await load({ explicitScreeningRefresh: true, invocationId: "startup-first-screening" });
       } catch (error) {
         if (cancelled) return;
         console.warn("[Vyoma startup] accepted screening recovery failed; checking the saved job or starting one bounded run.", error);

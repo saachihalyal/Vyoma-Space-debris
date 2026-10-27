@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.ai import smart_filter
 from app.ai.collision_training import BACKEND_DIR, read_parent_events
 from app.ai.smart_filter_training import ARTIFACT_PATH, METADATA_PATH
-from app.main import _screening_jobs, app
+from app.main import _screening_job_for_smart_filter, _screening_jobs, app
 
 
 class PhysicsSmartFilterTests(unittest.TestCase):
@@ -82,6 +82,24 @@ class PhysicsSmartFilterTests(unittest.TestCase):
         with patch.dict(_screening_jobs, {job_id: job}, clear=False):
             response = TestClient(app).get(f"/api/conjunction-jobs/{job_id}/smart-filter")
         self.assertEqual(response.status_code, 200, response.text)
+
+    def test_filter_request_registers_restored_archive_as_latest_accepted_job(self) -> None:
+        job_id = "abcdef0123456789abcdef0123456789"
+        archived = {
+            "job_id": job_id,
+            "status": "complete",
+            "created_at": "2999-01-01T00:00:00+00:00",
+            "finished_at": "2999-01-01T00:01:00+00:00",
+            "result": {"data": [self.event.model_dump(mode="json")]},
+        }
+        with patch("app.main._load_archived_screening_job", return_value=archived):
+            restored = _screening_job_for_smart_filter(job_id)
+            latest = TestClient(app).get("/api/conjunction-jobs/latest")
+        self.assertTrue(restored["restored_from_archive"])
+        self.assertTrue(restored["archived"])
+        self.assertEqual(latest.status_code, 200, latest.text)
+        self.assertEqual(latest.json()["job"]["job_id"], job_id)
+        _screening_jobs.pop(job_id, None)
 
     def test_saved_scenario_labels_and_grouped_metadata_match_trained_filter(self) -> None:
         metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))

@@ -1,28 +1,37 @@
 import React from "react";
-import { getPhysicalSmartFilter, physicalSmartFilterCsvPath } from "../../api/ssaClient.js";
+import { getLatestConjunctionJob, getPhysicalSmartFilter, physicalSmartFilterCsvPath } from "../../api/ssaClient.js";
 
 const BrowserGlobe = React.lazy(() => import("../Scene/SmartFilterGlobe.jsx").then((m) => ({ default: m.SmartFilterGlobe })));
 const number = (value, digits = 2) => Number.isFinite(value) ? value.toFixed(digits) : "";
 const pairName = (row) => (row.object_names || row.object_ids || []).join(" vs ");
 
-export function SmartFilterWorkbench({ platform = {}, download = () => {}, physicalFilterResult = null }) {
-  const jobId = platform.conjunctionStatus?.job_id || null;
-  const [data, setData] = React.useState(physicalFilterResult);
+export function SmartFilterWorkbench({ platform = {}, download = () => {} }) {
+  const [acceptedJob, setAcceptedJob] = React.useState(null);
+  const [data, setData] = React.useState(null);
   const [error, setError] = React.useState("");
   const [tab, setTab] = React.useState("retain");
   React.useEffect(() => {
-    if (physicalFilterResult) { setData(physicalFilterResult); setError(""); return undefined; }
-    if (!jobId) { setData(null); return undefined; }
-    const controller = new AbortController(); setData(null); setError("");
-    getPhysicalSmartFilter(jobId, { signal: controller.signal }).then(setData).catch((e) => { if (e.name !== "AbortError") setError(e.message); });
+    const controller = new AbortController();
+    setAcceptedJob(null); setData(null); setError("");
+    getLatestConjunctionJob({ signal: controller.signal })
+      .then((job) => {
+        if (controller.signal.aborted) return;
+        setAcceptedJob(job);
+        if (!job?.job_id) { setError("No accepted screening job is available."); return; }
+        return getPhysicalSmartFilter(job.job_id, { signal: controller.signal }).then((result) => {
+          if (!controller.signal.aborted) setData(result);
+        });
+      })
+      .catch((e) => { if (e.name !== "AbortError" && !controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
-  }, [jobId, physicalFilterResult]);
+  }, []);
+  const jobId = acceptedJob?.job_id || null;
   const decisions = data?.decisions || [];
   const evaluation = data?.evaluation || {};
   const isKept = tab === "retain";
   const keptDecisions = decisions.filter((row) => row.decision !== "filter");
   const rows = decisions.filter((r) => (r.decision !== "filter") === isKept);
-  const events = (platform.conjunctions || []).filter((e) => e.result_kind === "physics_assessment");
+  const events = (acceptedJob?.result?.data || []).filter((e) => e.result_kind === "physics_assessment");
   const objects = new Map(events.flatMap((event) => [[event.primary?.id, event.primary], [event.secondary?.id, event.secondary]]).filter(([id, object]) => id && object));
   const selectedIds = new Set(keptDecisions.flatMap((row) => row.object_ids || []));
   const afterObjects = Array.from(selectedIds).map((id) => objects.get(id)).filter(Boolean);
