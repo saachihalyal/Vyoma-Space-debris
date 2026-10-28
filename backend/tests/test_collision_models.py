@@ -116,6 +116,32 @@ class CollisionModelTests(unittest.TestCase):
         self.assertEqual(tuple(features), FEATURE_NAMES)
         self.assertTrue(all(isinstance(value, float) for value in features.values()))
 
+    def test_pc_surrogate_withholds_prediction_below_its_training_target_floor(self) -> None:
+        class PcEstimator:
+            def predict(self, _values):
+                return [-295.3813]
+
+        class RiskEstimator:
+            classes_ = ["High", "Low", "Medium"]
+
+            def predict(self, _values):
+                return ["Low"]
+
+            def predict_proba(self, _values):
+                return [[0.01, 0.98, 0.01]]
+
+        metadata = {"model_name": "test", "model_version": "test", "target_definition": "max(log10(research_pc), -30)"}
+        def load_model(artifact, _metadata):
+            return (PcEstimator() if artifact == collision_models.PC_ARTIFACT else RiskEstimator()), metadata
+
+        with patch.object(collision_models, "_load_model", side_effect=load_model):
+            result = collision_models.assess_collision_ai(self.event)
+
+        self.assertEqual(result.pc_surrogate.status, "unavailable")
+        self.assertIsNone(result.pc_surrogate.ai_predicted_log10_pc)
+        self.assertEqual(result.pc_surrogate.reason_code, "MODEL_PREDICTION_OUTSIDE_TRAINING_TARGET_RANGE")
+        self.assertEqual(result.risk_classifier.ai_risk_class, "Low")
+
     def test_archived_physics_event_receives_separate_research_and_ai_channels(self) -> None:
         _snapshot, events = collision_models_event_source()
         source_record = next(event.model_dump(mode="json") for event in events

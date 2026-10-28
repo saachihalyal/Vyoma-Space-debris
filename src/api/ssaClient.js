@@ -192,7 +192,7 @@ export function resumeConjunctionJob(jobId, { onStatus, pollTimeoutMs = SCREENIN
 }
 
 export async function getLatestConjunctionJob({ signal } = {}) {
-  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/latest`, { signal }, { timeoutMs: 5_000, retries: 2 });
+  const response = await fetchWithTimeoutRetry(`${API_BASE}/api/conjunction-jobs/latest`, { signal }, { timeoutMs: 30_000, retries: 2 });
   if (!response.ok) throw new Error(`SSA API returned ${response.status} reading the accepted screening job.`);
   const payload = await response.json();
   const job = payload?.job;

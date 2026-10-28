@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import hashlib
+import math
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -49,6 +51,27 @@ class PhysicsSmartFilterTests(unittest.TestCase):
             self.assertIsNone(row["model_prediction"])
             self.assertEqual(row["decision"], "retain")
         smart_filter._load_artifact.cache_clear()
+
+    def test_medium_physics_pc_is_kept_when_ai_predicts_insignificant(self) -> None:
+        class InsignificantModel:
+            classes_ = ["insignificant", "significant"]
+
+            def predict_proba(self, values):
+                return [[1.0, 0.0] for _ in values]
+
+        medium_scenario = SimpleNamespace(
+            status="prior_based_research_estimate", reason_codes=[],
+            estimated_pc_scientific="3e-7", log10_pc=math.log10(3e-7),
+        )
+        features = {name: 0.0 for name in smart_filter.FEATURE_NAMES}
+        with patch.object(smart_filter, "assess_automatic_research_pc", return_value=medium_scenario), patch.object(
+            smart_filter, "build_collision_features", return_value=features,
+        ):
+            row = smart_filter._assess_one(self.event, InsignificantModel(), {"model_name": "test"}, smart_filter.filter_policy())
+        self.assertEqual(row["model_prediction"], "insignificant")
+        self.assertTrue(row["safety_guard_retained"])
+        self.assertIn("SAFETY_GUARD_SCENARIO_PC", row["safety_guard_reasons"])
+        self.assertEqual(row["decision"], "retain")
 
     def test_physics_filter_api_and_csv_keep_event_reason_and_guard_fields(self) -> None:
         job_id = "0123456789abcdef0123456789abcdef"
@@ -119,6 +142,7 @@ class PhysicsSmartFilterTests(unittest.TestCase):
         self.assertFalse(set(encounter_groups["validation"]) & set(encounter_groups["test"]))
         self.assertTrue(metadata["baseline_comparison"]["deterministic_miss_distance_baseline_macro_f1_beaten"])
         self.assertEqual(metadata["significant_pc_threshold"], 1e-4)
+        self.assertEqual(smart_filter.filter_policy()["physics_keep_pc_threshold"], 1e-7)
         self.assertGreater(metadata["metrics"]["test"]["false_negative_significant_count"], 0)
 
 

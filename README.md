@@ -1,6 +1,6 @@
-# ORION SSA - Orbital Risk Intelligence Platform
+# Vyoma SSA - Orbital Risk Intelligence Platform
 
-ORION SSA is a React, Three.js, and FastAPI Space Situational Awareness research platform for visualizing orbital data, screening trajectories for close approaches, and reporting the results. This working copy preserves the existing application and adds Stage 2A trajectory screening, Stage 2B collision-probability capability, and Stage 3 independent ML estimates without creating a second frontend or backend.
+Vyoma SSA is a React, Three.js, and FastAPI Space Situational Awareness research platform for visualizing orbital data, screening trajectories for close approaches, and reporting the results. This working copy preserves the existing application and adds Stage 2A trajectory screening, Stage 2B collision-probability capability, and Stage 3 independent ML estimates without creating a second frontend or backend.
 
 The application combines an interactive 3D Earth environment, TLE-backed SGP4 propagation, separate deterministic heuristic proxies, trajectory-derived TCA and miss distance, a Foster 2D Pc research method, an ESA event log-risk estimator, and PDF/CSV/JSON report downloads. Live Pc is unavailable because the current TLE source supplies no covariance and measured object dimensions/HBR are absent. ESA log-risk is not Pc and is not calibrated for operational risk alerts.
 

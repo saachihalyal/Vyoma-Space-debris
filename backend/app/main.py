@@ -8,6 +8,7 @@ import subprocess
 from functools import partial
 import json
 import logging
+import math
 from pathlib import Path
 import re
 import time
@@ -31,6 +32,7 @@ from sgp4.api import jday
 from app.ai.inference import model_status
 from app.ai.anomaly import model_status as orbital_anomaly_model_status
 from app.ai.collision_models import assess_collision_ai, collision_model_status
+from app.ai.collision_features import FEATURE_SCHEMA_VERSION
 from app.ai.smart_filter import evaluate_physical_smart_filter, filter_policy, smart_filter_model_status
 from app.models import (
     CatalogSnapshot,
@@ -134,7 +136,13 @@ NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/m
 tle_provider = TleProvider(retry_state_path=CELESTRAK_CACHE_PATH)
 
 
+_latest_archive_cache: tuple[float, dict | None] | None = None
+
+
 def _latest_accepted_archive() -> dict | None:
+    global _latest_archive_cache
+    if _latest_archive_cache and time.monotonic() - _latest_archive_cache[0] < 10:
+        return copy.deepcopy(_latest_archive_cache[1])
     paths = list(SCREENING_EXPORT_ARCHIVE_DIR.glob("screening-job-*.json"))
     paths += list((SCREENING_EXPORT_ARCHIVE_DIR / "demo").glob("screening-job-*.json")) if (SCREENING_EXPORT_ARCHIVE_DIR / "demo").is_dir() else []
     accepted = []
@@ -154,7 +162,9 @@ def _latest_accepted_archive() -> dict | None:
         except (AttributeError, TypeError, ValueError, OverflowError):
             timestamp = float("-inf")
         return count, timestamp
-    return max(accepted, key=rank, default=None)
+    latest = max(accepted, key=rank, default=None)
+    _latest_archive_cache = (time.monotonic(), copy.deepcopy(latest))
+    return latest
 
 
 @app.on_event("startup")
@@ -944,6 +954,20 @@ def _backfill_archived_research_pc(result: dict) -> None:
     records = result.get("data")
     if not isinstance(records, list):
         return
+    # Current exports already carry the versioned research Pc and collision-AI
+    # assessments.  Avoid rebuilding hundreds of archived assessments on the
+    # event loop during warm startup; legacy exports still take the path below.
+    physical_records = [record for record in records if isinstance(record, dict) and record.get("result_kind") == "physics_assessment"]
+    if physical_records and all(
+        (record.get("physics_result") or {}).get("status") != "valid"
+        or (
+            ((record.get("automatic_research_pc_assessment") or {}).get("method_version") == RESEARCH_PC_METHOD_VERSION)
+            and ((record.get("automatic_research_pc_assessment") or {}).get("risk_assessment") or {}).get("risk_score_policy_version") == ORION_RISK_POLICY_VERSION
+            and isinstance(record.get("collision_ai_assessment"), dict)
+        )
+        for record in physical_records
+    ):
+        return
     validated_events = []
     records_by_id = {}
     missing_ai_assessment = False
@@ -1047,6 +1071,9 @@ def _screening_job_for_smart_filter(job_id: str) -> dict:
         job["archived"] = True
         with _screening_registry_lock:
             job = _screening_jobs.setdefault(job_id, job)
+        # A newly restored archived job can outrank the cached latest result.
+        global _latest_archive_cache
+        _latest_archive_cache = None
     if job.get("status") not in {"complete", "partial"} or not isinstance(job.get("result"), dict):
         raise HTTPException(status_code=409, detail="Smart Filter requires a completed or partial physical screening job.")
     # Runtime asyncio task handles are process-local and cannot be deep-copied.
@@ -1054,11 +1081,58 @@ def _screening_job_for_smart_filter(job_id: str) -> dict:
     return copy.deepcopy({key: value for key, value in job.items() if key != "task"})
 
 
+def _upgrade_smart_filter_policy(payload: dict) -> dict:
+    """Reapply the current keep policy to saved numeric decisions without recomputing Pc."""
+    upgraded = copy.deepcopy(payload)
+    policy = upgraded.get("policy") if isinstance(upgraded.get("policy"), dict) else filter_policy()
+    physics_threshold = float(policy.get("physics_keep_pc_threshold", 1e-7))
+    physics_log_threshold = math.log10(physics_threshold)
+    for row in upgraded.get("decisions", []):
+        if not isinstance(row, dict):
+            continue
+        pc_log = row.get("maximum_scenario_log10_pc")
+        physics_keep = isinstance(pc_log, (int, float)) and not isinstance(pc_log, bool) and math.isfinite(pc_log) and pc_log >= physics_log_threshold
+        incomplete = row.get("scenario_count_calculated") != row.get("scenario_count_required")
+        guarded = bool(row.get("safety_guard_retained")) or incomplete
+        ai_available = row.get("model_status") == "available" and row.get("model_prediction") in {"significant", "insignificant"}
+        if isinstance(pc_log, (int, float)) and pc_log < -30:
+            ai_available = False
+            row["model_status"] = "unavailable"
+            row["model_prediction"] = None
+            row["confidence"] = None
+            row["reason_code"] = "AI_OUTSIDE_TRAINING_LOG10_PC_FLOOR"
+        if guarded:
+            row["decision"], row["decision_source"] = "retain", "safety_guard"
+        elif physics_keep:
+            row["decision"], row["decision_source"] = "retain", "physics_pc_threshold"
+        elif ai_available and row.get("model_prediction") == "significant":
+            row["decision"], row["decision_source"] = "retain", "trained_model"
+        else:
+            row["decision"], row["decision_source"] = "filter", "physics_and_ai_agree_insignificant" if ai_available else "deterministic_fallback"
+        row["safety_guard_retained"] = guarded
+        row["reason"] = (
+            "SAFETY_GUARD_INVALID_OR_UNCERTAIN" if guarded else
+            "PHYSICS_PC_AT_OR_ABOVE_1E-7" if physics_keep else
+            "MODEL_PREDICTED_SIGNIFICANT" if ai_available and row.get("model_prediction") == "significant" else
+            "MODEL_PREDICTED_INSIGNIFICANT" if ai_available else
+            "AI_UNAVAILABLE_PHYSICS_FALLBACK"
+        )
+    decisions = [row for row in upgraded.get("decisions", []) if isinstance(row, dict)]
+    kept = sum(row.get("decision") == "retain" for row in decisions)
+    evaluation = upgraded.get("evaluation") if isinstance(upgraded.get("evaluation"), dict) else {}
+    evaluation.update({"before_count": len(decisions), "kept_count": kept, "filtered_count": len(decisions) - kept,
+                       "safety_guard_retained_count": sum(bool(row.get("safety_guard_retained")) for row in decisions)})
+    upgraded["evaluation"] = evaluation
+    upgraded["decision_policy_version"] = 3
+    return upgraded
+
+
 @app.get("/api/conjunction-jobs/{job_id}/smart-filter")
 async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
     job = _screening_job_for_smart_filter(job_id)
     with _smart_filter_results_lock:
         cached = _smart_filter_results.get(job_id)
+    cache_upgraded = False
     if cached is None:
         sidecar = _smart_filter_sidecar_path(job_id, job)
         try:
@@ -1066,17 +1140,24 @@ async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
         except (OSError, json.JSONDecodeError):
             cached = None
         if isinstance(cached, dict) and cached.get("result_type") == "physics_smart_filter":
+            if cached.get("policy", {}).get("physics_keep_pc_threshold") != filter_policy()["physics_keep_pc_threshold"]:
+                cached = None
+            elif cached.get("decision_policy_version") != 3 and isinstance(cached.get("decisions"), list):
+                cached = _upgrade_smart_filter_policy(cached)
+                cache_upgraded = True
+        if isinstance(cached, dict) and cached.get("result_type") == "physics_smart_filter":
             with _smart_filter_results_lock:
                 _smart_filter_results[job_id] = cached
     if cached is not None:
-        if not isinstance(cached.get("globe_positions"), dict):
-            cached["globe_positions"] = await run_in_threadpool(_smart_filter_globe_positions, job, cached)
+        if cache_upgraded or not isinstance(cached.get("globe_positions"), dict):
+            if not isinstance(cached.get("globe_positions"), dict):
+                cached["globe_positions"] = await run_in_threadpool(_smart_filter_globe_positions, job, cached)
             try:
                 sidecar = _smart_filter_sidecar_path(job_id, job)
                 sidecar.parent.mkdir(parents=True, exist_ok=True)
                 sidecar.write_text(json.dumps(cached, separators=(",", ":")), encoding="utf-8")
             except OSError:
-                logger.exception("Could not persist Smart Filter globe positions for screening job %s", job_id)
+                logger.exception("Could not persist Smart Filter cache for screening job %s", job_id)
             with _smart_filter_results_lock:
                 _smart_filter_results[job_id] = copy.deepcopy(cached)
         return copy.deepcopy(cached)
@@ -1107,7 +1188,15 @@ def _ensure_smart_filter_task(job_id: str) -> None:
         saved = json.loads(sidecar.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         saved = None
-    if isinstance(saved, dict) and saved.get("result_type") == "physics_smart_filter":
+    if (isinstance(saved, dict) and saved.get("result_type") == "physics_smart_filter"
+            and saved.get("policy", {}).get("physics_keep_pc_threshold") == filter_policy()["physics_keep_pc_threshold"]
+            and isinstance(saved.get("decisions"), list)):
+        if saved.get("decision_policy_version") != 3:
+            saved = _upgrade_smart_filter_policy(saved)
+            try:
+                sidecar.write_text(json.dumps(saved, separators=(",", ":")), encoding="utf-8")
+            except OSError:
+                logger.exception("Could not persist upgraded Smart Filter cache for screening job %s", job_id)
         with _smart_filter_results_lock:
             _smart_filter_results[job_id] = saved
         _smart_filter_progress[job_id] = {
@@ -1401,6 +1490,15 @@ async def get_saved_event_library(current_job_id: str | None = None) -> dict:
             event["screening_library_current_job_id"] = current_id if pair in current_pairs else None
             best_by_pair[pair] = (pc_rank, run_timestamp, event)
     events = [entry[2] for entry in best_by_pair.values()]
+    for event in events:
+        pc_ai = (event.get("collision_ai_assessment") or {}).get("pc_surrogate") or {}
+        value = pc_ai.get("ai_predicted_log10_pc")
+        if pc_ai.get("feature_schema_version") != FEATURE_SCHEMA_VERSION or isinstance(value, (int, float)) and value < -30:
+            try:
+                event_model = ConjunctionAssessmentEvent.model_validate(event)
+                event["collision_ai_assessment"] = assess_collision_ai(event_model).model_dump(mode="json")
+            except (ValidationError, ValueError, TypeError):
+                pc_ai.update({"status": "unavailable", "ai_predicted_log10_pc": None, "reason_code": "STALE_MODEL_PREDICTION_UNAVAILABLE"})
     events.sort(key=lambda event: (
         -(event.get("automatic_research_pc_assessment") or {}).get("log10_pc", float("-inf")),
         str(event.get("screening_run_date") or ""), str(event.get("id") or ""),
@@ -1414,7 +1512,9 @@ async def get_saved_event_library(current_job_id: str | None = None) -> dict:
     try:
         reference_response = await calculate_nasa_cara_reference_case()
         reference_data = reference_response.get("data") or {}
-        if reference_response.get("success") is True and reference_data.get("collision_probability", {}).get("status") == "available":
+        reference_pc = reference_data.get("collision_probability")
+        reference_pc_data = reference_pc.model_dump(mode="json") if hasattr(reference_pc, "model_dump") else reference_pc
+        if reference_response.get("success") is True and isinstance(reference_data, dict) and isinstance(reference_pc_data, dict) and reference_pc_data.get("status") == "available":
             references.append({
                 "id": "reference-nasa-cara-foster-2d",
                 "result_kind": "reference_assessment",
@@ -1422,7 +1522,7 @@ async def get_saved_event_library(current_job_id: str | None = None) -> dict:
                 "reference_case": reference_data.get("reference_case"),
                 "primary": reference_data.get("object_1"),
                 "secondary": reference_data.get("object_2"),
-                "collision_probability": reference_data.get("collision_probability"),
+                "collision_probability": reference_pc_data,
                 "tca_utc": reference_data.get("tca_utc"),
                 "source": reference_response.get("input_provenance", {}),
             })

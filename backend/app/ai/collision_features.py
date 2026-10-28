@@ -57,8 +57,10 @@ FEATURE_UNITS = {
 def build_collision_features(
     event: ConjunctionAssessmentEvent,
     assessment: Any | None = None,
+    *,
+    allow_imputation: bool = False,
 ) -> dict[str, float] | None:
-    """Build only the declared, finite live and offline scenario features."""
+    """Build the declared feature contract; pipelines may impute absent numerics."""
     physics = event.physics_result
     research = assessment or event.automatic_research_pc_assessment
     if physics.status != "valid" or physics.tca_status != "valid" or research is None:
@@ -88,10 +90,18 @@ def build_collision_features(
     for prefix, obj in (("primary", event.primary), ("secondary", event.secondary)):
         for category in OBJECT_CATEGORIES:
             values[f"{prefix}_category_{category}"] = float(obj.category == category)
-    if any(isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)
-           for value in values.values()):
+    invalid = [name for name, value in values.items()
+               if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value)]
+    if invalid and not allow_imputation:
         return None
-    return {name: float(values[name]) for name in FEATURE_NAMES}
+    return {name: float(values[name]) if name not in invalid else float("nan") for name in FEATURE_NAMES}
+
+
+def missing_collision_features(features: dict[str, float] | None) -> list[str]:
+    """Names that the validated pipeline's median imputer must supply."""
+    if not isinstance(features, dict):
+        return list(FEATURE_NAMES)
+    return [name for name in FEATURE_NAMES if not isinstance(features.get(name), (int, float)) or not math.isfinite(features[name])]
 
 
 def _log_hbr_covariance_ratio(research: Any) -> float | None:

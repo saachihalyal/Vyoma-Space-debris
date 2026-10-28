@@ -83,9 +83,6 @@ export function HomePage({ snapshot, eventLibrary, navigate, loading = false }) 
   const evaluation = smartFilter.result?.evaluation;
   const reduction = evaluation && evaluation.before_count > 0 ? evaluation.filtered_count / evaluation.before_count * 100 : null;
   const reductionDisplay = finite(reduction) ? `${reduction.toFixed(1)}%` : smartFilter.status === "loading" || smartFilter.status === "computing" || smartFilter.status === "retrying" ? "Calculating" : "No result";
-  const recommendation = highestPriority
-    ? `Review ${pairName(highestPriority)} (Pc ${highestPriority.automatic_research_pc_assessment?.estimated_pc_scientific || "not recorded"}, ${className(highestPriority)})`
-    : "No saved event is available for review.";
   const kpis = [
     [Orbit, "Objects tracked", tracked == null ? null : tracked.toLocaleString()],
     [Radio, "Debris count", debris == null ? null : debris.toLocaleString()],
@@ -106,11 +103,9 @@ export function HomePage({ snapshot, eventLibrary, navigate, loading = false }) 
         <p>{libraryLoading ? "Loading saved screening data." : `${(eventLibrary.total ?? events.length).toLocaleString()} saved conjunction pairs, including ${mediumHigh == null ? "an unreported number of" : mediumHigh.toLocaleString()} Medium or High events.`}</p>
         <div className="hero-actions"><button className="og-btn primary" onClick={() => navigate("visualization")}>Open Visualization</button><button className="og-btn" onClick={() => navigate("smart")}>Explore AI</button></div>
       </div>
-      <aside className="og-card research-briefing"><p className="eyebrow">AI mission briefing</p><h2>Today’s orbital picture</h2>
+      <aside className="og-card research-briefing"><p className="eyebrow">AI mission briefing</p>
         <div><span>Objects analysed</span><strong>{tracked == null ? <div className="loading-skeleton home-count-skeleton" role="status" aria-label="Loading objects analysed" /> : tracked.toLocaleString()}</strong></div>
         <div><span>Events needing attention</span><strong>{mediumHigh == null ? "Loading" : mediumHigh.toLocaleString()}</strong></div>
-        <div className="home-priority-brief"><span>Highest-priority pair</span><strong>{highestPriority ? pairName(highestPriority) : "No saved event in the library"}</strong><small>Pc {highestPriority?.automatic_research_pc_assessment?.estimated_pc_scientific || "No Pc reported"} · {finite(eventPriority(highestPriority).score) ? `Priority ${eventPriority(highestPriority).score.toFixed(2)}` : "Priority score not recorded"}</small></div>
-        <div className="home-recommendation"><span>Recommended action</span><strong>{recommendation}</strong></div>
       </aside>
     </section>
     <section className="home-kpi-grid" aria-label="Research overview">{kpis.map(([Icon, label, value]) => <article className="og-card og-kpi" key={label}><Icon size={21} strokeWidth={1.8} aria-hidden="true"/><span>{label}</span>{((label === "Objects tracked" && tracked == null) || (label === "Debris count" && debris == null) || (libraryLoading && ["Medium/High events", "Average Pc", "AI agreement %"].includes(label))) ? <div className="loading-skeleton" role="status" aria-label={`Loading ${label}`} /> : <b>{value}</b>}</article>)}</section>

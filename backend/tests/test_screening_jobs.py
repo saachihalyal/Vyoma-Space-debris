@@ -39,6 +39,24 @@ class ScreeningJobLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(archived["result"]["completion_status"], "partial")
         self.assertEqual(len(archived["result"]["data"]), 109)
 
+    async def test_real_archived_screening_job_produces_common_epoch_globe_positions(self):
+        job_id = "c207f19cb37a4551b5f9e276ba0d6fec"
+        job = json.loads((Path(main.__file__).resolve().parent.parent / "exports" / f"screening-job-{job_id}.json").read_text(encoding="utf-8"))
+        smart_filter = json.loads((Path(main.__file__).resolve().parent.parent / "exports" / f"smart-filter-{job_id}.json").read_text(encoding="utf-8"))
+
+        globe = main._smart_filter_globe_positions(job, smart_filter)
+
+        self.assertEqual(globe["frame"], "TEME")
+        self.assertEqual(len(globe["before_objects"]), 162)
+        self.assertEqual(len(globe["after_objects"]), 15)
+        self.assertEqual(globe["failed_object_ids"], [])
+        self.assertTrue(all(
+            obj["provenance"]["reference_frame"] == "TEME"
+            and obj["provenance"]["propagation_epoch"] == globe["propagation_epoch"]
+            and len(obj["position"]) == 3
+            for obj in globe["before_objects"] + globe["after_objects"]
+        ))
+
     async def test_result_status_distinguishes_invalid_records_from_valid_events(self):
         valid_provenance = SimpleNamespace(validity_status="valid", is_synthetic=False, source_type="live")
         invalid = SimpleNamespace(result_kind="physics_assessment", provenance=valid_provenance,

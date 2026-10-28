@@ -12,11 +12,13 @@ from pathlib import Path
 from collections import Counter
 from typing import Any
 
-from app.ai.collision_features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION, build_collision_features
+from app.ai.collision_features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION, build_collision_features, missing_collision_features
+from app.ai.collision_models import PC_ARTIFACT, PC_METADATA, PC_TARGET_MIN_LOG10, _load_model
 from app.ai.collision_training import COVARIANCE_SCALES, HBR_SCALES
 from app.ai.smart_filter_training import SIGNIFICANT_PC_THRESHOLD
 from app.models import ConjunctionAssessmentEvent
 from app.services.automatic_research_pc import assess_automatic_research_pc
+from app.services.probability_classification import DEFAULT_MEDIUM_PC_THRESHOLD
 
 
 ARTIFACT_PATH = Path(__file__).resolve().parent / "artifacts" / "orion_smart_filter_classifier.joblib"
@@ -39,8 +41,15 @@ def filter_policy() -> dict[str, Any]:
             raise ValueError
     except ValueError:
         pc_threshold = SIGNIFICANT_PC_THRESHOLD
+    try:
+        physics_keep_threshold = float(os.getenv("ORION_RISK_MEDIUM_PC", f"{DEFAULT_MEDIUM_PC_THRESHOLD:g}"))
+        if not math.isfinite(physics_keep_threshold) or not 0 < physics_keep_threshold <= 1:
+            raise ValueError
+    except ValueError:
+        physics_keep_threshold = DEFAULT_MEDIUM_PC_THRESHOLD
     return {
         "significant_pc_threshold": pc_threshold,
+        "physics_keep_pc_threshold": physics_keep_threshold,
         "safety_miss_distance_threshold_km": miss_threshold,
         "covariance_scales": list(COVARIANCE_SCALES),
         "hbr_scales": list(HBR_SCALES),
@@ -136,6 +145,56 @@ def _scientific_from_log10(value: float) -> str:
     return f"{mantissa:.5f}e{exponent:+d}"
 
 
+def _infer_pair_ai(event: ConjunctionAssessmentEvent, classifier, metadata: dict[str, Any] | None) -> dict[str, Any]:
+    """Run both saved AI artifacts on one stored physical assessment.
+
+    The two validated sklearn pipelines include median SimpleImputers. Missing
+    live numerics therefore remain NaN here and are disclosed, rather than
+    causing the wrapper to suppress an otherwise valid prediction.
+    """
+    features = build_collision_features(event, allow_imputation=True)
+    imputed_features = missing_collision_features(features)
+    if features is None or classifier is None:
+        return {"status": "unavailable", "reason_code": "SMART_FILTER_MODEL_UNAVAILABLE",
+                "imputed_features": imputed_features, "classifier_prediction": None,
+                "classifier_confidence": None, "ai_log10_pc": None, "ai_pc_status": "unavailable"}
+    values = [[features[name] for name in FEATURE_NAMES]]
+    try:
+        positive_index = list(classifier.classes_).index("significant")
+        probabilities = classifier.predict_proba(values)[0]
+        confidence = float(probabilities[positive_index])
+        classifier_prediction = "significant" if confidence >= filter_policy()["classifier_threshold"] else "insignificant"
+    except Exception:
+        return {"status": "unavailable", "reason_code": "SMART_FILTER_INFERENCE_FAILED",
+                "imputed_features": imputed_features, "classifier_prediction": None,
+                "classifier_confidence": None, "ai_log10_pc": None, "ai_pc_status": "unavailable"}
+    try:
+        surrogate, surrogate_metadata = _load_model(PC_ARTIFACT, PC_METADATA)
+        ai_log10_pc = float(surrogate.predict(values)[0])
+        if not math.isfinite(ai_log10_pc) or ai_log10_pc > 0:
+            ai_log10_pc, ai_pc_status, reason_code = None, "unavailable", "MODEL_PREDICTION_INVALID"
+        elif ai_log10_pc < PC_TARGET_MIN_LOG10:
+            ai_log10_pc, ai_pc_status, reason_code = None, "out_of_range", "MODEL_PREDICTION_OUTSIDE_TRAINING_TARGET_RANGE"
+        else:
+            ai_pc_status, reason_code = "available", None
+    except Exception:
+        ai_log10_pc, ai_pc_status, reason_code = None, "unavailable", "MODEL_INFERENCE_FAILED"
+        surrogate_metadata = {}
+    return {
+        "status": "available_imputed" if imputed_features else "available",
+        "reason_code": reason_code,
+        "imputed_features": imputed_features,
+        "classifier_prediction": classifier_prediction,
+        "classifier_confidence": confidence,
+        "ai_log10_pc": ai_log10_pc,
+        "ai_pc_status": ai_pc_status,
+        "surrogate_model_name": surrogate_metadata.get("model_name"),
+        "surrogate_model_version": surrogate_metadata.get("model_version"),
+        "classifier_model_name": metadata.get("model_name") if metadata else None,
+        "classifier_model_version": metadata.get("model_version") if metadata else None,
+    }
+
+
 def _assess_one(event: ConjunctionAssessmentEvent, model, metadata: dict[str, Any] | None, policy: dict[str, Any]) -> dict[str, Any]:
     physics = event.physics_result
     is_valid = physics.status == "valid" and physics.tca_status == "valid"
@@ -164,9 +223,9 @@ def _assess_one(event: ConjunctionAssessmentEvent, model, metadata: dict[str, An
                     scenario_failures.append(assessment.reason_codes[0] if assessment.reason_codes else assessment.status)
                     continue
                 scenario_logs.append(log_pc)
-                if log_pc >= math.log10(policy["significant_pc_threshold"]):
+                if log_pc >= math.log10(policy["physics_keep_pc_threshold"]):
                     guard_reasons.append("SAFETY_GUARD_SCENARIO_PC")
-                features = build_collision_features(event, assessment)
+                features = build_collision_features(event, assessment, allow_imputation=True)
                 if features is None:
                     scenario_failures.append("SMART_FILTER_FEATURES_UNAVAILABLE")
                     continue
@@ -177,34 +236,32 @@ def _assess_one(event: ConjunctionAssessmentEvent, model, metadata: dict[str, An
     if scenario_failures:
         guard_reasons = list(dict.fromkeys(guard_reasons + ["SAFETY_GUARD_UNCERTAIN_SCENARIOS"]))
 
-    confidence = None
-    model_prediction = None
-    inference_status = "unavailable"
-    reason_code = None
-    if model is not None and len(scenario_features) == SCENARIO_COUNT:
-        try:
-            positive_index = list(model.classes_).index("significant")
-            probabilities = model.predict_proba([[features[name] for name in FEATURE_NAMES] for features in scenario_features])
-            confidence = max(float(row[positive_index]) for row in probabilities)
-            model_prediction = "significant" if confidence >= policy["classifier_threshold"] else "insignificant"
-            inference_status = "available"
-        except Exception:
-            reason_code = "SMART_FILTER_INFERENCE_FAILED"
-    elif model is None:
-        reason_code = "SMART_FILTER_MODEL_UNAVAILABLE"
-    else:
-        reason_code = "SMART_FILTER_FEATURES_UNAVAILABLE"
+    pair_ai = _infer_pair_ai(event, model, metadata)
+    confidence = pair_ai["classifier_confidence"]
+    model_prediction = pair_ai["classifier_prediction"]
+    inference_status = pair_ai["status"]
+    reason_code = pair_ai["reason_code"]
 
+    # Keep if physics Pc >= 1e-7 (Medium boundary), the AI classifier flags
+    # significance (trained on Pc >= 1e-4), or a safety guard fires (miss < 1 km,
+    # invalid, or uncertain). AI unavailable/outside its -30 training floor uses
+    # physics and is labeled AI unavailable; drop only when both available signals
+    # agree insignificant. Pc decisions use numeric log10_pc, never display text.
     guard_retained = bool(guard_reasons)
+    physics_retained = any(log_pc >= math.log10(policy["physics_keep_pc_threshold"]) for log_pc in scenario_logs)
     if guard_retained:
         decision = "retain"
         reason = "; ".join(guard_reasons)
         decision_source = "safety_guard"
-    elif inference_status == "available" and model_prediction == "significant":
+    elif physics_retained:
+        decision = "retain"
+        reason = "PHYSICS_PC_AT_OR_ABOVE_1E-7"
+        decision_source = "physics_pc_threshold"
+    elif inference_status.startswith("available") and model_prediction == "significant":
         decision = "retain"
         reason = "MODEL_PREDICTED_SIGNIFICANT"
         decision_source = "trained_model"
-    elif inference_status == "available":
+    elif inference_status.startswith("available"):
         decision = "filter"
         reason = "MODEL_PREDICTED_INSIGNIFICANT; all configured physics scenarios were calculable and below the guard threshold"
         decision_source = "trained_model"
@@ -240,9 +297,15 @@ def _assess_one(event: ConjunctionAssessmentEvent, model, metadata: dict[str, An
         "scenario_count_required": SCENARIO_COUNT,
         "maximum_scenario_log10_pc": max(scenario_logs) if scenario_logs else None,
         "maximum_scenario_pc_scientific": _scientific_from_log10(max(scenario_logs)) if scenario_logs else None,
+        "physics_keep_threshold_log10_pc": math.log10(policy["physics_keep_pc_threshold"]),
         "scenario_errors": dict(Counter(scenario_failures)),
         "model_name": metadata.get("model_name") if metadata else None,
         "model_version": metadata.get("model_version") if metadata else None,
+        "ai_predicted_log10_pc": pair_ai["ai_log10_pc"],
+        "ai_pc_status": pair_ai["ai_pc_status"],
+        "ai_imputed_features": pair_ai["imputed_features"],
+        "ai_surrogate_model_name": pair_ai["surrogate_model_name"],
+        "ai_surrogate_model_version": pair_ai["surrogate_model_version"],
     }
 
 

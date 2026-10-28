@@ -23,6 +23,7 @@ PC_ARTIFACT = ARTIFACT_DIR / "orion_research_pc_surrogate.joblib"
 PC_METADATA = ARTIFACT_DIR / "orion_research_pc_surrogate.metadata.json"
 RISK_ARTIFACT = ARTIFACT_DIR / "orion_physics_risk_classifier.joblib"
 RISK_METADATA = ARTIFACT_DIR / "orion_physics_risk_classifier.metadata.json"
+PC_TARGET_MIN_LOG10 = -30.0
 
 
 def _sha256(path: Path) -> str:
@@ -153,6 +154,15 @@ def assess_collision_ai(event: ConjunctionAssessmentEvent) -> CollisionAiAssessm
             value = float(pc_estimator.predict([[features[name] for name in FEATURE_NAMES]])[0])
             if not math.isfinite(value) or value > 0:
                 pc_result = _pc_fallback(event, "MODEL_PREDICTION_INVALID")
+            elif value < PC_TARGET_MIN_LOG10:
+                # Training labels are floored at -30. More negative inference is
+                # extrapolation beyond the target domain, not a valid Pc estimate.
+                pc_result = CollisionPcSurrogateResult(
+                    status="unavailable", reason_code="MODEL_PREDICTION_OUTSIDE_TRAINING_TARGET_RANGE",
+                    target_definition=pc_meta.get("target_definition", "log10(research_pc)"),
+                    feature_schema_version=FEATURE_SCHEMA_VERSION,
+                    artifact_sha256=pc_meta.get("artifact_sha256"),
+                )
             else:
                 pc_result = CollisionPcSurrogateResult(
                     status="available", model_name=pc_meta.get("model_name"),

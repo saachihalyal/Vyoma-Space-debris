@@ -9,7 +9,7 @@ const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 const tempVector = new THREE.Vector3();
 const visualCategory = (object) => getVisualizationCategory(object);
-const objectTypeColor = (category) => category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : category === "active" ? "#ffffff" : "#8bd5ff";
+const objectTypeColor = (category) => category === "active" ? "#ffffff" : category === "debris" ? "#000000" : category === "rocket_body" ? "#ffd166" : "#8bd5ff";
 
 function safeNum(v) {
   const n = Number(v);
@@ -452,13 +452,14 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <sphereGeometry args={[0.062, 12, 12]} />
+          <sphereGeometry args={[0.14, 12, 12]} />
           <meshBasicMaterial
             vertexColors
             transparent
             opacity={0.52}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
+            depthTest={false}
             toneMapped={false}
           />
         </instancedMesh>
@@ -478,8 +479,8 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <boxGeometry args={[0.105, 0.012, 0.03]} />
-          <meshBasicMaterial vertexColors transparent opacity={0.92} toneMapped={false} />
+          <boxGeometry args={[0.19, 0.022, 0.06]} />
+          <meshBasicMaterial vertexColors transparent opacity={1} depthTest={false} toneMapped={false} />
         </instancedMesh>
 
         <instancedMesh
@@ -497,8 +498,8 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <boxGeometry args={[0.038, 0.038, 0.05]} />
-          <meshBasicMaterial vertexColors transparent opacity={0.98} toneMapped={false} />
+          <boxGeometry args={[0.075, 0.075, 0.095]} />
+          <meshBasicMaterial vertexColors transparent opacity={1} depthTest={false} toneMapped={false} />
         </instancedMesh>
 
         <instancedMesh

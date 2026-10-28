@@ -409,7 +409,14 @@ export default function App() {
     const savedJobId = readActiveScreeningJobId();
     const restoreAcceptedJob = async () => {
       try {
-        const latestJob = await getLatestConjunctionJob();
+        let latestJob;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          try { latestJob = await getLatestConjunctionJob(); break; }
+          catch (error) {
+            if (attempt === 4 || cancelled) throw error;
+            await new Promise((resolve) => window.setTimeout(resolve, 8_000));
+          }
+        }
         if (cancelled) return;
         if (latestJob) {
           const records = latestJob.result.data;
@@ -418,7 +425,14 @@ export default function App() {
           const result = { ...latestJob.result, api_status: "available", job_id: latestJob.job_id, completion_status: latestJob.status, run_date: latestJob.finished_at || latestJob.created_at };
           saveActiveScreeningJobId(latestJob.job_id);
           saveAcceptedScreeningCache(result, physicalEvents);
-          setPlatform((previous) => finishScreeningAttempt({ ...previous, screeningAttempt: null }, "startup-recovery", result, physicalEvents));
+          const counts = physicalEvents.reduce((out, event) => { const level = event.automatic_research_pc_assessment?.risk_assessment?.final_risk_class; if (level in out) out[level] += 1; return out; }, { Low: 0, Medium: 0, High: 0 });
+          setEventLibrary({ events: physicalEvents, references: [], counts, total: physicalEvents.length, current_job_id: latestJob.job_id, label: "accepted screening" });
+          setPlatform((previous) => ({
+            ...previous, conjunctions: physicalEvents, screeningAttempt: null,
+            conjunctionStatus: { api_status: "available", result_status: result.result_status || "valid_non_empty",
+              completion_status: latestJob.status, job_id: latestJob.job_id, reason: null,
+              physics_assessment_status: result.physics_assessment_status || "available", ml_status: result.ml_status || "unavailable" },
+          }));
           setEventSelection((previous) => reconcilePhysicalEventSelection(previous, physicalEvents));
           return;
         }
@@ -428,12 +442,10 @@ export default function App() {
           return;
         }
         if (savedJobId) clearActiveScreeningJobId(savedJobId);
-        await load({ explicitScreeningRefresh: true, invocationId: "startup-first-screening" });
       } catch (error) {
         if (cancelled) return;
-        console.warn("[Vyoma startup] accepted screening recovery failed; checking the saved job or starting one bounded run.", error);
-        if (savedJobId) resumeSavedJob(savedJobId);
-        else await load({ explicitScreeningRefresh: true, invocationId: "startup-first-screening" });
+        console.warn("[Vyoma startup] accepted screening recovery failed; keeping the current view without starting a screening run.", error);
+        if (savedJobId) clearActiveScreeningJobId(savedJobId);
       }
     };
     function resumeSavedJob(savedJobId) {
@@ -508,7 +520,11 @@ export default function App() {
     const controller = new AbortController();
     getSavedEventLibrary({ currentJobId, signal: controller.signal })
       .then((library) => { if (!controller.signal.aborted) setEventLibrary(library); })
-      .catch((error) => { if (error?.name !== "AbortError") console.warn("[Vyoma event library] saved screenings could not be loaded.", error); });
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        console.warn("[Vyoma event library] using the accepted job data while the library is unavailable.", error);
+        setEventLibrary({ events: platform.conjunctions || [], references: [], counts: {}, total: platform.conjunctions?.length || 0, current_job_id: currentJobId, label: "accepted screening" });
+      });
     return () => controller.abort();
   }, [platform.conjunctionStatus?.job_id]);
 
@@ -542,8 +558,10 @@ export default function App() {
     if (activePage !== "collision" || !Array.isArray(savedEvents) || !savedEvents.length) return undefined;
     const controller = new AbortController();
     let active = true;
-    const candidates = savedEvents.filter((item) => item?.result_kind === "physics_assessment"
-      && item?.physics_result?.status === "valid" && item?.screening_job_id && item?.id);
+    const selectedCandidate = savedEvents.find((item) => item?.id === selectedEvent?.id);
+    const candidates = selectedCandidate?.result_kind === "physics_assessment"
+      && selectedCandidate?.physics_result?.status === "valid" && selectedCandidate?.screening_job_id
+      ? [selectedCandidate] : [];
     const cache = sensitivityPcCacheRef.current;
     const publishCache = () => setSensitivityPcByEvent(Object.fromEntries(cache));
     publishCache();
@@ -568,9 +586,15 @@ export default function App() {
       }
     })();
     return () => { active = false; controller.abort(); };
-  }, [activePage, savedEvents]);
-  const maneuverAssessmentEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, savedEvents);
-  const maneuverScreeningJobId = maneuverAssessmentEvent?.screening_job_id || platform.conjunctionStatus?.job_id || null;
+  }, [activePage, savedEvents, selectedEvent?.id]);
+  const resolvedManeuverEvent = referenceManeuverEvent ? null : resolveManeuverEvent(selectedEvent, savedEvents);
+  const acceptedManeuverEvent = resolvedManeuverEvent && Array.isArray(platform.conjunctions)
+    ? platform.conjunctions.find((event) => event?.id === resolvedManeuverEvent.id && event?.result_kind === "physics_assessment") || null
+    : null;
+  const maneuverAssessmentEvent = acceptedManeuverEvent || resolvedManeuverEvent;
+  const maneuverScreeningJobId = acceptedManeuverEvent
+    ? platform.conjunctionStatus?.job_id || acceptedManeuverEvent.screening_job_id || null
+    : maneuverAssessmentEvent?.screening_job_id || platform.conjunctionStatus?.job_id || null;
   const validManeuverEvents = useMemo(() => eligibleManeuverEvents(savedEvents), [savedEvents]);
   const everyManeuverEventBelowFloor = validManeuverEvents.length > 0 && validManeuverEvents.every((item) => (
     Number.isFinite(item.automatic_research_pc_assessment?.log10_pc)
@@ -907,7 +931,7 @@ export default function App() {
             />
           ) : null}
           {activePage === "smart" ? (
-            <SmartFilterWorkbench snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} download={handleDownload} />
+            <SmartFilterWorkbench acceptedJob={platform.conjunctionStatus?.job_id ? { job_id: platform.conjunctionStatus.job_id, result: { data: platform.conjunctions } } : null} snapshot={snapshot} smartSnapshot={smartSnapshot} platform={platform} download={handleDownload} />
           ) : null}
           {activePage === "collision" ? (
             <CollisionPage
@@ -1214,23 +1238,19 @@ function ReportsPage({ events = [], eventLibrary, maneuverEvent, maneuver, scree
     }
   };
   const eventRows = events.filter((item) => item?.result_kind === "physics_assessment");
+  const [selectedEventId, setSelectedEventId] = useState("");
   const currentJobId = screeningJobId || eventLibrary?.current_job_id || null;
   const csvJobId = csvScreeningJobId || currentJobId;
   const missionEvent = maneuverEvent || eventRows[0] || null;
   const eventDisplayName = (item) => `${item?.primary?.name || item?.primary?.id || "Object"} vs ${item?.secondary?.name || item?.secondary?.id || "Object"}`;
+  const selectedEvent = eventRows.find((item) => item.id === selectedEventId) || eventRows[0] || null;
+  const selectedJobId = selectedEvent?.screening_job_id || currentJobId;
+  const maneuverAvailable = Boolean(selectedJobId && maneuverEvent?.id === selectedEvent?.id && maneuver?.result);
   return <div className="page-stack reports-page">
     <PageHeader eyebrow="Reports" title="Export Center" text="Download reports and data for events from saved screenings." />
     <section className="og-card report-download-list" aria-label="Event reports">
-      <h2>Screening events</h2>
-      {eventRows.length ? eventRows.map((item) => {
-        const jobId = item.screening_job_id || currentJobId;
-        const maneuverAvailable = Boolean(jobId && maneuverEvent?.id === item.id && maneuver?.result);
-        return <article className="report-download-row" key={`${jobId || "saved"}:${item.id}`}>
-          <strong>{eventDisplayName(item)}</strong>
-          <div className="report-download-actions"><span>Collision report</span>{["pdf", "csv", "json"].map((format) => <button key={`collision-${format}`} className="og-btn" type="button" disabled={!jobId} onClick={() => jobId && download(selectedEventReportPath(jobId, item.id, format), `${item.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div>
-          <div className="report-download-actions"><span>Maneuver report</span>{["pdf", "csv", "json"].map((format) => <button key={`maneuver-${format}`} className="og-btn" type="button" disabled={!jobId || !maneuverAvailable} onClick={() => jobId && maneuverAvailable && download(selectedManeuverReportPath(jobId, item.id, format), `${item.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div>
-        </article>;
-      }) : <p>No saved screening events are available.</p>}
+      <h2>Event reports</h2>
+      {selectedEvent ? <><label className="report-event-selector">Select event<select value={selectedEvent.id} onChange={(event) => setSelectedEventId(event.target.value)}>{eventRows.map((item) => <option key={item.id} value={item.id}>{eventDisplayName(item)}</option>)}</select></label><article className="report-download-row"><strong>{eventDisplayName(selectedEvent)}</strong><small>Event ID: {selectedEvent.id}</small><div className="report-download-actions"><span>Collision report</span>{["pdf", "csv", "json"].map((format) => <button key={`collision-${format}`} className="og-btn" type="button" disabled={!selectedJobId} onClick={() => selectedJobId && download(selectedEventReportPath(selectedJobId, selectedEvent.id, format), `${selectedEvent.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div><div className="report-download-actions"><span>Maneuver report</span>{maneuverAvailable ? ["pdf", "csv", "json"].map((format) => <button key={`maneuver-${format}`} className="og-btn" type="button" onClick={() => download(selectedManeuverReportPath(selectedJobId, selectedEvent.id, format), `${selectedEvent.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>) : <small>Maneuver assessment is unavailable for this event.</small>}</div></article></> : <p>No saved screening events are available.</p>}
     </section>
     <section className="og-card report-download-list" aria-label="Mission downloads">
       <h2>Mission downloads</h2>

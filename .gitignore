@@ -31,6 +31,7 @@ Thumbs.db
 backend/ml_data/train_data.zip
 backend/exports/spacetrack-cdm-throttle.json
 .stage6_qa_preview/
+_removed_candidates/
 
 # Generated QA and performance artifacts
 screenshots/
@@ -42,3 +43,31 @@ docs/DEMO_SCRIPT.md
 scripts/final-pass-captures.mjs
 *.tmp
 *.temp
+
+#MD
+ORION_CLINE_RULES.md
+ORION_PHASE2.md
+ORION_SPEC.md
+ORION_TASKS.md
+TODO.md
+IMPLEMENTATION_PROGRESS.md
+IDENTITY_*.md
+HEATMAP_*.md
+SHOW_IN_GLOBE_*.md
+PROJECT_IMPLEMENTATION_REP*.md
+
+#Other Logs
+backend-final-pass.log
+backend-startup.stderr.log
+
+#Image
+browser-collision-analysis.png
+browser-home.png
+browser-maneuver.png
+browser-reports.png
+browser-smart-filter-after.png
+browser-smart-filter-before.png
+browser-smart-filter-final.png
+browser-smart-filter-globes.png
+browser-smart-filter.png
+browser-visualization.png
