@@ -157,7 +157,10 @@ def _infer_pair_ai(event: ConjunctionAssessmentEvent, classifier, metadata: dict
     if features is None or classifier is None:
         return {"status": "unavailable", "reason_code": "SMART_FILTER_MODEL_UNAVAILABLE",
                 "imputed_features": imputed_features, "classifier_prediction": None,
-                "classifier_confidence": None, "ai_log10_pc": None, "ai_pc_status": "unavailable"}
+                "classifier_confidence": None, "ai_log10_pc": None, "ai_pc_status": "unavailable",
+                "surrogate_model_name": None, "surrogate_model_version": None,
+                "classifier_model_name": metadata.get("model_name") if metadata else None,
+                "classifier_model_version": metadata.get("model_version") if metadata else None}
     values = [[features[name] for name in FEATURE_NAMES]]
     try:
         positive_index = list(classifier.classes_).index("significant")
@@ -167,7 +170,10 @@ def _infer_pair_ai(event: ConjunctionAssessmentEvent, classifier, metadata: dict
     except Exception:
         return {"status": "unavailable", "reason_code": "SMART_FILTER_INFERENCE_FAILED",
                 "imputed_features": imputed_features, "classifier_prediction": None,
-                "classifier_confidence": None, "ai_log10_pc": None, "ai_pc_status": "unavailable"}
+                "classifier_confidence": None, "ai_log10_pc": None, "ai_pc_status": "unavailable",
+                "surrogate_model_name": None, "surrogate_model_version": None,
+                "classifier_model_name": metadata.get("model_name") if metadata else None,
+                "classifier_model_version": metadata.get("model_version") if metadata else None}
     try:
         surrogate, surrogate_metadata = _load_model(PC_ARTIFACT, PC_METADATA)
         ai_log10_pc = float(surrogate.predict(values)[0])

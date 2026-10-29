@@ -1224,6 +1224,7 @@ function AnalyticsPage({ analytics, events, snapshot, objects = [], catalogEvent
 
 function ReportsPage({ events = [], eventLibrary, maneuverEvent, maneuver, screeningJobId, csvScreeningJobId, download, downloadTrajectoryCsv }) {
   const [calculationCheck, setCalculationCheck] = useState({ status: "idle", message: "" });
+  const [downloadStatus, setDownloadStatus] = useState("");
   const runCalculationCheck = async () => {
     setCalculationCheck({ status: "loading", message: "Running NASA CARA reference assessment..." });
     try {
@@ -1242,15 +1243,27 @@ function ReportsPage({ events = [], eventLibrary, maneuverEvent, maneuver, scree
   const currentJobId = screeningJobId || eventLibrary?.current_job_id || null;
   const csvJobId = csvScreeningJobId || currentJobId;
   const missionEvent = maneuverEvent || eventRows[0] || null;
-  const eventDisplayName = (item) => `${item?.primary?.name || item?.primary?.id || "Object"} vs ${item?.secondary?.name || item?.secondary?.id || "Object"}`;
+  const eventDisplayName = (item, detailed = false) => {
+    const pair = `${item?.primary?.name || item?.primary?.id || "Object"} vs ${item?.secondary?.name || item?.secondary?.id || "Object"}`;
+    return detailed ? `${pair} · ${item?.physics_result?.tca?.value || item?.tca_utc || item?.id}` : pair;
+  };
   const selectedEvent = eventRows.find((item) => item.id === selectedEventId) || eventRows[0] || null;
   const selectedJobId = selectedEvent?.screening_job_id || currentJobId;
   const maneuverAvailable = Boolean(selectedJobId && maneuverEvent?.id === selectedEvent?.id && maneuver?.result);
+  const downloadSelected = async (path, filename) => {
+    setDownloadStatus("");
+    try {
+      await download(path, filename);
+      setDownloadStatus(`Download started: ${filename}`);
+    } catch (error) {
+      setDownloadStatus(`Download failed: ${error?.message || "The report could not be retrieved."}`);
+    }
+  };
   return <div className="page-stack reports-page">
     <PageHeader eyebrow="Reports" title="Export Center" text="Download reports and data for events from saved screenings." />
     <section className="og-card report-download-list" aria-label="Event reports">
       <h2>Event reports</h2>
-      {selectedEvent ? <><label className="report-event-selector">Select event<select value={selectedEvent.id} onChange={(event) => setSelectedEventId(event.target.value)}>{eventRows.map((item) => <option key={item.id} value={item.id}>{eventDisplayName(item)}</option>)}</select></label><article className="report-download-row"><strong>{eventDisplayName(selectedEvent)}</strong><small>Event ID: {selectedEvent.id}</small><div className="report-download-actions"><span>Collision report</span>{["pdf", "csv", "json"].map((format) => <button key={`collision-${format}`} className="og-btn" type="button" disabled={!selectedJobId} onClick={() => selectedJobId && download(selectedEventReportPath(selectedJobId, selectedEvent.id, format), `${selectedEvent.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div><div className="report-download-actions"><span>Maneuver report</span>{maneuverAvailable ? ["pdf", "csv", "json"].map((format) => <button key={`maneuver-${format}`} className="og-btn" type="button" onClick={() => download(selectedManeuverReportPath(selectedJobId, selectedEvent.id, format), `${selectedEvent.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>) : <small>Maneuver assessment is unavailable for this event.</small>}</div></article></> : <p>No saved screening events are available.</p>}
+      {selectedEvent ? <><label className="report-event-selector">Select screening event<select value={selectedEvent.id} onChange={(event) => { setSelectedEventId(event.target.value); setDownloadStatus(""); }}>{eventRows.map((item) => <option key={item.id} value={item.id}>{eventDisplayName(item, true)}</option>)}</select></label><article className="report-download-row"><strong>{eventDisplayName(selectedEvent)}</strong><small>Event ID: {selectedEvent.id}</small><div className="report-download-actions"><span>Collision report</span>{["pdf", "csv", "json"].map((format) => <button key={`collision-${format}`} className="og-btn" type="button" disabled={!selectedJobId} onClick={() => selectedJobId && downloadSelected(selectedEventReportPath(selectedJobId, selectedEvent.id, format), `${selectedEvent.id}-collision-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div><div className="report-download-actions"><span>Maneuver report</span>{["pdf", "csv", "json"].map((format) => <button key={`maneuver-${format}`} className="og-btn" type="button" disabled={!maneuverAvailable} title={maneuverAvailable ? "" : "No maneuver assessment exists for this event."} onClick={() => maneuverAvailable && downloadSelected(selectedManeuverReportPath(selectedJobId, selectedEvent.id, format), `${selectedEvent.id}-maneuver-report.${format}`)}>Download {format.toUpperCase()}</button>)}</div>{!maneuverAvailable && <small>Maneuver assessment is unavailable for this event.</small>}{downloadStatus && <p className="report-download-status" role="status">{downloadStatus}</p>}</article></> : <p>No saved screening events are available.</p>}
     </section>
     <section className="og-card report-download-list" aria-label="Mission downloads">
       <h2>Mission downloads</h2>

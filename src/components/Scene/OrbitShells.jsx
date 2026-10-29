@@ -1,10 +1,11 @@
 import { Line } from "@react-three/drei";
 import { useMemo } from "react";
-import { BAND_COLORS, ringPoints } from "../../utils/orbitalMath";
+import { ringPoints } from "../../utils/orbitalMath";
+import { getVisualizationCategory } from "../../utils/objectClassification.js";
 
 export function OrbitShells({ objects, filters }) {
   const trails = useMemo(() => {
-    const visible = objects.filter((object) => filters[object.band] && (object.category === "debris" ? filters.debris : filters.active));
+    const visible = objects.filter((object) => filters[object.band] && (getVisualizationCategory(object) === "debris" ? filters.debris : filters.active));
     const important = visible
       .slice()
       .sort((a, b) => b.heuristic_risk_score - a.heuristic_risk_score)
@@ -12,7 +13,7 @@ export function OrbitShells({ objects, filters }) {
     return important.map((object) => ({
       id: object.id,
       band: object.band,
-      category: object.category,
+      category: getVisualizationCategory(object),
       points: ringPoints(object.orbit, 144),
       opacity: object.category === "debris" ? 0.22 : 0.16,
     }));
@@ -24,10 +25,10 @@ export function OrbitShells({ objects, filters }) {
         <Line
           key={trail.id}
           points={trail.points}
-          color={trail.category === "debris" ? "#ff6f52" : BAND_COLORS[trail.band]}
+          color={trail.category === "debris" ? "#ff6f52" : "#ffffff"}
           lineWidth={2.0}
           transparent
-          opacity={trail.category === "debris" ? 0.35 : 0.28}
+          opacity={trail.category === "debris" ? 0.35 : 0.34}
         />
       ))}
       <ReferenceShell radius={2.68} color="#42f5b3" opacity={0.08} />

@@ -9,7 +9,7 @@ const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 const tempVector = new THREE.Vector3();
 const visualCategory = (object) => getVisualizationCategory(object);
-const objectTypeColor = (category) => category === "active" ? "#ffffff" : category === "debris" ? "#000000" : category === "rocket_body" ? "#ffd166" : "#8bd5ff";
+const objectTypeColor = (category) => category === "active" ? "#ffffff" : category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : "#8bd5ff";
 
 function safeNum(v) {
   const n = Number(v);

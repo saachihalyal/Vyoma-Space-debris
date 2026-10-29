@@ -129,6 +129,7 @@ _smart_filter_results: dict[str, dict] = {}
 _smart_filter_results_lock = threading.Lock()
 _smart_filter_tasks: dict[str, asyncio.Task] = {}
 _smart_filter_progress: dict[str, dict] = {}
+SMART_FILTER_RESULT_SCHEMA_VERSION = 4
 SCREENING_EXPORT_ARCHIVE_DIR = Path(__file__).resolve().parent.parent / "exports"
 NASA_CARA_PC_REFERENCE_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "nasa_cara_pc_reference.cdm"
 NASA_CARA_PC_REFERENCE_URL = "https://github.com/nasa/CARA_Analysis_Tools/blob/master/DataFiles/PcTestCaseCDMs/000020580_conj_000002017_20230613_001923_20230608_063715.cdm"
@@ -1140,7 +1141,8 @@ async def evaluate_screening_job_smart_filter(job_id: str) -> dict:
         except (OSError, json.JSONDecodeError):
             cached = None
         if isinstance(cached, dict) and cached.get("result_type") == "physics_smart_filter":
-            if cached.get("policy", {}).get("physics_keep_pc_threshold") != filter_policy()["physics_keep_pc_threshold"]:
+            if (cached.get("result_schema_version") != SMART_FILTER_RESULT_SCHEMA_VERSION
+                    or cached.get("policy", {}).get("physics_keep_pc_threshold") != filter_policy()["physics_keep_pc_threshold"]):
                 cached = None
             elif cached.get("decision_policy_version") != 3 and isinstance(cached.get("decisions"), list):
                 cached = _upgrade_smart_filter_policy(cached)
@@ -1189,6 +1191,7 @@ def _ensure_smart_filter_task(job_id: str) -> None:
     except (OSError, json.JSONDecodeError):
         saved = None
     if (isinstance(saved, dict) and saved.get("result_type") == "physics_smart_filter"
+            and saved.get("result_schema_version") == SMART_FILTER_RESULT_SCHEMA_VERSION
             and saved.get("policy", {}).get("physics_keep_pc_threshold") == filter_policy()["physics_keep_pc_threshold"]
             and isinstance(saved.get("decisions"), list)):
         if saved.get("decision_policy_version") != 3:
@@ -1274,6 +1277,7 @@ async def _compute_screening_job_smart_filter(job_id: str, policy: dict, cache_k
         result["evaluation"]["safety_guard_retained_count"] += len(unparsed)
     payload = {
         **result,
+        "result_schema_version": SMART_FILTER_RESULT_SCHEMA_VERSION,
         "screening_job_id": job_id,
         "screening_job_archived": bool(job.get("archived") or job.get("restored_from_archive")),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
