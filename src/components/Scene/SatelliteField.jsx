@@ -2,14 +2,13 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { BAND_COLORS, degToRad, orbitPhase, orbitPositionTo } from "../../utils/orbitalMath";
-import { getVisualizationCategory } from "../../utils/objectClassification.js";
 import { selectedObjectWorldPosition, setHasSelectedObject } from "./positionSharing";
 
 const tempObject = new THREE.Object3D();
 const tempColor = new THREE.Color();
 const tempVector = new THREE.Vector3();
-const visualCategory = (object) => getVisualizationCategory(object);
-const objectTypeColor = (category) => category === "active" ? "#ffffff" : category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : "#8bd5ff";
+const debrisPalette = ["#070a10"];
+const objectTypeColor = (category) => category === "debris" ? "#070a10" : category === "rocket_body" ? "#ffd166" : ["active", "payload", "satellite"].includes(category) ? "#ffffff" : "#8bd5ff";
 
 function safeNum(v) {
   const n = Number(v);
@@ -32,6 +31,15 @@ function riskLabelFromSeverity(severity) {
   if (s.includes("critical")) return "Critical";
   if (s.includes("extreme")) return "Extreme";
   return (severity ?? "Unknown").toString();
+}
+
+function debrisColorFor(object, index = 0) {
+  let hash = index;
+  const id = object?.id ?? "";
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash * 31 + id.charCodeAt(i)) % debrisPalette.length;
+  }
+  return debrisPalette[hash];
 }
 
 function regionLabelFromBand(band) {
@@ -143,7 +151,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
 
   const visible = useMemo(() => {
     const base = (objects || []).filter((object) => {
-      const categoryVisible = visualCategory(object) === "debris" ? filters.debris : filters.active;
+      const categoryVisible = object.category === "debris" ? filters.debris : filters.active;
       return categoryVisible && filters[object.band];
     });
     // If selectedObject is not in the filtered list (e.g., hidden by filters),
@@ -154,8 +162,8 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
   }, [objects, filters, selectedObject, highlightedObjectIds]);
   const highlightedIds = useMemo(() => new Set([selectedObject?.id, ...(highlightedObjectIds || [])].filter(Boolean)), [selectedObject?.id, highlightedObjectIds]);
 
-  const activeObjects = useMemo(() => visible.filter((object) => visualCategory(object) !== "debris"), [visible]);
-  const debrisObjects = useMemo(() => visible.filter((object) => visualCategory(object) === "debris"), [visible]);
+  const activeObjects = useMemo(() => visible.filter((object) => object.category !== "debris"), [visible]);
+  const debrisObjects = useMemo(() => visible.filter((object) => object.category === "debris"), [visible]);
 
   // Zoom-aware clutter management (renders fewer instances when camera is far).
   const densityMode = useMemo(() => {
@@ -182,7 +190,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
   }, [debrisObjects, densityMode, highlightedIds]);
 
   const clusterKeyOf = (o) => {
-    const category = visualCategory(o);
+    const category = o.category ?? "unknown";
     const band = o.band ?? "unknown";
     const inc = safeNum(o.orbit?.inclination_deg) ?? 0;
     const raan = safeNum(o.orbit?.raan_deg) ?? 0;
@@ -208,7 +216,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
     const list = [];
     for (const [key, arr] of map.entries()) {
       if (!arr.length) continue;
-      const category = visualCategory(arr[0]);
+      const category = arr[0].category ?? "unknown";
       const band = arr[0].band ?? "unknown";
       const isDebris = category === "debris";
 
@@ -293,7 +301,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       bodyMesh.setMatrixAt(i, tempObject.matrix);
       panelMesh.setMatrixAt(i, tempObject.matrix);
 
-      tempColor.set(objectTypeColor(visualCategory(object)));
+      tempColor.set(objectTypeColor(object.category));
       bodyMesh.setColorAt(i, tempColor);
       panelMesh.setColorAt(i, tempColor);
 
@@ -304,7 +312,7 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
       glowMesh.setMatrixAt(i, tempObject.matrix);
 
       const glowIntensity = isSelected ? 1.5 : (0.6 + Math.min(1, p) * 0.9);
-      const glowCol = new THREE.Color(objectTypeColor(visualCategory(object))).multiplyScalar(glowIntensity);
+      const glowCol = new THREE.Color(objectTypeColor(object.category)).multiplyScalar(glowIntensity);
       glowMesh.setColorAt(i, glowCol);
     }
 
@@ -332,11 +340,11 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
 
       if (isSelected) {
         // Selected debris → magenta
-        const magenta = new THREE.Color(objectTypeColor(visualCategory(object)));
+        const magenta = new THREE.Color(objectTypeColor(object.category));
         coreMesh.setColorAt(i, magenta);
       } else {
         // Unselected debris → green from palette
-        const col = new THREE.Color(objectTypeColor(visualCategory(object)));
+        const col = new THREE.Color(objectTypeColor(object.category));
         const coreCol = col.clone().multiplyScalar(0.95 + d * 0.4);
         coreMesh.setColorAt(i, coreCol);
       }
@@ -452,14 +460,13 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <sphereGeometry args={[0.14, 12, 12]} />
+          <sphereGeometry args={[0.062, 12, 12]} />
           <meshBasicMaterial
             vertexColors
             transparent
             opacity={0.52}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
-            depthTest={false}
             toneMapped={false}
           />
         </instancedMesh>
@@ -479,8 +486,8 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <boxGeometry args={[0.19, 0.022, 0.06]} />
-          <meshBasicMaterial vertexColors transparent opacity={1} depthTest={false} toneMapped={false} />
+          <boxGeometry args={[0.105, 0.012, 0.03]} />
+          <meshBasicMaterial vertexColors transparent opacity={0.92} toneMapped={false} />
         </instancedMesh>
 
         <instancedMesh
@@ -498,8 +505,8 @@ export function SatelliteField({ objects, filters, forecastHours, selectedObject
             onHoverObject?.(null);
           }}
         >
-          <boxGeometry args={[0.075, 0.075, 0.095]} />
-          <meshBasicMaterial vertexColors transparent opacity={1} depthTest={false} toneMapped={false} />
+          <boxGeometry args={[0.038, 0.038, 0.05]} />
+          <meshBasicMaterial vertexColors transparent opacity={0.98} toneMapped={false} />
         </instancedMesh>
 
         <instancedMesh
